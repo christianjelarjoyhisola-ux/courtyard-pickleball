@@ -8,6 +8,11 @@ resendAPIKEY.txt
 # Supabase local temp files
 supabase/.temp/
 
+# Dependencies
+node_modules/
+package.json
+package-lock.json
+
 # Claude workspace
 .claude/
 

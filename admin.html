@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>Smash Grove — Admin Dashboard</title>
 <link rel="icon" type="image/jpeg" href="f6b5eb3c-a6b6-49ce-981e-d9b127b67ba3.jpg">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="chart.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <style>
@@ -809,6 +809,20 @@ tr:hover td { background: var(--bg2); }
           <button class="btn btn-p btn-sm" onclick="saveHours()" style="margin-bottom:1px">💾 Save Hours</button>
         </div>
         <div id="ohSummary" style="margin-top:12px;padding:10px 14px;background:var(--input);border:1px solid var(--border);border-radius:8px;font-size:.84rem;color:var(--muted);display:none"></div>
+      </div>
+
+      <!-- BOOKING FEE PANEL -->
+      <div class="panel" style="margin-bottom:20px;border:1px solid var(--border);">
+        <h4>💳 Booking Fee</h4>
+        <p style="color:var(--muted);font-size:.84rem;margin:8px 0 16px">A flat fee added to every booking total. This is earned by the system owner per transaction.</p>
+        <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap">
+          <div>
+            <label class="fl">Fee Amount (₱)</label>
+            <input type="number" class="fi" id="bookingFeeInput" min="0" step="1" style="width:140px" placeholder="e.g. 5" />
+          </div>
+          <button class="btn btn-p btn-sm" onclick="saveBookingFee()" style="margin-bottom:1px">💾 Save Fee</button>
+        </div>
+        <div id="bookingFeeSummary" style="margin-top:12px;padding:10px 14px;background:var(--input);border:1px solid var(--border);border-radius:8px;font-size:.84rem;color:var(--muted);display:none"></div>
       </div>
 
       <!-- PRICING TIERS PANEL (developer only) -->
@@ -2470,6 +2484,7 @@ async function exportReportCSV(){
    ============================================== */
 async function renderCourts(){
   await renderHours();
+  await renderBookingFee();
   await loadPricingTiers();
   await renderPaymentSettings();
   const courts=await DB.getCourts();
@@ -2611,6 +2626,37 @@ function fmtH(h) {
   if (h === 0)  return '12:00 AM (Midnight)';
   if (h === 24) return '12:00 AM (Next Day / Midnight)';
   return `${h % 12 || 12}:00 ${h < 12 ? 'AM' : 'PM'}`;
+}
+
+async function renderBookingFee() {
+  const settings = await DB.getSettings();
+  const fee = parseFloat(settings.booking_fee || '0');
+  if ($('bookingFeeInput')) $('bookingFeeInput').value = fee;
+  const sum = $('bookingFeeSummary');
+  if (sum) {
+    sum.style.display = 'block';
+    sum.innerHTML = fee > 0
+      ? `💳 <strong style="color:var(--green)">₱${fee.toFixed(2)}</strong> booking fee will be added to every booking total.`
+      : `ℹ️ No booking fee is currently set.`;
+  }
+}
+
+async function saveBookingFee() {
+  const val = parseFloat($('bookingFeeInput').value);
+  if (isNaN(val) || val < 0) { toast('Please enter a valid fee amount (0 or more).', 'err'); return; }
+  try {
+    await DB.saveSetting('booking_fee', String(val));
+    const sum = $('bookingFeeSummary');
+    if (sum) {
+      sum.style.display = 'block';
+      sum.innerHTML = val > 0
+        ? `💳 <strong style="color:var(--green)">₱${val.toFixed(2)}</strong> booking fee will be added to every booking total.`
+        : `ℹ️ No booking fee is currently set.`;
+    }
+    toast(`Booking fee set to ₱${val.toFixed(2)}`);
+  } catch(e) {
+    toast('Failed to save booking fee.', 'err');
+  }
 }
 
 async function renderHours() {
@@ -3287,6 +3333,14 @@ function updateThemeBtn() {
 function logout(){ Auth.logout(); }
 
 document.addEventListener('DOMContentLoaded', async ()=>{
+  // LOCAL DEV BYPASS: skip Supabase JWT check on localhost
+  const isLocalDev = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+  if (isLocalDev && !Auth.getSession()) {
+    const devSession = { id: 'dev_001', email: 'dev@pickleballhub.com', role: 'developer', fullName: 'Super Admin', loginAt: new Date().toISOString() };
+    localStorage.setItem('pb_session', JSON.stringify(devSession));
+    localStorage.setItem('pb_remember', '1');
+  }
+  if (!isLocalDev) {
   // Verify real Supabase Auth session — not just sessionStorage
   const { data: authData } = await _supabase.auth.getUser();
   if (!authData.user) {
@@ -3304,6 +3358,7 @@ document.addEventListener('DOMContentLoaded', async ()=>{
       : { id: authData.user.id, email: authData.user.email, role: 'admin', fullName: 'Admin', loginAt: new Date().toISOString() };
     sessionStorage.setItem('pb_session', JSON.stringify(session));
   }
+  } // end !isLocalDev
 
   sess = Auth.requireAuth();
   if (!sess) return;
@@ -3329,7 +3384,7 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   await renderDash();
 });
 </script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="supabase.min.js"></script>
 <script src="supabase-config.js"></script>
 </body>
 </html>

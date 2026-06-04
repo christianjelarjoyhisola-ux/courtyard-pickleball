@@ -1512,7 +1512,6 @@ body.light #splashScreen { background: var(--bg); }
           <div class="price-bx">
             <div class="pr"><span>Duration</span><span id="pHrs">0 hrs</span></div>
             <div class="pr"><span>Hourly Rate</span><span id="pRate">₱0/hr</span></div>
-            <div class="pr" id="pFeeRow" style="display:none"><span>Booking Fee</span><span id="pBookingFee">₱0.00</span></div>
             <div class="pr tot"><span>TOTAL</span><span id="pTot">₱0.00</span></div>
             <div class="pr down-row"><span id="pDownLabel">⚡ 50% Downpayment Required</span><span id="pDown">₱0.00</span></div>
           </div>
@@ -1671,7 +1670,6 @@ let openHour  = 6;
 let closeHour = 22;
 let openPlayConfig = null; // { enabled, start, end, days[], fee, maxPlayers }
 let openPlayFee = 100; // default ₱100, overridden by settings
-let bookingFee = 0;   // flat fee per booking, set in admin → Booking Fee
 let openPlayMaxPlayers = 40; // default 40, overridden by settings
 let maintenanceConfig = null; // { enabled, start, end, mode, dates[], recurring }
 
@@ -1822,9 +1820,6 @@ async function loadOperatingHours() {
   }
   if (settings.maintenance_config) {
     try { maintenanceConfig = JSON.parse(settings.maintenance_config); } catch(e) {}
-  }
-  if (settings.booking_fee) {
-    bookingFee = parseFloat(settings.booking_fee) || 0;
   }
   applyPaymentSettings(settings);
   const note = $('slotHoursNote');
@@ -2026,7 +2021,7 @@ function updateCardUI(courtId) {
     const mn    = Math.min(...cardSel.slots);
     const mx    = Math.max(...cardSel.slots);
     const hrs   = cardSel.slots.length;
-    const total = cardSel.slots.reduce((s, h) => s + getRateForHour(h), 0) + bookingFee;
+    const total = cardSel.slots.reduce((s, h) => s + getRateForHour(h), 0);
     sum.textContent = `${fmtT(mn)} – ${fmtT(mx+1)} · ${hrs} hr${hrs>1?'s':''} · ${fmt(total)}`;
     bar.style.display = 'flex';
   } else {
@@ -2139,13 +2134,12 @@ function updateWiz3Summary() {
   const mn  = selSlots.length ? Math.min(...selSlots) : null;
   const mx  = selSlots.length ? Math.max(...selSlots) : null;
   const hrs = selSlots.length;
-  const total = selSlots.reduce((s, h) => s + getRateForHour(h), 0) + bookingFee;
+  const total = selSlots.reduce((s, h) => s + getRateForHour(h), 0);
   const dateStr = $('bDate').value ? fmtD($('bDate').value) : '—';
   $('wiz3Summary').innerHTML = [
     `🏟️ ${court ? court.name : '—'}`,
     `📅 ${dateStr}`,
     mn !== null ? `⏰ ${fmtT(mn)} – ${fmtT(mx + 1)} &nbsp;(${hrs} hr${hrs !== 1 ? 's' : ''})` : '',
-    bookingFee > 0 ? `💳 Booking Fee: <strong style="color:var(--muted)">${fmt(bookingFee)}</strong>` : '',
     `💰 Total: <strong style="color:var(--green)">${fmt(total)}</strong>`,
   ].filter(Boolean).map(s => `<div>${s}</div>`).join('');
 }
@@ -2539,7 +2533,7 @@ function toggleSlot(h) {
 function updatePrice() {
   const hrs   = selSlots.length;
   const courtTotal = selSlots.reduce((s, h) => s + getRateForHour(h), 0);
-  const total = courtTotal + bookingFee;
+  const total = courtTotal;
   const half  = total / 2;
   const payAmt = payFull ? total : half;
   const rates = pricingTiers.map(t => t.rate);
@@ -2548,8 +2542,6 @@ function updatePrice() {
     : (court ? fmt(court.rate) + '/hr' : '—');
   $('pHrs').textContent  = `${hrs} hr${hrs !== 1 ? 's' : ''}`;
   $('pRate').textContent = rateLabel;
-  if ($('pFeeRow')) $('pFeeRow').style.display = bookingFee > 0 ? '' : 'none';
-  if ($('pBookingFee')) $('pBookingFee').textContent = fmt(bookingFee);
   $('pTot').textContent  = fmt(total);
   $('pDown').textContent = fmt(payAmt);
 
@@ -2708,13 +2700,13 @@ async function submitBooking(e) {
     endTime: fmtT(endH),
     duration: hrs,
     rate: court.rate,
-    total: selSlots.reduce((s, h) => s + getRateForHour(h), 0) + bookingFee,
+    total: selSlots.reduce((s, h) => s + getRateForHour(h), 0),
     paymentMethod: payMethod,
     gcashRef: gcashRef || null,
     paymentFlow: gcashNeedsCheckout ? 'gcash_checkout_link' : payMethod,
     downpayment: payFull
-      ? selSlots.reduce((s, h) => s + getRateForHour(h), 0) + bookingFee
-      : (selSlots.reduce((s, h) => s + getRateForHour(h), 0) + bookingFee) / 2,
+      ? selSlots.reduce((s, h) => s + getRateForHour(h), 0)
+      : selSlots.reduce((s, h) => s + getRateForHour(h), 0) / 2,
     paymentStatus: gcashNeedsCheckout ? 'pending' : (payMethod === 'cash' ? 'unpaid' : 'for_verification'),
     status: 'pending',
     createdAt: new Date().toISOString(),

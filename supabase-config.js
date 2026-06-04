@@ -3,8 +3,8 @@
 // Replace these with your actual project credentials.
 // Find them at: Supabase Dashboard → Project Settings → API
 // =============================================
-const SUPABASE_URL  = 'https://ikeujqaqmwmvkyhjqdmv.supabase.co';        // e.g. https://abcxyz.supabase.co
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlrZXVqcWFxbXdtdmt5aGpxZG12Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1OTEyNDgsImV4cCI6MjA4NzE2NzI0OH0.Bs1sQ1EGTRdGeWOODg3vVPerjmHoQy3DkqmASX-yY9k'; // anon / public key
+const SUPABASE_URL  = 'https://yadedluhybhgkelifmuo.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlhZGVkbHVoeWJoZ2tlbGlmbXVvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1NTAzMTYsImV4cCI6MjA5NjEyNjMxNn0.I4n8SaW8sjrYL75QiAJ2TDoQ_VQ8W7_t5Gb47EqpJLU';
 
 // Initialize Supabase client (uses UMD global loaded from CDN)
 const _sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -433,9 +433,22 @@ window.Auth = {
   async add(d) {
     const all = await DB.getAccounts();
     if (all.find(x => x.username === d.username)) return { ok: false, msg: 'Username taken.' };
-    const acc = { id: 'mgr_' + Date.now(), ...d, role: 'manager', createdAt: new Date().toISOString() };
+
+    // Create a real Supabase Auth user so the account can actually log in
+    const { data, error } = await _sb.auth.signUp({ email: d.email, password: d.password });
+    if (error) return { ok: false, msg: error.message };
+    if (!data.user) return { ok: false, msg: 'Signup failed — no user returned.' };
+
+    const acc = {
+      id: data.user.id,
+      fullName: d.fullName,
+      username: d.username,
+      email: d.email,
+      role: d.role || 'manager',
+      createdAt: new Date().toISOString(),
+    };
     try { await DB.saveAccount(acc); return { ok: true }; }
-    catch(e) { return { ok: false, msg: 'Failed to save.' }; }
+    catch(e) { return { ok: false, msg: 'Auth user created but profile save failed.' }; }
   },
 
   async update(id, d) {

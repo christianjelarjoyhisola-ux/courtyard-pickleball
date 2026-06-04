@@ -625,7 +625,7 @@ tr:hover td { background: var(--bg2); }
           </div>
           <div style="background:var(--input);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center">
             <div style="font-size:.72rem;color:var(--text3);margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">Rate</div>
-            <div style="font-size:1rem;font-weight:700;color:var(--text)">₱5.00 / hr</div>
+            <div style="font-size:1rem;font-weight:700;color:var(--text)" id="mfRateDisplay">₱5.00 / hr</div>
           </div>
           <div style="background:rgba(244,168,37,.12);border:1.5px solid rgba(244,168,37,.4);border-radius:10px;padding:14px;text-align:center">
             <div style="font-size:1.6rem;font-weight:800;color:#f4a825" id="mfFee">₱0.00</div>
@@ -811,18 +811,18 @@ tr:hover td { background: var(--bg2); }
         <div id="ohSummary" style="margin-top:12px;padding:10px 14px;background:var(--input);border:1px solid var(--border);border-radius:8px;font-size:.84rem;color:var(--muted);display:none"></div>
       </div>
 
-      <!-- BOOKING FEE PANEL -->
-      <div class="panel" style="margin-bottom:20px;border:1px solid var(--border);">
-        <h4>💳 Booking Fee</h4>
-        <p style="color:var(--muted);font-size:.84rem;margin:8px 0 16px">A flat fee added to every booking total. This is earned by the system owner per transaction.</p>
-        <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap">
+      <!-- DEVELOPER RATE PANEL (developer only) -->
+      <div class="panel dev-only" style="margin-bottom:20px;border:1px solid var(--border);">
+        <h4>🛠️ Developer Rate <span style="font-size:.72rem;color:var(--muted);font-family:'DM Sans',sans-serif;font-weight:400;margin-left:8px">Developer Only</span></h4>
+        <p style="color:var(--muted);font-size:.84rem;margin:8px 0 16px">Per-hour fee charged for every booked hour. This is the developer’s maintenance income per booking.</p>
+        <div style="display:flex;gap:20px;align-items:flex-end;flex-wrap:wrap">
           <div>
-            <label class="fl">Fee Amount (₱)</label>
-            <input type="number" class="fi" id="bookingFeeInput" min="0" step="1" style="width:140px" placeholder="e.g. 5" />
+            <label class="fl">🛠️ Maintenance Rate (₱/hr)</label>
+            <input type="number" class="fi" id="maintRateInput" min="0" step="0.5" style="width:140px" placeholder="e.g. 15" />
           </div>
-          <button class="btn btn-p btn-sm" onclick="saveBookingFee()" style="margin-bottom:1px">💾 Save Fee</button>
+          <button class="btn btn-s btn-sm" onclick="saveMaintRate()" style="margin-bottom:1px">💾 Save Rate</button>
         </div>
-        <div id="bookingFeeSummary" style="margin-top:12px;padding:10px 14px;background:var(--input);border:1px solid var(--border);border-radius:8px;font-size:.84rem;color:var(--muted);display:none"></div>
+        <div id="maintRateSummary" style="margin-top:12px;padding:10px 14px;background:var(--input);border:1px solid var(--border);border-radius:8px;font-size:.84rem;color:var(--muted);display:none"></div>
       </div>
 
       <!-- PRICING TIERS PANEL (developer only) -->
@@ -1377,12 +1377,17 @@ async function renderDash(){
 }
 
 // ── MAINTENANCE FEE ─────────────────────────────────────────
-const MAINT_RATE = 5; // ₱5.00 per hour booked
+let _maintRate = 5; // cached from DB settings
 
 async function renderMaintFee() {
   const monthInput = $('maintMonth');
   const selectedMonth = monthInput?.value; // e.g. "2026-04"
   if (!selectedMonth) return;
+
+  // Load rate from DB settings
+  const settings = await DB.getSettings();
+  _maintRate = parseFloat(settings.maintenance_fee ?? '5');
+  if ($('mfRateDisplay')) $('mfRateDisplay').textContent = `₱${_maintRate.toFixed(2)} / hr`;
 
   const bks = await DB.getBookings();
   // Only count confirmed + completed bookings in the selected month
@@ -1393,7 +1398,7 @@ async function renderMaintFee() {
 
   const totalBookings = filtered.length;
   const totalHours = filtered.reduce((s, b) => s + (parseInt(b.duration) || 0), 0);
-  const totalFee = totalHours * MAINT_RATE;
+  const totalFee = totalHours * _maintRate;
 
   $('mfBookings').textContent = totalBookings;
   $('mfHours').textContent = totalHours;
@@ -1421,7 +1426,7 @@ async function renderMaintFee() {
     .map(([court, d]) =>
       `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)">
         <span>🏟️ ${court}</span>
-        <span>${d.bookings} booking${d.bookings !== 1 ? 's' : ''} · <strong>${d.hours} hr${d.hours !== 1 ? 's' : ''}</strong> · <span style="color:#f4a825">₱${fmt(d.hours * MAINT_RATE)}</span></span>
+        <span>${d.bookings} booking${d.bookings !== 1 ? 's' : ''} · <strong>${d.hours} hr${d.hours !== 1 ? 's' : ''}</strong> · <span style="color:#f4a825">${fmt(d.hours * _maintRate)}</span></span>
       </div>`
     ).join('');
 
@@ -1430,8 +1435,26 @@ async function renderMaintFee() {
     ${rows}
     <div style="display:flex;justify-content:space-between;margin-top:10px;padding-top:8px;font-weight:700;font-size:.9rem">
       <span>Total</span>
-      <span>${totalHours} hrs × ₱${MAINT_RATE}.00 = <span style="color:#f4a825;font-size:1rem">₱${fmt(totalFee)}</span></span>
+      <span>${totalHours} hrs × ₱${_maintRate.toFixed(2)} = <span style="color:#f4a825;font-size:1rem">${fmt(totalFee)}</span></span>
     </div>`;
+}
+
+async function saveMaintRate() {
+  const val = parseFloat($('maintRateInput').value);
+  if (isNaN(val) || val < 0) { toast('Please enter a valid rate (0 or more).', 'err'); return; }
+  try {
+    await DB.saveSetting('maintenance_fee', String(val));
+    _maintRate = val;
+    await renderMaintFee();
+    const sum = $('maintRateSummary');
+    if (sum) {
+      sum.style.display = 'block';
+      sum.innerHTML = `🛠️ Maintenance rate: <strong style="color:var(--green)">₱${val.toFixed(2)}/hr</strong> — applied per booked hour in the Developer Fee dashboard.`;
+    }
+    toast(`Maintenance rate set to ₱${val.toFixed(2)}/hr`);
+  } catch(e) {
+    toast('Failed to save maintenance rate.', 'err');
+  }
 }
 // ─────────────────────────────────────────────────────────────
 
@@ -2484,7 +2507,7 @@ async function exportReportCSV(){
    ============================================== */
 async function renderCourts(){
   await renderHours();
-  await renderBookingFee();
+  await renderMaintRateSettings();
   await loadPricingTiers();
   await renderPaymentSettings();
   const courts=await DB.getCourts();
@@ -2628,34 +2651,14 @@ function fmtH(h) {
   return `${h % 12 || 12}:00 ${h < 12 ? 'AM' : 'PM'}`;
 }
 
-async function renderBookingFee() {
+async function renderMaintRateSettings() {
   const settings = await DB.getSettings();
-  const fee = parseFloat(settings.booking_fee || '0');
-  if ($('bookingFeeInput')) $('bookingFeeInput').value = fee;
-  const sum = $('bookingFeeSummary');
+  const rate = parseFloat(settings.maintenance_fee || '5');
+  if ($('maintRateInput')) $('maintRateInput').value = rate;
+  const sum = $('maintRateSummary');
   if (sum) {
     sum.style.display = 'block';
-    sum.innerHTML = fee > 0
-      ? `💳 <strong style="color:var(--green)">₱${fee.toFixed(2)}</strong> booking fee will be added to every booking total.`
-      : `ℹ️ No booking fee is currently set.`;
-  }
-}
-
-async function saveBookingFee() {
-  const val = parseFloat($('bookingFeeInput').value);
-  if (isNaN(val) || val < 0) { toast('Please enter a valid fee amount (0 or more).', 'err'); return; }
-  try {
-    await DB.saveSetting('booking_fee', String(val));
-    const sum = $('bookingFeeSummary');
-    if (sum) {
-      sum.style.display = 'block';
-      sum.innerHTML = val > 0
-        ? `💳 <strong style="color:var(--green)">₱${val.toFixed(2)}</strong> booking fee will be added to every booking total.`
-        : `ℹ️ No booking fee is currently set.`;
-    }
-    toast(`Booking fee set to ₱${val.toFixed(2)}`);
-  } catch(e) {
-    toast('Failed to save booking fee.', 'err');
+    sum.innerHTML = `🛠️ Maintenance rate: <strong style="color:var(--green)">₱${rate.toFixed(2)}/hr</strong> — applied per booked hour in the Developer Fee dashboard.`;
   }
 }
 
@@ -3341,6 +3344,11 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     localStorage.setItem('pb_remember', '1');
   }
   if (!isLocalDev) {
+  // Allow demo sessions (set via demo bypass in Auth.login)
+  const existingSession = Auth.getSession();
+  if (existingSession && existingSession.isDemo) {
+    // Demo account — skip Supabase JWT check
+  } else {
   // Verify real Supabase Auth session — not just sessionStorage
   const { data: authData } = await _supabase.auth.getUser();
   if (!authData.user) {
@@ -3358,6 +3366,7 @@ document.addEventListener('DOMContentLoaded', async ()=>{
       : { id: authData.user.id, email: authData.user.email, role: 'admin', fullName: 'Admin', loginAt: new Date().toISOString() };
     sessionStorage.setItem('pb_session', JSON.stringify(session));
   }
+  } // end non-demo check
   } // end !isLocalDev
 
   sess = Auth.requireAuth();

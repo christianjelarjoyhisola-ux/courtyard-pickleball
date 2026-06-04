@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
@@ -181,11 +181,71 @@ body.light .nav { background:rgba(242,237,229,.95); }
 }
 @media(max-width:900px){ .cc-slots-grid{ grid-template-columns:repeat(4,1fr); } }
 @media(max-width:700px){
-  .cc { flex-direction:column; }
+  .cc { flex-direction:column; display:none; }
+  .cc.active-mobile { display:flex; }
   .cc-photo { width:100%; min-height:180px; }
   .cc-slots-grid{ grid-template-columns:repeat(3,1fr); }
 }
 @media(max-width:480px){ .cc-slots-grid{ grid-template-columns:repeat(2,1fr); } }
+
+/* ── MOBILE COURT TABS ── */
+.court-tabs {
+  display:none;
+  overflow-x:auto; -webkit-overflow-scrolling:touch;
+  gap:8px; padding:4px 0 12px; margin-bottom:4px;
+  scrollbar-width:none;
+}
+.court-tabs::-webkit-scrollbar { display:none; }
+.court-tab {
+  flex-shrink:0;
+  display:inline-flex; align-items:center; gap:6px;
+  padding:8px 16px; border-radius:20px;
+  border:1.5px solid var(--border);
+  background:var(--input); color:var(--muted);
+  font-family:'Outfit',sans-serif; font-size:.82rem; font-weight:600;
+  cursor:pointer; transition:all .18s; white-space:nowrap;
+  -webkit-tap-highlight-color:transparent;
+}
+.court-tab.active {
+  border-color:var(--green);
+  background:rgba(74,154,74,.14);
+  color:var(--green);
+}
+.tab-dot {
+  width:7px; height:7px; border-radius:50%; flex-shrink:0;
+}
+.tab-dot-av   { background:var(--green); }
+.tab-dot-full { background:var(--red); }
+.tab-dot-mnt  { background:var(--muted); }
+@media(max-width:700px) { .court-tabs { display:flex; } }
+
+/* ── MOBILE COURT TABS HINT ── */
+.court-tabs-hint {
+  display:none;
+  font-size:.72rem; font-weight:700;
+  text-transform:uppercase; letter-spacing:.8px;
+  color:var(--muted); margin-bottom:6px;
+}
+@media(max-width:700px) { .court-tabs-hint { display:block; } }
+
+/* ── ACTIVE COURT MOBILE HEADER ── */
+.cc-mobile-hd {
+  display:none;
+}
+@media(max-width:700px) {
+  .cc-mobile-hd {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:10px 14px 8px;
+    background:rgba(74,154,74,.07); border-bottom:1px solid rgba(74,154,74,.18);
+    font-size:.84rem; font-weight:700; color:var(--green);
+    gap:8px;
+  }
+  .cc-mobile-hd-date {
+    font-size:.72rem; color:var(--muted); font-weight:500;
+    background:var(--input); border:1px solid var(--border);
+    border-radius:6px; padding:2px 8px;
+  }
+}
 
 /* SLOT BUTTON — landscape style */
 .cc-slot-btn {
@@ -1232,6 +1292,8 @@ body.light #splashScreen { background: var(--bg); }
     <p>Tap a time slot, choose consecutive hours, then press <strong>Book Now</strong>. Or use the step-by-step wizard below.</p>
     <button class="btn btn-p btn-lg" onclick="openWizard()" style="margin-top:12px">🎾 Book a Court</button>
   </div>
+  <div class="court-tabs-hint">👇 Choose a court below to check time availability 👇</div>
+  <div id="courtTabs" class="court-tabs"></div>
   <div class="courts" id="courtsGrid"></div>
 </div>
 
@@ -1512,6 +1574,7 @@ body.light #splashScreen { background: var(--bg); }
           <div class="price-bx">
             <div class="pr"><span>Duration</span><span id="pHrs">0 hrs</span></div>
             <div class="pr"><span>Hourly Rate</span><span id="pRate">₱0/hr</span></div>
+            <div class="pr" id="pSvcFeeRow" style="display:none"><span>� Booking Fee</span><span id="pSvcFee">₱0.00</span></div>
             <div class="pr tot"><span>TOTAL</span><span id="pTot">₱0.00</span></div>
             <div class="pr down-row"><span id="pDownLabel">⚡ 50% Downpayment Required</span><span id="pDown">₱0.00</span></div>
           </div>
@@ -1671,6 +1734,7 @@ let closeHour = 22;
 let openPlayConfig = null; // { enabled, start, end, days[], fee, maxPlayers }
 let openPlayFee = 100; // default ₱100, overridden by settings
 let openPlayMaxPlayers = 40; // default 40, overridden by settings
+let _serviceFeeRate = 0; // maintenance_fee per hour, loaded from settings
 let maintenanceConfig = null; // { enabled, start, end, mode, dates[], recurring }
 
 // Hardcoded court repair notices — update courtName/from/to as needed
@@ -1821,6 +1885,7 @@ async function loadOperatingHours() {
   if (settings.maintenance_config) {
     try { maintenanceConfig = JSON.parse(settings.maintenance_config); } catch(e) {}
   }
+  _serviceFeeRate = parseFloat(settings.maintenance_fee || '0') || 0;
   applyPaymentSettings(settings);
   const note = $('slotHoursNote');
   if (note) note.textContent = `(${fmtT(openHour)} – ${fmtT(closeHour)} · select consecutive hours)`;
@@ -2134,12 +2199,16 @@ function updateWiz3Summary() {
   const mn  = selSlots.length ? Math.min(...selSlots) : null;
   const mx  = selSlots.length ? Math.max(...selSlots) : null;
   const hrs = selSlots.length;
-  const total = selSlots.reduce((s, h) => s + getRateForHour(h), 0);
+  const courtTotal = selSlots.reduce((s, h) => s + getRateForHour(h), 0);
+  const svcFee = _serviceFeeRate * hrs;
+  const total = courtTotal + svcFee;
   const dateStr = $('bDate').value ? fmtD($('bDate').value) : '—';
   $('wiz3Summary').innerHTML = [
     `🏟️ ${court ? court.name : '—'}`,
     `📅 ${dateStr}`,
     mn !== null ? `⏰ ${fmtT(mn)} – ${fmtT(mx + 1)} &nbsp;(${hrs} hr${hrs !== 1 ? 's' : ''})` : '',
+    `🎾 Court Fee: <strong style="color:var(--muted)">${fmt(courtTotal)}</strong>`,
+    svcFee > 0 ? `🏷️ Booking Fee: <strong style="color:var(--muted)">${fmt(svcFee)}</strong>` : ``,
     `💰 Total: <strong style="color:var(--green)">${fmt(total)}</strong>`,
   ].filter(Boolean).map(s => `<div>${s}</div>`).join('');
 }
@@ -2160,6 +2229,13 @@ async function openWizard() {
 async function onCardDate(courtId, date) {
   const grid = $('cSlots_' + courtId);
   if (!grid) return;
+
+  // Update mobile header date label
+  const mobDate = $('cMobDate_' + courtId);
+  if (mobDate) {
+    const isToday_ = date === todayStr();
+    mobDate.textContent = isToday_ ? 'Today' : fmtD(date).replace(/^[^,]+,\s*/, '');
+  }
 
   grid.innerHTML = `<div class="cc-slots-empty">⏳ Loading...</div>`;
 
@@ -2190,6 +2266,22 @@ async function onCardDate(courtId, date) {
   const allSlots = Array.from({length: closeHour - openHour}, (_, i) => i + openHour);
   const isToday_ = date === todayStr();
   const curHour  = nowHour();
+
+  // Update availability badge for selected date
+  const availBadgeEl = $('cAvail_' + courtId);
+  if (availBadgeEl) {
+    const isToday_badge = date === todayStr();
+    const curHour_badge = isToday_badge ? nowHour() : -1;
+    const avail = allSlots.filter(h => h > curHour_badge && !bookedHrs.has(h) && !isOpenPlayHour(date, h) && !isMaintenanceHour(date, h, courtId)).length;
+    const bookable = allSlots.filter(h => h > curHour_badge && !isOpenPlayHour(date, h) && !isMaintenanceHour(date, h, courtId)).length;
+    const [cls, txt] = avail > 0
+      ? ['av', `⚡ ${avail} available`]
+      : bookable === 0
+      ? ['av', '🏓 Open Play only']
+      : ['full', '⛔ Fully booked'];
+    availBadgeEl.className = `cc-photo-avail ${cls}`;
+    availBadgeEl.textContent = txt;
+  }
 
   // Reset card selection when date changes
   if (cardSel.courtId === courtId) cardSel = { courtId: null, date: null, slots: [], rate: 0 };
@@ -2241,8 +2333,9 @@ async function renderCourts() {
     const bookedHours = new Set(Object.keys(slotNameMap).map(Number));
 
     const availToday = blk ? 0 : allSlots.filter(h => h > curHour && !bookedHours.has(h) && !isOpenPlayHour(today, h) && !isMaintenanceHour(today, h, c.id)).length;
-    const availBadgeCls = blk ? 'mnt' : availToday > 0 ? 'av' : 'full';
-    const availBadgeTxt = blk ? '🔧 Maintenance' : availToday > 0 ? `⚡ ${availToday} available` : '⛔ Fully booked';
+    const bookableToday = blk ? 0 : allSlots.filter(h => h > curHour && !isOpenPlayHour(today, h) && !isMaintenanceHour(today, h, c.id)).length;
+    const availBadgeCls = blk ? 'mnt' : availToday > 0 ? 'av' : bookableToday === 0 ? 'av' : 'full';
+    const availBadgeTxt = blk ? '🔧 Maintenance' : availToday > 0 ? `⚡ ${availToday} available` : bookableToday === 0 ? '🏓 Open Play only' : '⛔ Fully booked';
 
     // Use this court's own rate schedule, fall back to global tiers, then flat rate
     const _cTiers = getPricingTiersForCourt(c);
@@ -2275,10 +2368,16 @@ async function renderCourts() {
     return `
     <div class="cc${blk?' blk':''}" data-id="${c.id}" ${blk ? `onclick="toast('Court is under maintenance.','err')"` : ''}>
 
+      <!-- MOBILE-ONLY HEADER -->
+      <div class="cc-mobile-hd">
+        <span>📍 ${c.name}</span>
+        <span class="cc-mobile-hd-date" id="cMobDate_${c.id}">Today</span>
+      </div>
+
       <!-- LEFT: Photo -->
       <div class="cc-photo">
         ${courtPhotoHtml}
-        <div class="cc-photo-avail ${availBadgeCls}">${availBadgeTxt}</div>
+        <div class="cc-photo-avail ${availBadgeCls}" id="cAvail_${c.id}">${availBadgeTxt}</div>
         <div class="cc-photo-bar">
           <span class="cc-photo-name">${c.name}</span>
           <div class="cc-photo-rate">${rateRange} · ${c.desc}</div>
@@ -2320,6 +2419,35 @@ async function renderCourts() {
   animateStat($('sCourts'), String(courts.length));
   animateStat($('sBook'),   String(bookings.length));
   if ($('sRev')) animateStat($('sRev'), totalRev);
+
+  // Build mobile court tab strip
+  const tabsEl = $('courtTabs');
+  if (tabsEl) {
+    const today_ = todayStr();
+    const cur_   = nowHour();
+    tabsEl.innerHTML = courts.map(c => {
+      const blk = c.blocked;
+      const allSl_ = Array.from({length: closeHour - openHour}, (_, i) => i + openHour);
+      const booked_ = new Set(
+        bookings.filter(b => b.courtId === c.id && b.date === today_ && b.status !== 'cancelled')
+                .flatMap(b => b.slots)
+      );
+      const avail_ = blk ? 0 : allSl_.filter(h => h > cur_ && !booked_.has(h) && !isOpenPlayHour(today_, h) && !isMaintenanceHour(today_, h, c.id)).length;
+      const dotCls  = blk ? 'tab-dot-mnt' : avail_ > 0 ? 'tab-dot-av' : 'tab-dot-full';
+      const shortName = c.name.replace(/^SMASH\s*/i, '');
+      return `<button class="court-tab" data-court="${c.id}" onclick="switchCourtTab('${c.id}')" title="${c.name}">
+        <span class="tab-dot ${dotCls}"></span>${shortName}
+      </button>`;
+    }).join('');
+    if (courts.length > 0) switchCourtTab(courts[0].id);
+  }
+}
+
+function switchCourtTab(courtId) {
+  document.querySelectorAll('.court-tab').forEach(t =>
+    t.classList.toggle('active', t.dataset.court === courtId));
+  document.querySelectorAll('#courtsGrid .cc').forEach(el =>
+    el.classList.toggle('active-mobile', el.dataset.id === courtId));
 }
 
 async function selectCourt(id) {
@@ -2533,15 +2661,20 @@ function toggleSlot(h) {
 function updatePrice() {
   const hrs   = selSlots.length;
   const courtTotal = selSlots.reduce((s, h) => s + getRateForHour(h), 0);
-  const total = courtTotal;
+  const svcFee = _serviceFeeRate * hrs;
+  const total = courtTotal + svcFee;
   const half  = total / 2;
   const payAmt = payFull ? total : half;
-  const rates = pricingTiers.map(t => t.rate);
-  const rateLabel = rates.length > 0
-    ? `${fmt(Math.min(...rates))} – ${fmt(Math.max(...rates))}/hr`
-    : (court ? fmt(court.rate) + '/hr' : '—');
+  const selectedRates = [...new Set(selSlots.map(h => getRateForHour(h)))].sort((a, b) => a - b);
+  const rateLabel = selectedRates.length === 1
+    ? `${fmt(selectedRates[0])}/hr`
+    : selectedRates.length > 1
+      ? `${fmt(selectedRates[0])} – ${fmt(selectedRates[selectedRates.length - 1])}/hr`
+      : (court ? fmt(court.rate) + '/hr' : '—');
   $('pHrs').textContent  = `${hrs} hr${hrs !== 1 ? 's' : ''}`;
   $('pRate').textContent = rateLabel;
+  if ($('pSvcFeeRow')) $('pSvcFeeRow').style.display = svcFee > 0 ? '' : 'none';
+  if ($('pSvcFee'))    $('pSvcFee').textContent = fmt(svcFee);
   $('pTot').textContent  = fmt(total);
   $('pDown').textContent = fmt(payAmt);
 
@@ -2700,13 +2833,13 @@ async function submitBooking(e) {
     endTime: fmtT(endH),
     duration: hrs,
     rate: court.rate,
-    total: selSlots.reduce((s, h) => s + getRateForHour(h), 0),
+    total: selSlots.reduce((s, h) => s + getRateForHour(h), 0) + _serviceFeeRate * selSlots.length,
     paymentMethod: payMethod,
     gcashRef: gcashRef || null,
     paymentFlow: gcashNeedsCheckout ? 'gcash_checkout_link' : payMethod,
     downpayment: payFull
-      ? selSlots.reduce((s, h) => s + getRateForHour(h), 0)
-      : selSlots.reduce((s, h) => s + getRateForHour(h), 0) / 2,
+      ? selSlots.reduce((s, h) => s + getRateForHour(h), 0) + _serviceFeeRate * selSlots.length
+      : (selSlots.reduce((s, h) => s + getRateForHour(h), 0) + _serviceFeeRate * selSlots.length) / 2,
     paymentStatus: gcashNeedsCheckout ? 'pending' : (payMethod === 'cash' ? 'unpaid' : 'for_verification'),
     status: 'pending',
     createdAt: new Date().toISOString(),
@@ -3099,11 +3232,13 @@ function closeGrandSplash() {
 /* =============================================
    OPEN PLAY SIGN-UP
    ============================================= */
-let _opSignupData = { courtId: null, courtName: '', date: '', hour: 0, fullPay: false };
+let _opSignupData = { courtId: null, courtName: '', date: '', hour: 0, fullPay: false, payMethod: 'gcash', gcashRef: '' };
 
 async function openPlaySignup(courtId, date, h, courtName) {
-  _opSignupData = { courtId, courtName, date, hour: h, fullPay: false };
-  const half = openPlayFee / 2;
+  _opSignupData = { courtId, courtName, date, hour: h, fullPay: false, payMethod: 'gcash', gcashRef: '' };
+  const sysFee = _serviceFeeRate;
+  const opTotal = openPlayFee + sysFee;
+  const half = opTotal / 2;
   $('opModalMeta').textContent = `${courtName || 'Court'} · ${fmtD(date)} · ${fmtT(h)} – ${fmtT(h + 1)}`;
 
   // Show modal immediately with loading state
@@ -3127,6 +3262,13 @@ async function openPlaySignup(courtId, date, h, courtName) {
   }
 
   const spotsLeft = openPlayMaxPlayers - count;
+  const payOpts = [
+    paymentMethods.gcash   ? `<div class="pay-opt on" data-m="gcash"   onclick="opPickPay('gcash')"><span class="po-ico">📱</span><span class="po-lbl">GCash</span><span class="po-sub">Scan QR · send ref #</span></div>` : '',
+    paymentMethods.gotyme  ? `<div class="pay-opt"    data-m="gotyme"  onclick="opPickPay('gotyme')"><span class="po-ico">🏦</span><span class="po-lbl">GoTyme</span><span class="po-sub">Scan QR · enter ref #</span></div>` : '',
+    paymentMethods.pnb     ? `<div class="pay-opt"    data-m="pnb"     onclick="opPickPay('pnb')"><span class="po-ico">🏛️</span><span class="po-lbl">PNB</span><span class="po-sub">Scan QR · enter ref #</span></div>` : '',
+    paymentMethods.cash    ? `<div class="pay-opt"    data-m="cash"    onclick="opPickPay('cash')"><span class="po-ico">💵</span><span class="po-lbl">Cash</span><span class="po-sub">Pay at front desk</span></div>` : '',
+  ].filter(Boolean).join('');
+
   $('opModalBody').innerHTML = `
     <div style="background:rgba(244,168,37,.08);border:1px solid rgba(244,168,37,.3);border-radius:10px;padding:14px 16px;margin-bottom:16px;text-align:center">
       <div style="font-size:2rem;font-weight:800;color:#f4a825;line-height:1">${spotsLeft}<span style="font-size:1rem;color:var(--muted);font-weight:600"> / ${openPlayMaxPlayers}</span></div>
@@ -3136,11 +3278,9 @@ async function openPlaySignup(courtId, date, h, courtName) {
       <label class="fl">Full Name *</label>
       <input type="text" class="fi" id="opFullName" placeholder="Enter your full name" autocomplete="name" oninput="this.style.borderColor=''"/>
     </div>
-    <div style="margin-bottom:20px">
-      <label class="fl">Payment Method</label>
-      <div style="background:var(--input);border:1.5px solid var(--border);border-radius:var(--r);padding:10px 14px;font-size:.9rem;display:flex;align-items:center;gap:8px;color:var(--muted)">
-        📱 GCash
-      </div>
+    <div style="margin-bottom:18px">
+      <label class="fl" style="margin-bottom:10px">Payment Method</label>
+      <div class="pay-opts" id="opPayOpts">${payOpts}</div>
     </div>
     <div style="margin-bottom:18px">
       <label class="fl" style="margin-bottom:10px">Downpayment</label>
@@ -3153,20 +3293,20 @@ async function openPlaySignup(courtId, date, h, courtName) {
         <div class="pat-btn" id="opDp100" onclick="opSetDP(true)" style="cursor:pointer">
           <div class="pat-icon">✅</div>
           <div style="font-size:.78rem;font-weight:700;margin:2px 0">100%</div>
-          <div class="pat-amt">${fmt(openPlayFee)}</div>
+          <div class="pat-amt">${fmt(opTotal)}</div>
         </div>
       </div>
     </div>
-    <div style="background:rgba(74,154,74,.06);border:1px solid rgba(74,154,74,.25);border-radius:var(--r);padding:14px;margin-bottom:14px">
-      <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--green);margin-bottom:8px">📱 Send GCash Payment To</div>
-      <div style="font-size:1.05rem;font-weight:700">${gcashSettings.merchantNumber}</div>
-      <div style="font-size:.82rem;color:var(--muted);margin-top:2px">${gcashSettings.merchantName}</div>
-    </div>
+    <div id="opPayInfo" style="margin-bottom:14px"></div>
     <div style="background:var(--input);border:1px solid var(--border);border-radius:var(--r);padding:14px">
       <div style="display:flex;justify-content:space-between;font-size:.84rem">
         <span style="color:var(--muted)">Open Play Fee</span>
         <span>${fmt(openPlayFee)}</span>
       </div>
+      ${sysFee > 0 ? `<div style="display:flex;justify-content:space-between;font-size:.84rem;margin-top:6px">
+        <span style="color:var(--muted)">💻 System Fee</span>
+        <span>${fmt(sysFee)}</span>
+      </div>` : ''}
       <div style="display:flex;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
         <span style="font-weight:700">Amount Due</span>
         <span style="font-weight:700;color:var(--green);font-size:1.05rem" id="opAmtDue">${fmt(half)}</span>
@@ -3175,14 +3315,61 @@ async function openPlaySignup(courtId, date, h, courtName) {
   $('opModalFt').innerHTML = `
     <button class="btn" style="border:1.5px solid var(--border);color:var(--muted);background:transparent" onclick="closeOpModal()">Cancel</button>
     <button class="btn btn-g" id="opSubmitBtn" onclick="submitOpenPlay()">🏓 Join Open Play</button>`;
+  opPickPay('gcash');
   setTimeout(() => $('opFullName')?.focus(), 80);
+}
+
+function opPickPay(method) {
+  if (!paymentMethods[method]) return;
+  _opSignupData.payMethod = method;
+  document.querySelectorAll('#opPayOpts .pay-opt').forEach(el => el.classList.toggle('on', el.dataset.m === method));
+  const info = $('opPayInfo');
+  if (!info) return;
+  const opTotal = openPlayFee + _serviceFeeRate;
+  const amt = _opSignupData.fullPay ? opTotal : opTotal / 2;
+  const refHtml = `
+    <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(74,154,74,.2)">
+      <label style="font-size:.73rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:6px;display:block">Reference # (after sending)</label>
+      <input type="text" class="fi" id="opGcashRef" placeholder="e.g. 1234567890123" inputmode="numeric"
+        style="margin:0;font-family:monospace;letter-spacing:1px;font-size:.95rem"
+        oninput="this.style.borderColor='';_opSignupData.gcashRef=this.value.trim()"
+        value="${_opSignupData.gcashRef || ''}"/>
+      <div style="font-size:.7rem;color:var(--muted);margin-top:4px">Enter the reference number shown after your payment</div>
+    </div>`;
+  if (method === 'gcash') {
+    info.innerHTML = `<div style="background:rgba(74,154,74,.06);border:1px solid rgba(74,154,74,.25);border-radius:var(--r);padding:14px">
+      <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--green);margin-bottom:8px">📱 Send GCash Payment To</div>
+      <div style="font-size:1.05rem;font-weight:700">${gcashSettings.merchantNumber}</div>
+      <div style="font-size:.82rem;color:var(--muted);margin-top:2px">${gcashSettings.merchantName}</div>
+      ${refHtml}
+    </div>`;
+  } else if (method === 'gotyme') {
+    info.innerHTML = `<div style="background:rgba(74,154,74,.06);border:1px solid rgba(74,154,74,.25);border-radius:var(--r);padding:14px">
+      <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--green);margin-bottom:8px">🏦 Send GoTyme Payment To</div>
+      <div style="font-size:.82rem;color:var(--muted)">${gcashSettings.merchantName}</div>
+      ${refHtml}
+    </div>`;
+  } else if (method === 'pnb') {
+    info.innerHTML = `<div style="background:rgba(74,154,74,.06);border:1px solid rgba(74,154,74,.25);border-radius:var(--r);padding:14px">
+      <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--green);margin-bottom:8px">🏛️ Send PNB Payment To</div>
+      <div style="font-size:.82rem;color:var(--muted)">${gcashSettings.merchantName}</div>
+      ${refHtml}
+    </div>`;
+  } else if (method === 'cash') {
+    info.innerHTML = `<div style="background:rgba(74,154,74,.06);border:1px solid rgba(74,154,74,.25);border-radius:var(--r);padding:14px">
+      <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--green);margin-bottom:8px">💵 Cash Payment</div>
+      <div style="font-size:.82rem;color:var(--muted)">Pay <strong>${fmt(amt)}</strong> at the front desk upon arrival.</div>
+    </div>`;
+  }
 }
 
 function opSetDP(full) {
   _opSignupData.fullPay = full;
   $('opDp50')?.classList.toggle('on', !full);
   $('opDp100')?.classList.toggle('on', full);
-  if ($('opAmtDue')) $('opAmtDue').textContent = '₱' + fmt(full ? openPlayFee : openPlayFee / 2);
+  const opTotal = openPlayFee + _serviceFeeRate;
+  if ($('opAmtDue')) $('opAmtDue').textContent = fmt(full ? opTotal : opTotal / 2);
+  opPickPay(_opSignupData.payMethod);
 }
 
 function closeOpModal() {
@@ -3198,7 +3385,19 @@ async function submitOpenPlay() {
     nameEl?.focus();
     return;
   }
-  const amt = _opSignupData.fullPay ? openPlayFee : openPlayFee / 2;
+  const payMethod = _opSignupData.payMethod;
+  const needsRef = (payMethod === 'gcash' || payMethod === 'gotyme' || payMethod === 'pnb');
+  // Sync ref from input in case oninput didn't fire
+  const refEl = $('opGcashRef');
+  if (refEl) _opSignupData.gcashRef = refEl.value.trim();
+  if (needsRef && !_opSignupData.gcashRef) {
+    if (refEl) refEl.style.borderColor = 'var(--red)';
+    toast('Please enter your payment reference number.', 'err');
+    refEl?.focus();
+    return;
+  }
+  const opTotal = openPlayFee + _serviceFeeRate;
+  const amt = _opSignupData.fullPay ? opTotal : opTotal / 2;
   const payType = _opSignupData.fullPay ? '100%' : '50%';
   const btn = $('opSubmitBtn');
   if (btn) { btn.disabled = true; btn.textContent = 'Submitting…'; }
@@ -3226,6 +3425,8 @@ async function submitOpenPlay() {
       hour: _opSignupData.hour,
       timeLabel,
       paymentType: payType,
+      paymentMethod: _opSignupData.payMethod,
+      gcashRef: _opSignupData.gcashRef || null,
       amount: amt,
     });
 
@@ -3242,7 +3443,10 @@ async function submitOpenPlay() {
         <div style="font-size:1.2rem;font-weight:700;margin-bottom:8px">You're in!</div>
         <div style="color:var(--muted);font-size:.88rem;line-height:1.65">
           Thanks, <strong>${name}</strong>!<br/>
-          Please pay <strong>₱${fmt(amt)}</strong> via GCash<br/>at the front desk.
+          ${_opSignupData.payMethod === 'cash'
+            ? `Pay <strong>${fmt(amt)}</strong> at the front desk upon arrival.`
+            : `Please send <strong>${fmt(amt)}</strong> via ${_opSignupData.payMethod.charAt(0).toUpperCase() + _opSignupData.payMethod.slice(1)} and show your receipt at the front desk.`
+          }
         </div>
       </div>`;
     $('opModalFt').innerHTML = `<button class="btn btn-g" style="width:100%;justify-content:center" onclick="closeOpModal()">Done ✓</button>`;

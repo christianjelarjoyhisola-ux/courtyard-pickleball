@@ -6,6 +6,19 @@ Types: **Added**, **Changed**, **Fixed**, **Removed**, **Security**, **DB**
 
 ---
 
+## [2026-06-12] — Date Picker Label & Alignment
+
+### Added
+- **"SELECT DATE" label** above the date input in the court card times header — small uppercase muted text so players notice the date is changeable
+
+### Fixed
+- `display: none` leftover from an earlier experiment was hiding the date picker — removed to restore it
+- `align-items: flex-start` on `.cc-times-head` caused uneven vertical spacing when the label was added — changed to `align-items: center` so the left block (title + subtitle) and right block (SELECT DATE + input) are symmetrically centered
+
+**Files affected:** `index.html`
+
+---
+
 ## [2026-06-12] — Mobile UX, Slot Colors & Past-Date Booking Fix
 
 ### Fixed

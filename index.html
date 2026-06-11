@@ -259,35 +259,48 @@ body.light .nav { background:rgba(242,237,229,.95); }
   gap:3px; padding:10px 6px; border-radius:10px;
   font-family:'Outfit',sans-serif; text-align:center;
   cursor:pointer; user-select:none;
-  transition: transform .22s cubic-bezier(.34,1.56,.64,1),
-              background .18s ease,
-              box-shadow .18s ease,
-              border-color .18s ease;
-  will-change: transform;
+  transition: transform .18s ease,
+              background .15s ease,
+              box-shadow .15s ease,
+              border-color .15s ease;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
 /* Available */
 .cc-slot-btn:not(.taken):not(.past-slot):not(.open-play):not(.maintenance) {
-  background:#6ecb35; border:2px solid #52aa1a; color:#0d2a00;
+  background: var(--dark-card);
+  border: 1.5px solid rgba(0,200,83,.35);
+  color: var(--dark-text);
 }
-.cc-slot-btn:not(.taken):not(.past-slot):not(.open-play):not(.maintenance):hover {
-  background:#82e040; border-color:#5ec020;
-  transform:translateY(-3px) scale(1.04);
-  box-shadow:0 6px 18px rgba(100,200,0,.4);
+.cc-slot-btn:not(.taken):not(.past-slot):not(.open-play):not(.maintenance) .csl-price {
+  color: #00c853;
+}
+/* Hover — desktop only */
+@media (hover: hover) {
+  .cc-slot-btn:not(.taken):not(.past-slot):not(.open-play):not(.maintenance):hover {
+    background: rgba(0,200,83,.08);
+    border-color: #00c853;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 14px rgba(0,200,83,.18);
+  }
 }
 .cc-slot-btn.selected {
-  background:#1e7a00; border-color:#155c00; color:#fff;
-  transform:translateY(-3px) scale(1.05);
-  box-shadow:0 8px 22px rgba(30,122,0,.55);
+  background: rgba(0,160,67,.18);
+  border: 2px solid #00c853;
+  color: #fff;
+  box-shadow: 0 0 0 3px rgba(0,200,83,.15);
 }
-.cc-slot-btn.selected:hover { background:#175f00; }
+.cc-slot-btn.selected .csl-price { color: rgba(255,255,255,.85); }
 /* Taken */
 .cc-slot-btn.taken {
-  background:#a83232; border:2px solid #8a2525; color:#e0d0d0;
-  cursor:not-allowed;
+  background: rgba(200,40,40,.08);
+  border: 1.5px solid rgba(200,40,40,.28);
+  color: var(--dark-muted);
+  cursor: not-allowed;
 }
-.cc-slot-btn.taken:hover { transform:none; box-shadow:none; }
+.cc-slot-btn.taken .csl-time { text-decoration: line-through; opacity: .7; }
+.cc-slot-btn.taken .csl-price { color: var(--dark-muted); text-decoration: line-through; opacity: .5; }
+.cc-slot-btn.taken:hover { transform: none; box-shadow: none; }
 .cc-slot-btn.open-play {
   background:rgba(244,168,37,.06);
   border:1px solid rgba(244,168,37,.3);
@@ -315,8 +328,11 @@ body.light .nav { background:rgba(242,237,229,.95); }
 .cc-slot-btn.maintenance:hover { transform:none; box-shadow:none; }
 /* Past */
 .cc-slot-btn.past-slot {
-  background:rgba(255,255,255,.04); border:2px solid var(--border);
-  color:var(--muted); cursor:not-allowed; opacity:.45;
+  background: var(--dark-card);
+  border: 1.5px solid var(--dark-border);
+  color: var(--dark-muted);
+  cursor: not-allowed;
+  opacity: .4;
 }
 .cc-slot-btn.past-slot:hover { transform:none; box-shadow:none; }
 

@@ -1160,7 +1160,8 @@ footer { background:var(--card); border-top:1px solid var(--border); padding:40p
 }
 /* Bottom label */
 .sp-bottom {
-  position: absolute; bottom: 26px;
+  position: absolute; bottom: 26px; left: 50%; transform: translateX(-50%);
+  white-space: nowrap;
   font-size: .7rem; color: var(--border); letter-spacing: 3px; text-transform: uppercase;
   animation: spFadeUp .4s ease 1.1s both; pointer-events: none;
 }

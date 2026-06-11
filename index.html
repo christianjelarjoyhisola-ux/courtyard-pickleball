@@ -259,80 +259,76 @@ body.light .nav { background:rgba(242,237,229,.95); }
   gap:3px; padding:10px 6px; border-radius:10px;
   font-family:'Outfit',sans-serif; text-align:center;
   cursor:pointer; user-select:none;
-  transition: transform .18s ease,
-              background .15s ease,
-              box-shadow .15s ease,
-              border-color .15s ease;
+  transition: background .15s ease, box-shadow .15s ease, border-color .15s ease, opacity .15s ease;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
-/* Available */
+/* ── AVAILABLE ── dark card, blue tint border, price in blue */
 .cc-slot-btn:not(.taken):not(.past-slot):not(.open-play):not(.maintenance) {
-  background: var(--dark-card);
-  border: 1.5px solid rgba(0,200,83,.35);
+  background: #0d1b2e;
+  border: 1.5px solid rgba(37,99,235,.4);
   color: var(--dark-text);
 }
 .cc-slot-btn:not(.taken):not(.past-slot):not(.open-play):not(.maintenance) .csl-price {
-  color: #00c853;
+  color: #60a5fa;
+  font-weight: 800;
 }
-/* Hover — desktop only */
+/* desktop hover only */
 @media (hover: hover) {
   .cc-slot-btn:not(.taken):not(.past-slot):not(.open-play):not(.maintenance):hover {
-    background: rgba(0,200,83,.08);
-    border-color: #00c853;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 14px rgba(0,200,83,.18);
+    background: #0f2040;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59,130,246,.15);
   }
 }
+/* ── SELECTED ── solid blue, very obvious */
 .cc-slot-btn.selected {
-  background: rgba(0,160,67,.18);
-  border: 2px solid #00c853;
+  background: #1d4ed8;
+  border: 2px solid #3b82f6;
   color: #fff;
-  box-shadow: 0 0 0 3px rgba(0,200,83,.15);
+  box-shadow: 0 0 0 3px rgba(59,130,246,.3), 0 4px 16px rgba(29,78,216,.5);
 }
-.cc-slot-btn.selected .csl-price { color: rgba(255,255,255,.85); }
-/* Taken */
+.cc-slot-btn.selected .csl-price { color: rgba(255,255,255,.85); font-weight: 800; }
+/* ── TAKEN/BOOKED ── muted red, name masked, strikethrough */
 .cc-slot-btn.taken {
-  background: rgba(200,40,40,.08);
-  border: 1.5px solid rgba(200,40,40,.28);
+  background: #1c0a0a;
+  border: 1.5px solid rgba(220,38,38,.3);
   color: var(--dark-muted);
   cursor: not-allowed;
 }
-.cc-slot-btn.taken .csl-time { text-decoration: line-through; opacity: .7; }
-.cc-slot-btn.taken .csl-price { color: var(--dark-muted); text-decoration: line-through; opacity: .5; }
+.cc-slot-btn.taken .csl-time { text-decoration: line-through; color: #f87171; opacity: .7; }
+.cc-slot-btn.taken .csl-name { color: #f87171; opacity: .75; font-size: .6rem; }
 .cc-slot-btn.taken:hover { transform: none; box-shadow: none; }
+/* ── OPEN PLAY ── keep amber/gold */
 .cc-slot-btn.open-play {
-  background:rgba(244,168,37,.06);
-  border:1px solid rgba(244,168,37,.3);
-  color:var(--muted);
-  cursor:pointer;
-  opacity:.85;
+  background: rgba(244,168,37,.06);
+  border: 1.5px solid rgba(244,168,37,.35);
+  color: var(--dark-muted);
+  cursor: pointer;
 }
-.cc-slot-btn.open-play .csl-time { color:var(--text); }
-.cc-slot-btn.open-play .csl-tag {
-  background:none; color:#f4a825; font-size:.56rem; font-weight:700; letter-spacing:.3px;
+.cc-slot-btn.open-play .csl-time { color: var(--dark-text); }
+.cc-slot-btn.open-play .csl-tag { background:none; color:#f4a825; font-size:.56rem; font-weight:700; letter-spacing:.3px; }
+@media (hover: hover) {
+  .cc-slot-btn.open-play:hover { border-color:#f4a825; background:rgba(244,168,37,.10); box-shadow:0 0 0 2px rgba(244,168,37,.18); }
 }
-.cc-slot-btn.open-play:hover { border-color:#f4a825; box-shadow:0 0 0 2px rgba(244,168,37,.2); transform:translateY(-1px); }
-/* Maintenance */
+/* ── MAINTENANCE ── very dim */
 .cc-slot-btn.maintenance {
-  background:rgba(255,255,255,.03);
-  border:1px solid var(--border);
-  color:var(--muted);
-  cursor:not-allowed;
-  opacity:.55;
-}
-.cc-slot-btn.maintenance .csl-time { color:var(--muted); }
-.cc-slot-btn.maintenance .csl-tag {
-  background:none; color:#f4a825; font-size:.56rem; font-weight:700; letter-spacing:.3px;
-}
-.cc-slot-btn.maintenance:hover { transform:none; box-shadow:none; }
-/* Past */
-.cc-slot-btn.past-slot {
-  background: var(--dark-card);
-  border: 1.5px solid var(--dark-border);
+  background: rgba(255,255,255,.02);
+  border: 1px solid var(--dark-border);
   color: var(--dark-muted);
   cursor: not-allowed;
-  opacity: .4;
+  opacity: .5;
+}
+.cc-slot-btn.maintenance .csl-time { color: var(--dark-muted); }
+.cc-slot-btn.maintenance .csl-tag { background:none; color:#f4a825; font-size:.56rem; font-weight:700; letter-spacing:.3px; }
+.cc-slot-btn.maintenance:hover { transform:none; box-shadow:none; }
+/* ── PAST ── ghosted out, clearly unclickable */
+.cc-slot-btn.past-slot {
+  background: rgba(255,255,255,.02);
+  border: 1px solid rgba(255,255,255,.06);
+  color: var(--dark-muted);
+  cursor: not-allowed;
+  opacity: .38;
 }
 .cc-slot-btn.past-slot:hover { transform:none; box-shadow:none; }
 
@@ -2126,6 +2122,7 @@ const fmtTs = h => h === 24 ? '12A' : `${h % 12 || 12}${h < 12 ? 'A' : 'P'}`;
    CARD SLOT MULTI-SELECT
    ============================================= */
 async function toggleCardSlot(courtId, date, h) {
+  if (date < todayStr()) { toast('Cannot book a past date.', 'err'); return; }
   await ensureCourt(courtId);
   if (isOpenPlayHour(date, h)) {
     openPlaySignup(courtId, date, h, court ? court.name : '');
@@ -2377,13 +2374,14 @@ async function onCardDate(courtId, date) {
 
   const allSlots = Array.from({length: closeHour - openHour}, (_, i) => i + openHour);
   const isToday_ = date === todayStr();
+  const isPastDate_ = date < todayStr();
   const curHour  = nowHour();
 
   // Update availability badge for selected date
   const availBadgeEl = $('cAvail_' + courtId);
   if (availBadgeEl) {
     const isToday_badge = date === todayStr();
-    const curHour_badge = isToday_badge ? nowHour() : -1;
+    const curHour_badge = isToday_badge ? nowHour() : (isPastDate_ ? 999 : -1);
     const avail = allSlots.filter(h => h > curHour_badge && !bookedHrs.has(h) && !isOpenPlayHour(date, h) && !isMaintenanceHour(date, h, courtId)).length;
     const bookable = allSlots.filter(h => h > curHour_badge && !isOpenPlayHour(date, h) && !isMaintenanceHour(date, h, courtId)).length;
     const [cls, txt] = avail > 0
@@ -2401,12 +2399,12 @@ async function onCardDate(courtId, date) {
   if (bar) bar.style.display = 'none';
 
   grid.innerHTML = allSlots.map(h => {
-    const isPast_   = isToday_ && h <= curHour;
+    const isPast_   = isPastDate_ || (isToday_ && h <= curHour);
     const isBooked_ = bookedHrs.has(h);
     const isOpenPlay_ = isOpenPlayHour(date, h);
     const isMaint_ = isMaintenanceHour(date, h, courtId);
     const timeRange = `${fmtT(h)} – ${fmtT(h+1)}`;
-    if (isPast_)   return `<div class="cc-slot-btn past-slot"><div class="csl-time">${timeRange}</div><div class="csl-tag">Done</div></div>`;
+    if (isPast_)   return `<div class="cc-slot-btn past-slot"><div class="csl-time">${timeRange}</div><div class="csl-tag">${isPastDate_ ? 'Past' : 'Done'}</div></div>`;
     if (isBooked_) return `<div class="cc-slot-btn taken"><div class="csl-time">${timeRange}</div><div class="csl-name">${maskName(slotNameMap[h])}</div></div>`;
     if (isMaint_)  { const _ml=getMaintenanceLabel(date,h,courtId); return `<div class="cc-slot-btn maintenance"><div class="csl-time">${timeRange}</div><div class="csl-tag">${_ml.icon} ${_ml.text}</div></div>`; }
     if (isOpenPlay_) return `<div class="cc-slot-btn open-play" onclick="event.stopPropagation(); openPlaySignup('${courtId}','${date}',${h},'${(c.name||'').replace(/'/g,"\\'")}')" title="Tap to join Open Play"><div class="csl-time">${timeRange}</div><div class="csl-tag">🏓 Open Play<div style="font-size:.5rem;color:rgba(244,168,37,.75);font-weight:600;letter-spacing:.2px;margin-top:2px">Tap to register</div></div></div>`;

@@ -173,6 +173,60 @@ body.light .nav { background:rgba(242,237,229,.95); }
 }
 .cc-times-sub { font-size:.74rem; color:var(--muted); margin-top:1px; }
 
+/* DATE BANNER — prominent tappable date selector */
+.cc-date-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(37,99,235,.08);
+  border: 1.5px solid rgba(37,99,235,.3);
+  border-radius: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: background .15s, border-color .15s;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.cc-date-banner:hover, .cc-date-banner:active {
+  background: rgba(37,99,235,.15);
+  border-color: rgba(37,99,235,.55);
+}
+.cc-date-bicon { font-size: 1.3rem; flex-shrink: 0; }
+.cc-date-blabel { flex: 1; min-width: 0; }
+.cc-date-bhint {
+  display: block;
+  font-size: .6rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: #60a5fa;
+  margin-bottom: 2px;
+}
+.cc-date-bval {
+  display: block;
+  font-size: .9rem;
+  font-weight: 700;
+  color: var(--dark-text);
+  line-height: 1.2;
+}
+.cc-date-barrow {
+  font-size: 1rem;
+  color: #60a5fa;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.cc-date-input-hidden {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+}
+
 /* SLOT GRID — 5 columns */
 .cc-slots-grid {
   display:grid;
@@ -372,6 +426,7 @@ body.light .nav { background:rgba(242,237,229,.95); }
   background:var(--input); border:1px solid var(--border);
   border-radius:7px; color:var(--text); font-family:'Outfit',sans-serif;
   font-size:.75rem; padding:5px 9px; cursor:pointer; transition:border-color .2s; flex-shrink:0;
+  display: none; /* replaced by cc-date-banner */
 }
 .cc-date-pick:focus { outline:none; border-color:var(--green); }
 
@@ -2338,6 +2393,15 @@ async function openWizard() {
 async function onCardDate(courtId, date) {
   const grid = $('cSlots_' + courtId);
   if (!grid) return;
+
+  // Update date banner display
+  const dateValEl = $('cDateVal_' + courtId);
+  if (dateValEl) {
+    const isToday_ = date === todayStr();
+    dateValEl.textContent = isToday_
+      ? 'Today — ' + new Date(date+'T00:00:00').toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'})
+      : new Date(date+'T00:00:00').toLocaleDateString('en-PH',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
+  }
 
   // Update mobile header date label
   const mobDate = $('cMobDate_' + courtId);

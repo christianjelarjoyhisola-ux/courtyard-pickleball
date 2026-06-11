@@ -814,33 +814,11 @@ tr:hover td { background: var(--bg2); }
         <div id="ohSummary" style="margin-top:12px;padding:10px 14px;background:var(--input);border:1px solid var(--border);border-radius:8px;font-size:.84rem;color:var(--muted);display:none"></div>
       </div>
 
-      <!-- DEVELOPER RATE PANEL (developer only) -->
-      <div class="panel dev-only" style="margin-bottom:20px;border:1px solid var(--border);">
-        <h4>🛠️ Developer Rate <span style="font-size:.72rem;color:var(--muted);font-family:'DM Sans',sans-serif;font-weight:400;margin-left:8px">Developer Only</span></h4>
-        <p style="color:var(--muted);font-size:.84rem;margin:8px 0 12px">Fee charged per booking. Choose whether it applies per booked hour or as a flat fee per booking.</p>
-        <div style="display:flex;gap:16px;margin-bottom:16px">
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.88rem;color:var(--text)">
-            <input type="radio" name="feeType" value="per_hour" checked style="accent-color:var(--green)" />
-            Per Hour
-          </label>
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.88rem;color:var(--text)">
-            <input type="radio" name="feeType" value="flat" style="accent-color:var(--green)" />
-            Flat Fee (per booking)
-          </label>
-        </div>
-        <div style="display:flex;gap:20px;align-items:flex-end;flex-wrap:wrap">
-          <div>
-            <label class="fl" id="maintRateLabel">🛠️ Booking Fee (₱/hr)</label>
-            <input type="number" class="fi" id="maintRateInput" min="0" step="0.5" style="width:140px" placeholder="e.g. 15" />
-          </div>
-          <button class="btn btn-s btn-sm" onclick="saveMaintRate()" style="margin-bottom:1px">💾 Save Rate</button>
-        </div>
-        <div id="maintRateSummary" style="margin-top:12px;padding:10px 14px;background:var(--input);border:1px solid var(--border);border-radius:8px;font-size:.84rem;color:var(--muted);display:none"></div>
-      </div>
 
-      <!-- PRICING TIERS PANEL (developer only) -->
-      <div class="panel dev-only" style="margin-bottom:20px;border:1px solid var(--border);">
-        <h4>💰 Pricing Tiers <span style="font-size:.72rem;color:var(--muted);font-family:'DM Sans',sans-serif;font-weight:400;margin-left:8px">Developer Only</span></h4>
+
+      <!-- PRICING TIERS PANEL -->
+      <div class="panel" style="margin-bottom:20px;border:1px solid var(--border);">
+        <h4>💰 Pricing Tiers</h4>
         <p style="color:var(--muted);font-size:.84rem;margin:8px 0 16px">Set time-based hourly rates for all courts. Each tier defines a rate for a specific time range. Changes apply immediately to the booking page.</p>
         <div id="tiersBody"></div>
         <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
@@ -859,11 +837,11 @@ tr:hover td { background: var(--bg2); }
       </div>
     </div>
 
-    <!-- ACCOUNTS (dev only) -->
-    <div id="sec-accounts" class="adm-sec dev-only">
+    <!-- ACCOUNTS (owner only) -->
+    <div id="sec-accounts" class="adm-sec">
       <div class="toolbar">
         <h2>👥 ACCOUNT MANAGEMENT</h2>
-        <button class="btn btn-p" onclick="openAccModal()">+ Add Manager</button>
+        <button class="btn btn-p" onclick="openAccModal()">+ Add Account</button>
       </div>
       <div class="tbl-wrap">
         <div class="tbl-scroll">
@@ -980,6 +958,30 @@ tr:hover td { background: var(--bg2); }
     <!-- PAYMENTS -->
     <div id="sec-payments" class="adm-sec">
       <div class="toolbar"><h2>💳 PAYMENT SETTINGS</h2></div>
+
+      <!-- PLATFORM FEE — System Owner only -->
+      <div class="panel" data-perm="owner_only" style="max-width:680px;margin-bottom:20px;border:2px solid var(--green);">
+        <h4>💰 Platform Fee <span style="font-size:.72rem;background:var(--green-bg);color:var(--green);padding:2px 8px;border-radius:8px;margin-left:8px;font-family:'DM Mono',monospace;letter-spacing:1px">SYSTEM OWNER</span></h4>
+        <p style="color:var(--muted);font-size:.84rem;margin:8px 0 12px">Fee charged per booking as your platform revenue. Choose per-hour or flat fee per booking. This is deducted from court owner payouts.</p>
+        <div style="display:flex;gap:16px;margin-bottom:16px">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.88rem;color:var(--text)">
+            <input type="radio" name="feeType" value="per_hour" checked style="accent-color:var(--green)" />
+            Per Hour
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.88rem;color:var(--text)">
+            <input type="radio" name="feeType" value="flat" style="accent-color:var(--green)" />
+            Flat Fee (per booking)
+          </label>
+        </div>
+        <div style="display:flex;gap:20px;align-items:flex-end;flex-wrap:wrap">
+          <div>
+            <label class="fl" id="maintRateLabel">💰 Platform Fee (₱/hr)</label>
+            <input type="number" class="fi" id="maintRateInput" min="0" step="0.5" style="width:140px" placeholder="e.g. 15" />
+          </div>
+          <button class="btn btn-s btn-sm" onclick="saveMaintRate()" style="margin-bottom:1px">💾 Save Rate</button>
+        </div>
+        <div id="maintRateSummary" style="margin-top:12px;padding:10px 14px;background:var(--input);border:1px solid var(--border);border-radius:8px;font-size:.84rem;color:var(--muted);display:none"></div>
+      </div>
       <div class="panel" style="max-width:680px;margin-bottom:20px;border:1px solid var(--border);">
         <h4>📲 Payment QR Settings</h4>
         <p style="color:var(--muted);font-size:.84rem;margin:8px 0 16px">

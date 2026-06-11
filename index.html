@@ -428,6 +428,8 @@ body.light .nav { background:rgba(242,237,229,.95); }
   font-size:.75rem; padding:5px 9px; cursor:pointer; transition:border-color .2s; flex-shrink:0;
 }
 .cc-date-pick:focus { outline:none; border-color:var(--green); }
+.cc-date-wrap { display:flex; flex-direction:column; align-items:flex-end; gap:3px; }
+.cc-date-lbl { font-family:'Bebas Neue',sans-serif; font-size:.85rem; letter-spacing:1px; color:var(--muted); }
 
 /* legacy — kept for compatibility */
 .ct,.cb-body,.cn,.cd,.cf,.cr,.cr-s,.feats,.feat,.cb,.cb-av,.cb-mt { display:none; }
@@ -2565,10 +2567,13 @@ async function renderCourts() {
             <div class="cc-times-title">🕐 Available times</div>
             <div class="cc-times-sub">Select consecutive slots then tap Book Now</div>
           </div>
-          <input type="date" class="cc-date-pick" id="cDate_${c.id}"
-            value="${today}" min="${today}"
-            onclick="event.stopPropagation()"
-            onchange="event.stopPropagation(); onCardDate('${c.id}', this.value)" />
+          <div class="cc-date-wrap">
+            <span class="cc-date-lbl">Select Date</span>
+            <input type="date" class="cc-date-pick" id="cDate_${c.id}"
+              value="${today}" min="${today}"
+              onclick="event.stopPropagation()"
+              onchange="event.stopPropagation(); onCardDate('${c.id}', this.value)" />
+          </div>
         </div>
 
         <div class="cc-slots-grid" id="cSlots_${c.id}">${slotsHtml}</div>

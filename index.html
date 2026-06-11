@@ -3,19 +3,19 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Smash Grove — Bambulo Pickleyard</title>
-<link rel="icon" type="image/jpeg" href="f6b5eb3c-a6b6-49ce-981e-d9b127b67ba3.jpg">
+<title>CourtYard Pickleball — Sibagat, Agusan del Sur</title>
+<link rel="icon" type="image/jpeg" href="courtyard-logo.jpg">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; }
 :root {
-  --green: #4a9a4a; --green-dark: #1d5a1d; --glow: rgba(74,154,74,.22);
-  --bg: #0d1a0d; --card: #131e13; --border: #253825;
-  --text: #e4ede4; --muted: #7a9a7a; --input: #1a2a1a;
+  --green: #2563eb; --green-dark: #1848c8; --glow: rgba(37,99,235,.25);
+  --bg: #0c1220; --card: #111b2d; --border: #1e3252;
+  --text: #e2e8f0; --muted: #64748b; --input: #0e1828;
   --red: #e05a4e; --yellow: #c8a060; --r: 12px;
 }
-body.light { --bg:#f2ede5; --card:#faf7f2; --border:#c8b898; --text:#1a2e1a; --muted:#5a7a5a; --input:#ece7de; }
+body.light { --bg:#f0f4f8; --card:#ffffff; --border:#cbd5e1; --text:#0f172a; --muted:#475569; --input:#e8eef4; }
 body { font-family:'Outfit',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; transition:background .3s,color .3s; }
 h1,h2,h3 { font-family:'Bebas Neue',sans-serif; letter-spacing:1px; }
 a { color:var(--green); text-decoration:none; }
@@ -25,7 +25,7 @@ a { color:var(--green); text-decoration:none; }
 /* NAVBAR */
 .nav {
   position:sticky; top:0; z-index:200;
-  background:rgba(13,26,13,.95); backdrop-filter:blur(16px);
+  background:rgba(12,18,32,.95); backdrop-filter:blur(16px);
   border-bottom:1px solid var(--border);
   height:64px; padding:0 28px;
   display:flex; align-items:center; justify-content:space-between;
@@ -35,7 +35,7 @@ body.light .nav { background:rgba(242,237,229,.95); }
 .logo-img {
   height:44px; width:44px; border-radius:8px;
   object-fit:cover;
-  border:1.5px solid rgba(74,154,74,.35);
+  border:1.5px solid rgba(37,99,235,.35);
   box-shadow:0 2px 10px rgba(0,0,0,.35);
 }
 .logo-tx { font-family:'Bebas Neue',sans-serif; font-size:1.1rem; letter-spacing:1.5px; line-height:1.15; }
@@ -183,8 +183,14 @@ body.light .nav { background:rgba(242,237,229,.95); }
 @media(max-width:700px){
   .cc { flex-direction:column; display:none; }
   .cc.active-mobile { display:flex; }
-  .cc-photo { width:100%; min-height:180px; }
-  .cc-slots-grid{ grid-template-columns:repeat(3,1fr); }
+  .cc-photo { width:100%; min-height:90px; max-height:90px; }
+  .cc-photo-feats { display:none; }
+  .cc-times { padding:10px 12px 12px; }
+  .cc-times-sub { display:none; }
+  .cc-slots-grid{ grid-template-columns:repeat(3,1fr); gap:6px; }
+  .cc-slot-btn { padding:6px 4px; min-height:auto; }
+  .csl-time  { font-size:.68rem; }
+  .csl-price { font-size:.65rem; }
 }
 @media(max-width:480px){ .cc-slots-grid{ grid-template-columns:repeat(2,1fr); } }
 
@@ -330,6 +336,24 @@ body.light .nav { background:rgba(242,237,229,.95); }
   background:linear-gradient(135deg,rgba(74,154,74,.12),rgba(74,154,74,.04));
   border:1px solid rgba(74,154,74,.3); border-radius:9px;
   display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+}
+/* MOBILE STICKY BOOK BAR */
+.mobile-book-bar {
+  display:none;
+  position:fixed; bottom:0; left:0; right:0; z-index:1000;
+  background:var(--card);
+  border-top:2px solid var(--green);
+  box-shadow:0 -4px 24px rgba(0,0,0,.5);
+  padding:12px 16px;
+  align-items:center; justify-content:space-between; gap:12px;
+}
+.mbbar-info { display:flex; flex-direction:column; gap:2px; flex:1; min-width:0; }
+.mbbar-court { font-size:.65rem; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.5px; }
+.mbbar-sum   { font-size:.82rem; font-weight:700; color:var(--green); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+@media(max-width:700px) {
+  .mobile-book-bar { display:flex; }
+  .cc-book-bar { display:none !important; }
+  .courts { padding-bottom:72px; }
 }
 .cc-book-sum { font-size:.8rem; font-weight:600; color:var(--green); flex:1; }
 .cc-date-pick {
@@ -780,7 +804,56 @@ footer { background:var(--card); border-top:1px solid var(--border); padding:40p
 
 /* RESPONSIVE */
 @media(max-width:700px){ .frow{grid-template-columns:1fr;} .ft-g{grid-template-columns:1fr;gap:24px;} .ft-bot{flex-direction:column;text-align:center;} .pay-opts{grid-template-columns:1fr;} }
-@media(max-width:480px){ .nav{padding:0 14px;} .bk-modal-body{padding:16px;} .bk-modal-ft{padding:12px 16px;} .sec{padding:32px 14px;} }
+@media(max-width:480px){
+  .nav{padding:0 14px;}
+  .bk-modal-body{padding:12px 14px;}
+  .bk-modal-ft{padding:10px 14px;}
+  .sec{padding:32px 14px;}
+  .fg { margin-bottom:10px; }
+  .fl { margin-bottom:4px; }
+  .fi { padding:8px 11px; font-size:.87rem; }
+  .frow { gap:10px; margin-bottom:10px; }
+  .wiz-sec-title { margin-bottom:10px; padding-bottom:6px; }
+  .bk-sum-row { padding:3px 0; font-size:.8rem; }
+  .wiz-summary { padding:8px 12px; margin-top:6px; }
+  .wiz-summary-lbl { margin-bottom:3px; }
+  /* GCash / payment section compact */
+  .gcash { padding:12px; margin-top:10px; }
+  .gc-header { padding:8px 12px; margin:-12px -12px 12px; }
+  .gc-amount-card { padding:8px 10px; margin-bottom:10px; }
+  .gc-amount-val { font-size:1.45rem; }
+  .gc-send-card { padding:8px 10px; margin-bottom:8px; }
+  .gc-send-lbl { margin-bottom:4px; }
+  .gc-or { margin:6px 0 8px; }
+  .gc-note { margin-top:8px; }
+  .qr-scan-wrap { margin:6px 0 4px; }
+  .qr-img { width:160px !important; height:160px !important; }
+  #gcashQrPlaceholder,#gotymeQrPlaceholder,#pnbQrPlaceholder { width:160px !important; height:160px !important; margin:6px auto !important; }
+  .pay-amount-toggle { margin-bottom:10px; gap:6px; }
+  .qr-scan-hint { padding:5px 10px; margin-top:6px; }
+  /* Confirmation screen compact */
+  .inv-hero { padding:16px 16px 12px; }
+  .inv-check-wrap { width:46px; height:46px; margin:0 auto 8px; box-shadow:0 0 0 5px rgba(74,154,74,.15),0 0 0 10px rgba(74,154,74,.07); }
+  .inv-check-icon { font-size:1.35rem; }
+  .inv-hero-title { font-size:1.25rem; }
+  .inv-hero-sub { font-size:.75rem; margin-top:2px; }
+  .inv-status-bdg { margin-top:6px; padding:3px 10px; font-size:.7rem; }
+  .inv-ref-wrap { padding:10px 16px 0; }
+  .inv-ref-num { font-size:1.45rem; letter-spacing:2px; margin:2px 0 6px; }
+  .inv-copy-btn { padding:4px 10px; font-size:.74rem; }
+  .inv-perf { margin:10px 0 0; }
+  .inv-body { padding:8px 16px 0; }
+  .i-row { padding:4px 0; font-size:.8rem; }
+  .inv-amount-wrap { margin:8px 16px 0; padding:10px; }
+  .inv-amt-val { font-size:1.6rem; }
+  .inv-amt-down-val { font-size:1.2rem; }
+  .inv-amt-down-wrap { margin-top:6px; padding-top:6px; }
+  .inv-next { margin:8px 16px 0; padding:10px 12px; }
+  .inv-next-title { margin-bottom:6px; }
+  .inv-next-step { font-size:.78rem; margin-bottom:5px; gap:7px; }
+  .inv-email-note { margin:6px 16px 0; font-size:.73rem; }
+  .inv-actions { padding:10px 16px 16px; gap:8px; }
+}
 @media(max-width:480px){
   .slots-grid {
     grid-template-columns: repeat(3, 1fr);
@@ -796,7 +869,7 @@ footer { background:var(--card); border-top:1px solid var(--border); padding:40p
   }
   .slot-time { font-size: .82rem; }
   .slot-end  { font-size: .72rem; }
-  .cc-slot-btn { padding: 13px 8px; min-height: 58px; }
+  .cc-slot-btn { padding: 6px 4px; min-height: auto; }
 }
 
 
@@ -1141,9 +1214,9 @@ body.light #splashScreen { background: var(--bg); }
   <div class="sp-ring"></div>
 
   <div class="sp-content">
-    <img class="sp-logo-img" src="f6b5eb3c-a6b6-49ce-981e-d9b127b67ba3.jpg" alt="Smash Grove Logo" />
-    <div class="sp-brand">SMASH GROVE</div>
-    <div class="sp-sub">BAMBULO PICKLEYARD</div>
+    <img class="sp-logo-img" src="courtyard-logo.jpg" alt="CourtYard Pickleball Logo" />
+    <div class="sp-brand">COURTYARD PICKLEBALL</div>
+    <div class="sp-sub">SIBAGAT, AGUSAN DEL SUR</div>
     <div class="sp-line"></div>
     <div class="sp-tap-ring-wrap">
       <svg class="sp-tap-icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
@@ -1176,7 +1249,7 @@ body.light #splashScreen { background: var(--bg); }
     <div class="sp-tap-sub">Select your court and reserve your slot</div>
   </div>
 
-  <div class="sp-bottom">Smash Grove &nbsp;·&nbsp; Bambulo Pickleyard</div>
+  <div class="sp-bottom">CourtYard Pickleball &nbsp;·&nbsp; Sibagat, Agusan del Sur</div>
 </div>
 
 <!-- NAVBAR -->
@@ -1199,7 +1272,7 @@ body.light #splashScreen { background: var(--bg); }
     </p>
     <div style="background:rgba(74,154,74,.1);border:1.5px solid rgba(74,154,74,.35);border-radius:14px;padding:14px 20px;margin-bottom:24px;animation:gsPulse 2s 1s ease-in-out infinite">
       <div style="font-size:1.2rem;margin-bottom:4px">📍</div>
-      <div style="font-weight:800;font-size:.95rem;color:#4a9a4a;letter-spacing:.5px">SMASH GROVE · BAMBULO PICKLEYARD</div>
+      <div style="font-weight:800;font-size:.95rem;color:#2563eb;letter-spacing:.5px">COURTYARD PICKLEBALL</div>
       <div style="font-size:.82rem;color:#7a9a8a;margin-top:3px">Tap below to register your slot now</div>
     </div>
     <button onclick="closeOpAnnounceSplash()" style="background:linear-gradient(135deg,#f4a825,#c87a00);color:#000;border:none;border-radius:10px;padding:14px 36px;font-family:'Outfit',sans-serif;font-size:1rem;font-weight:800;cursor:pointer;box-shadow:0 6px 28px rgba(244,168,37,.4);transition:transform .2s,box-shadow .2s;letter-spacing:.3px" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
@@ -1221,7 +1294,7 @@ body.light #splashScreen { background: var(--bg); }
     <p style="color:#b0c4b0;font-size:clamp(1rem,2.8vw,1.15rem);line-height:1.75;margin-bottom:28px">
       <em style="color:#d4e8d4">"He is risen — and so are your smashes."</em><br/><br/>
       Celebrate Easter the best way — on the court! 🏓<br/>
-      <strong style="color:#e6edf3">Smash Grove Bambulo Pickleyard</strong> is open today.<br/>
+      <strong style="color:#e6edf3">CourtYard Pickleball</strong> is open today.<br/>
       Bring the family, grab a paddle, and let's play!
     </p>
     <button onclick="closeEasterSplash()" style="background:linear-gradient(135deg,#4a9a4a,#1d5a1d);color:#fff;border:none;border-radius:10px;padding:14px 36px;font-family:'Outfit',sans-serif;font-size:1rem;font-weight:700;cursor:pointer;box-shadow:0 6px 24px rgba(74,154,74,.35);transition:transform .2s,box-shadow .2s" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
@@ -1243,7 +1316,7 @@ body.light #splashScreen { background: var(--bg); }
       GRAND<br/><span style="color:var(--green);text-shadow:0 0 40px rgba(0,200,83,.5)">OPENING</span>
     </h1>
     <p style="color:#b0c4b0;font-size:clamp(1rem,2.8vw,1.2rem);line-height:1.7;margin-bottom:28px">
-      <strong style="color:#e6edf3">Smash Grove Bambulo Pickleyard</strong> is opening its doors!<br/>
+      <strong style="color:#e6edf3">CourtYard Pickleball</strong> is opening its doors!<br/>
       Starting at 4PM — March 29. See you on the court! 🎉
     </p>
     <div style="background:rgba(244,168,37,.1);border:1.5px solid rgba(244,168,37,.4);border-radius:14px;padding:16px 20px;margin-bottom:28px;animation:gsPulse 2s 1s ease-in-out infinite">
@@ -1267,10 +1340,10 @@ body.light #splashScreen { background: var(--bg); }
 
 <nav class="nav">
   <div class="logo">
-    <img class="logo-img" src="f6b5eb3c-a6b6-49ce-981e-d9b127b67ba3.jpg" alt="Smash Grove Logo" />
+    <img class="logo-img" src="courtyard-logo.jpg" alt="CourtYard Pickleball Logo" />
     <span class="logo-tx">
-      <span class="logo-name">Smash Grove</span>
-      <span class="logo-sub">Bambulo Pickleyard</span>
+      <span class="logo-name">CourtYard Pickleball</span>
+      <span class="logo-sub">Sibagat, Agusan del Sur</span>
     </span>
   </div>
   <div class="nav-headline">
@@ -1292,7 +1365,7 @@ body.light #splashScreen { background: var(--bg); }
     <p>Tap a time slot, choose consecutive hours, then press <strong>Book Now</strong>. Or use the step-by-step wizard below.</p>
     <button class="btn btn-p btn-lg" onclick="openWizard()" style="margin-top:12px">🎾 Book a Court</button>
   </div>
-  <div class="court-tabs-hint">👇 Choose a court below to check time availability 👇</div>
+  <div class="court-tabs-hint">👇 Tap a court to view available times 👇</div>
   <div id="courtTabs" class="court-tabs"></div>
   <div class="courts" id="courtsGrid"></div>
 </div>
@@ -1364,7 +1437,7 @@ body.light #splashScreen { background: var(--bg); }
           </div>
           <div class="wiz-summary">
             <div class="wiz-summary-lbl">Booking Summary</div>
-            <div id="wiz3Summary" style="font-size:.84rem;line-height:2"></div>
+            <div id="wiz3Summary" style="font-size:.84rem;line-height:1.55"></div>
           </div>
         </div>
 
@@ -1430,7 +1503,7 @@ body.light #splashScreen { background: var(--bg); }
                 <div class="gc-num" id="gcMerchantNumber">0935 935 5010</div>
                 <button type="button" class="gc-copy-btn" onclick="copyMerchantNum()">📋 Copy</button>
               </div>
-              <div class="gc-name" id="gcMerchantName">Smash Grove Bambulo Pickleyard</div>
+              <div class="gc-name" id="gcMerchantName">CourtYard Pickleball</div>
             </div>
             <div class="gc-or"><span>or scan QR code</span></div>
             <div class="qr-steps">
@@ -1476,7 +1549,7 @@ body.light #splashScreen { background: var(--bg); }
             </div>
             <div class="gc-send-card">
               <div class="gc-send-lbl">Send to</div>
-              <div class="gc-name" id="gtMerchantName" style="font-size:1rem;font-weight:700;color:var(--text);margin:4px 0 0">Smash Grove Bambulo Pickleyard</div>
+              <div class="gc-name" id="gtMerchantName" style="font-size:1rem;font-weight:700;color:var(--text);margin:4px 0 0">CourtYard Pickleball</div>
             </div>
             <div class="gc-or"><span>scan QR code to pay</span></div>
             <div class="qr-steps">
@@ -1522,7 +1595,7 @@ body.light #splashScreen { background: var(--bg); }
             </div>
             <div class="gc-send-card">
               <div class="gc-send-lbl">Send to</div>
-              <div class="gc-name" id="pnMerchantName" style="font-size:1rem;font-weight:700;color:var(--text);margin:4px 0 0">Smash Grove Bambulo Pickleyard</div>
+              <div class="gc-name" id="pnMerchantName" style="font-size:1rem;font-weight:700;color:var(--text);margin:4px 0 0">CourtYard Pickleball</div>
             </div>
             <div class="gc-or"><span>scan QR code to pay</span></div>
             <div class="qr-steps">
@@ -1611,10 +1684,10 @@ body.light #splashScreen { background: var(--bg); }
   <div class="ft-g">
     <div>
       <div class="logo">
-        <img class="logo-img" src="f6b5eb3c-a6b6-49ce-981e-d9b127b67ba3.jpg" alt="Smash Grove Logo" />
+        <img class="logo-img" src="courtyard-logo.jpg" alt="CourtYard Pickleball Logo" />
         <span class="logo-tx">
-          <span class="logo-name">Smash Grove</span>
-          <span class="logo-sub">Bambulo Pickleyard</span>
+          <span class="logo-name">CourtYard Pickleball</span>
+          <span class="logo-sub">Sibagat, Agusan del Sur</span>
         </span>
       </div>
       <p class="ft-d">Your go-to platform for pickleball court reservations. Fast, simple, and reliable for all skill levels.</p>
@@ -1636,7 +1709,7 @@ body.light #splashScreen { background: var(--bg); }
     </div>
   </div>
   <div class="ft-bot">
-    <span>© 2026 Smash Grove Bambulo Pickleyard. All rights reserved.</span>
+    <span>© 2026 CourtYard Pickleball. All rights reserved.</span>
     <span>Built for pickleball lovers</span>
     <br>
     <span> Dev: CT</span>
@@ -1734,7 +1807,9 @@ let closeHour = 22;
 let openPlayConfig = null; // { enabled, start, end, days[], fee, maxPlayers }
 let openPlayFee = 100; // default ₱100, overridden by settings
 let openPlayMaxPlayers = 40; // default 40, overridden by settings
-let _serviceFeeRate = 0; // maintenance_fee per hour, loaded from settings
+let _serviceFeeRate = 0; // booking fee amount, loaded from settings
+let _serviceFeeType = 'per_hour'; // 'per_hour' or 'flat'
+function calcSvcFee(hrs) { return _serviceFeeType === 'flat' ? _serviceFeeRate : _serviceFeeRate * hrs; }
 let maintenanceConfig = null; // { enabled, start, end, mode, dates[], recurring }
 
 // Hardcoded court repair notices — update courtName/from/to as needed
@@ -1760,7 +1835,7 @@ let gcashSettings = {
   checkoutEnabled: false,
   checkoutUrl: '',
   merchantNumber: '0935 935 5010',
-  merchantName: 'Smash Grove Bambulo Pickleyard',
+  merchantName: 'CourtYard Pickleball',
   checkoutVisited: false,
 };
 let paymentMethods = { cash: true, gcash: true, gotyme: true, pnb: true };
@@ -1886,6 +1961,7 @@ async function loadOperatingHours() {
     try { maintenanceConfig = JSON.parse(settings.maintenance_config); } catch(e) {}
   }
   _serviceFeeRate = parseFloat(settings.maintenance_fee || '0') || 0;
+  _serviceFeeType  = settings.fee_type || 'per_hour';
   applyPaymentSettings(settings);
   const note = $('slotHoursNote');
   if (note) note.textContent = `(${fmtT(openHour)} – ${fmtT(closeHour)} · select consecutive hours)`;
@@ -1895,7 +1971,7 @@ function applyPaymentSettings(settings) {
   gcashSettings.checkoutEnabled = settings.gcash_checkout_enabled === '1';
   gcashSettings.checkoutUrl = (settings.gcash_checkout_url || '').trim();
   gcashSettings.merchantNumber = settings.gcash_merchant_number || '0935 935 5010';
-  gcashSettings.merchantName = settings.gcash_merchant_name || 'Smash Grove Bambulo Pickleyard';
+  gcashSettings.merchantName = settings.gcash_merchant_name || 'CourtYard Pickleball';
   paymentMethods.cash = settings.payment_method_cash !== '0';
   paymentMethods.gcash = settings.payment_method_gcash !== '0';
   paymentMethods.gotyme = settings.payment_method_gotyme !== '0';
@@ -1903,8 +1979,8 @@ function applyPaymentSettings(settings) {
 
   if ($('gcMerchantNumber')) $('gcMerchantNumber').textContent = gcashSettings.merchantNumber;
   if ($('gcMerchantName')) $('gcMerchantName').textContent = gcashSettings.merchantName;
-  if ($('gtMerchantName')) $('gtMerchantName').textContent = settings.gotyme_merchant_name || 'Smash Grove Bambulo Pickleyard';
-  if ($('pnMerchantName')) $('pnMerchantName').textContent = settings.pnb_merchant_name || 'Smash Grove Bambulo Pickleyard';
+  if ($('gtMerchantName')) $('gtMerchantName').textContent = settings.gotyme_merchant_name || 'CourtYard Pickleball';
+  if ($('pnMerchantName')) $('pnMerchantName').textContent = settings.pnb_merchant_name || 'CourtYard Pickleball';
 
   // Load QR images from DB — show img and hide placeholder only when image exists
   if (settings.gcash_qr_image) {
@@ -2048,6 +2124,7 @@ async function toggleCardSlot(courtId, date, h) {
     // Clear other court bars
     document.querySelectorAll('.cc-book-bar').forEach(b => b.style.display = 'none');
     document.querySelectorAll('.cc-slot-btn.selected').forEach(b => b.classList.remove('selected'));
+    const mb = $('mobileBookBar'); if (mb) mb.style.display = 'none';
   }
 
   const s = cardSel.slots;
@@ -2082,15 +2159,28 @@ function updateCardUI(courtId) {
   });
 
   // Show/hide Book Now bar
+  const mobileBar   = $('mobileBookBar');
+  const mobileSumEl = $('mobileBookSum');
+  const mobileCtEl  = $('mobileBookCourt');
   if (cardSel.courtId === courtId && cardSel.slots.length > 0) {
     const mn    = Math.min(...cardSel.slots);
     const mx    = Math.max(...cardSel.slots);
     const hrs   = cardSel.slots.length;
     const total = cardSel.slots.reduce((s, h) => s + getRateForHour(h), 0);
-    sum.textContent = `${fmtT(mn)} – ${fmtT(mx+1)} · ${hrs} hr${hrs>1?'s':''} · ${fmt(total)}`;
+    const txt   = `${fmtT(mn)} – ${fmtT(mx+1)} · ${hrs} hr${hrs>1?'s':''} · ${fmt(total)}`;
+    sum.textContent = txt;
     bar.style.display = 'flex';
+    if (mobileBar) {
+      if (mobileSumEl) mobileSumEl.textContent = txt;
+      if (mobileCtEl) {
+        const hdEl = document.querySelector(`[data-id="${courtId}"] .cc-mobile-hd span:first-child`);
+        mobileCtEl.textContent = hdEl ? hdEl.textContent.replace('📍 ', '') : '';
+      }
+      mobileBar.style.display = 'flex';
+    }
   } else {
     bar.style.display = 'none';
+    if (mobileBar) mobileBar.style.display = 'none';
   }
 }
 
@@ -2110,12 +2200,15 @@ async function proceedToBook(courtId) {
   wizStartStep = 3;
   $('bookModal').classList.add('active');
   document.body.style.overflow = 'hidden';
+  const _mb1 = $('mobileBookBar'); if (_mb1) _mb1.style.display = 'none';
   wizGoTo(3);
 }
 
 function closeBookModal() {
   $('bookModal').classList.remove('active');
   document.body.style.overflow = '';
+  const _mb = $('mobileBookBar');
+  if (_mb) _mb.style.display = (cardSel.slots && cardSel.slots.length > 0) ? 'flex' : 'none';
 }
 
 /* ── BOOKING WIZARD ── */
@@ -2200,7 +2293,7 @@ function updateWiz3Summary() {
   const mx  = selSlots.length ? Math.max(...selSlots) : null;
   const hrs = selSlots.length;
   const courtTotal = selSlots.reduce((s, h) => s + getRateForHour(h), 0);
-  const svcFee = _serviceFeeRate * hrs;
+  const svcFee = calcSvcFee(hrs);
   const total = courtTotal + svcFee;
   const dateStr = $('bDate').value ? fmtD($('bDate').value) : '—';
   $('wiz3Summary').innerHTML = [
@@ -2219,6 +2312,7 @@ async function openWizard() {
   wizStartStep = 1;
   $('bookModal').classList.add('active');
   document.body.style.overflow = 'hidden';
+  const _mb2 = $('mobileBookBar'); if (_mb2) _mb2.style.display = 'none';
   await renderWizCourts();
   wizGoTo(1);
 }
@@ -2661,7 +2755,7 @@ function toggleSlot(h) {
 function updatePrice() {
   const hrs   = selSlots.length;
   const courtTotal = selSlots.reduce((s, h) => s + getRateForHour(h), 0);
-  const svcFee = _serviceFeeRate * hrs;
+  const svcFee = calcSvcFee(hrs);
   const total = courtTotal + svcFee;
   const half  = total / 2;
   const payAmt = payFull ? total : half;
@@ -2833,13 +2927,13 @@ async function submitBooking(e) {
     endTime: fmtT(endH),
     duration: hrs,
     rate: court.rate,
-    total: selSlots.reduce((s, h) => s + getRateForHour(h), 0) + _serviceFeeRate * selSlots.length,
+    total: selSlots.reduce((s, h) => s + getRateForHour(h), 0) + calcSvcFee(selSlots.length),
     paymentMethod: payMethod,
     gcashRef: gcashRef || null,
     paymentFlow: gcashNeedsCheckout ? 'gcash_checkout_link' : payMethod,
     downpayment: payFull
-      ? selSlots.reduce((s, h) => s + getRateForHour(h), 0) + _serviceFeeRate * selSlots.length
-      : (selSlots.reduce((s, h) => s + getRateForHour(h), 0) + _serviceFeeRate * selSlots.length) / 2,
+      ? selSlots.reduce((s, h) => s + getRateForHour(h), 0) + calcSvcFee(selSlots.length)
+      : (selSlots.reduce((s, h) => s + getRateForHour(h), 0) + calcSvcFee(selSlots.length)) / 2,
     paymentStatus: gcashNeedsCheckout ? 'pending' : (payMethod === 'cash' ? 'unpaid' : 'for_verification'),
     status: 'pending',
     createdAt: new Date().toISOString(),
@@ -2929,6 +3023,7 @@ function resetForm() {
   cardSel = { courtId: null, date: null, slots: [], rate: 0 };
   document.querySelectorAll('.cc-book-bar').forEach(b => b.style.display = 'none');
   document.querySelectorAll('.cc-slot-btn.selected').forEach(b => b.classList.remove('selected'));
+  const mb2 = $('mobileBookBar'); if (mb2) mb2.style.display = 'none';
   const d = $('courtDisp');
   d.textContent = 'Click a court above to select';
   d.classList.remove('on');
@@ -3460,5 +3555,14 @@ async function submitOpenPlay() {
 </script>
 <script src="supabase.min.js"></script>
 <script src="supabase-config.js"></script>
+
+<!-- MOBILE STICKY BOOK NOW BAR -->
+<div id="mobileBookBar" class="mobile-book-bar" style="display:none">
+  <div class="mbbar-info">
+    <span class="mbbar-court" id="mobileBookCourt"></span>
+    <span class="mbbar-sum" id="mobileBookSum"></span>
+  </div>
+  <button class="btn btn-p btn-sm" onclick="proceedToBook(cardSel.courtId)">Book Now →</button>
+</div>
 </body>
 </html>

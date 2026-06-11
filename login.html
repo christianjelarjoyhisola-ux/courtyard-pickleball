@@ -3,15 +3,15 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Smash Grove — Admin Login</title>
-<link rel="icon" type="image/jpeg" href="f6b5eb3c-a6b6-49ce-981e-d9b127b67ba3.jpg">
+<title>CourtYard Pickleball — Admin Login</title>
+<link rel="icon" type="image/jpeg" href="courtyard-logo.jpg">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--green:#00c853;--green-dark:#007a33;--glow:rgba(0,200,83,.22);--bg:#0d1117;--card:#161b22;--border:#30363d;--text:#e6edf3;--muted:#8b949e;--input:#21262d;--red:#f85149;}
+:root{--green:#2563eb;--green-dark:#1848c8;--glow:rgba(37,99,235,.25);--bg:#0c1220;--card:#111b2d;--border:#1e3252;--text:#e6edf3;--muted:#8b949e;--input:#0e1828;--red:#f85149;}
 body.light{--bg:#f0f4f8;--card:#fff;--border:#d0d7de;--text:#1a1a2e;--muted:#6c7892;--input:#eaeef2;}
 body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;transition:background .3s,color .3s;}
-.bg-glow{position:fixed;top:-100px;left:50%;transform:translateX(-50%);width:700px;height:500px;border-radius:50%;background:radial-gradient(ellipse,rgba(0,200,83,.14) 0%,transparent 70%);pointer-events:none;}
+.bg-glow{position:fixed;top:-100px;left:50%;transform:translateX(-50%);width:700px;height:500px;border-radius:50%;background:radial-gradient(ellipse,rgba(37,99,235,.14) 0%,transparent 70%);pointer-events:none;}
 .bg-grid{position:fixed;inset:0;opacity:.035;background-image:repeating-linear-gradient(0deg,var(--green) 0,var(--green) 1px,transparent 1px,transparent 72px),repeating-linear-gradient(90deg,var(--green) 0,var(--green) 1px,transparent 1px,transparent 80px);pointer-events:none;}
 .card{position:relative;z-index:10;background:var(--card);border:1px solid var(--border);border-radius:20px;padding:44px 38px;width:100%;max-width:400px;box-shadow:0 24px 64px rgba(0,0,0,.5);}
 .logo{text-align:center;margin-bottom:28px;}
@@ -23,12 +23,12 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 .err.show{display:block;}
 .fl{display:block;font-size:.77rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:6px;}
 .fi{width:100%;padding:11px 13px;background:var(--input);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Outfit',sans-serif;font-size:.92rem;transition:border-color .2s,box-shadow .2s;margin-bottom:14px;}
-.fi:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(0,200,83,.12);}
+.fi:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(37,99,235,.15);}
 .fi::placeholder{color:var(--muted);}
 .btn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;padding:13px 20px;border:none;border-radius:9px;font-family:'Outfit',sans-serif;font-size:.95rem;font-weight:700;cursor:pointer;transition:all .2s;}
 .btn-p{background:linear-gradient(135deg,var(--green),var(--green-dark));color:#fff;box-shadow:0 4px 14px var(--glow);}
 .btn-p:hover{transform:translateY(-2px);box-shadow:0 8px 22px var(--glow);}
-.hint{background:rgba(0,200,83,.06);border:1px solid rgba(0,200,83,.2);border-radius:8px;padding:12px;font-size:.82rem;color:var(--muted);margin-top:18px;text-align:center;}
+.hint{background:rgba(37,99,235,.07);border:1px solid rgba(37,99,235,.22);border-radius:8px;padding:12px;font-size:.82rem;color:var(--muted);margin-top:18px;text-align:center;}
 .hint strong{color:var(--green);}
 .back{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:20px;font-size:.86rem;color:var(--muted);transition:color .2s;text-decoration:none;}
 .back:hover{color:var(--green);}
@@ -36,7 +36,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 .forgot-link:hover{color:var(--green);}
 .reset-panel{display:none;margin-top:18px;}
 .reset-panel.show{display:block;}
-.ok-msg{background:rgba(0,200,83,.08);border:1px solid rgba(0,200,83,.25);border-radius:8px;padding:12px 14px;font-size:.84rem;color:var(--green);margin-bottom:14px;display:none;}
+.ok-msg{background:rgba(37,99,235,.08);border:1px solid rgba(37,99,235,.25);border-radius:8px;padding:12px 14px;font-size:.84rem;color:var(--green);margin-bottom:14px;display:none;}
 .ok-msg.show{display:block;}
 .new-pass-panel{display:none;margin-top:4px;}
 .new-pass-panel.show{display:block;}
@@ -55,7 +55,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 <div class="card">
   <div class="logo">
     <div class="logo-ic">🏓</div>
-    <div class="logo-tx">SMASH GROVE DASHBOARD</div>
+    <div class="logo-tx">COURTYARD PICKLEBALL DASHBOARD</div>
     <div class="logo-sub">Admin Control Panel</div>
   </div>
   <div class="divider"></div>

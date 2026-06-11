@@ -1,0 +1,254 @@
+-- ============================================================
+-- SMASH GROVE — COMPLETE DATABASE SETUP
+-- Run this entire script in: Supabase Dashboard → SQL Editor
+-- ============================================================
+
+
+-- ── 1. COURTS TABLE ──────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.courts (
+  id          text PRIMARY KEY,
+  name        text NOT NULL,
+  description text,
+  rate        numeric NOT NULL DEFAULT 300,
+  blocked     boolean NOT NULL DEFAULT false,
+  feats       text[] DEFAULT '{}',
+  photo       text,
+  rate_schedule jsonb,
+  created_at  timestamptz NOT NULL DEFAULT now()
+);
+
+
+-- ── 2. BOOKINGS TABLE ────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.bookings (
+  ref                  text PRIMARY KEY,
+  full_name            text NOT NULL,
+  contact_number       text,
+  email                text,
+  court_id             text NOT NULL,
+  court_name           text,
+  date                 date NOT NULL,
+  slots                text[] NOT NULL DEFAULT '{}',
+  start_time           text,
+  end_time             text,
+  duration             numeric,
+  rate                 numeric,
+  total                numeric,
+  payment_method       text,
+  payment_flow         text,
+  payment_status       text NOT NULL DEFAULT 'unpaid'
+    CHECK (payment_status IN ('unpaid','pending','for_verification','downpayment_paid','paid','failed')),
+  payment_provider     text,
+  payment_session_id   text,
+  payment_checkout_url text,
+  paid_at              timestamptz,
+  gcash_ref            text,
+  downpayment          numeric,
+  status               text NOT NULL DEFAULT 'pending'
+    CHECK (status IN ('pending','confirmed','cancelled','completed')),
+  created_at           timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_bookings_court_date ON public.bookings (court_id, date);
+CREATE INDEX IF NOT EXISTS idx_bookings_status     ON public.bookings (status);
+
+
+-- ── 3. SETTINGS TABLE ────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.settings (
+  key        text PRIMARY KEY,
+  value      text,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+
+-- ── 4. ACCOUNTS TABLE ────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.accounts (
+  id         uuid PRIMARY KEY,
+  username   text UNIQUE NOT NULL,
+  full_name  text,
+  email      text UNIQUE,
+  role       text NOT NULL DEFAULT 'manager'
+    CHECK (role IN ('developer','admin','manager')),
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+
+-- ── 5. BLOCKED DATES TABLE ───────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.blocked_dates (
+  date       date PRIMARY KEY,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+
+-- ── 6. OPEN PLAY REGISTRATIONS TABLE ─────────────────────────
+CREATE TABLE IF NOT EXISTS public.open_play_registrations (
+  id           bigserial PRIMARY KEY,
+  full_name    text NOT NULL,
+  court_id     text,
+  court_name   text,
+  date         date NOT NULL,
+  hour         integer,
+  time_label   text,
+  payment_type text,
+  amount       numeric,
+  created_at   timestamptz NOT NULL DEFAULT now()
+);
+
+
+-- ── 7. PAYMENT SESSIONS TABLE ────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.payment_sessions (
+  id                 text PRIMARY KEY,
+  booking_ref        text NOT NULL,
+  provider           text NOT NULL,
+  provider_reference text,
+  amount_php         numeric NOT NULL,
+  status             text NOT NULL DEFAULT 'pending',
+  checkout_url       text,
+  raw_request        jsonb,
+  raw_webhook        jsonb,
+  created_at         timestamptz NOT NULL DEFAULT now(),
+  updated_at         timestamptz NOT NULL DEFAULT now(),
+  paid_at            timestamptz
+);
+
+CREATE INDEX IF NOT EXISTS idx_payment_sessions_booking_ref         ON public.payment_sessions (booking_ref);
+CREATE INDEX IF NOT EXISTS idx_payment_sessions_status              ON public.payment_sessions (status);
+CREATE INDEX IF NOT EXISTS idx_payment_sessions_provider_reference  ON public.payment_sessions (provider_reference);
+
+
+-- ── 8. UPDATED_AT TRIGGER ────────────────────────────────────
+CREATE OR REPLACE FUNCTION public.touch_updated_at()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_payment_sessions_touch_updated_at ON public.payment_sessions;
+CREATE TRIGGER trg_payment_sessions_touch_updated_at
+  BEFORE UPDATE ON public.payment_sessions
+  FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();
+
+
+-- ── 9. DOUBLE-BOOKING PREVENTION TRIGGER ─────────────────────
+CREATE OR REPLACE FUNCTION public.prevent_double_booking()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+  IF NEW.status = 'cancelled' THEN RETURN NEW; END IF;
+  IF EXISTS (
+    SELECT 1 FROM public.bookings b
+    WHERE b.court_id = NEW.court_id
+      AND b.date     = NEW.date
+      AND b.status  != 'cancelled'
+      AND b.ref     != NEW.ref
+      AND b.slots   && NEW.slots
+  ) THEN
+    RAISE EXCEPTION 'One or more time slots are already booked for this court and date.';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS check_booking_conflict ON public.bookings;
+CREATE TRIGGER check_booking_conflict
+  BEFORE INSERT OR UPDATE ON public.bookings
+  FOR EACH ROW EXECUTE FUNCTION public.prevent_double_booking();
+
+
+-- ── 10. ROW LEVEL SECURITY ───────────────────────────────────
+
+-- BOOKINGS
+ALTER TABLE public.bookings ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS bookings_select_public  ON public.bookings;
+DROP POLICY IF EXISTS bookings_insert_public  ON public.bookings;
+DROP POLICY IF EXISTS bookings_update_admin   ON public.bookings;
+DROP POLICY IF EXISTS bookings_delete_admin   ON public.bookings;
+CREATE POLICY bookings_select_public  ON public.bookings FOR SELECT USING (true);
+CREATE POLICY bookings_insert_public  ON public.bookings FOR INSERT WITH CHECK (true);
+CREATE POLICY bookings_update_admin   ON public.bookings FOR UPDATE USING (auth.uid() IS NOT NULL);
+CREATE POLICY bookings_delete_admin   ON public.bookings FOR DELETE USING (auth.uid() IS NOT NULL);
+
+-- COURTS
+ALTER TABLE public.courts ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS courts_select_public ON public.courts;
+DROP POLICY IF EXISTS courts_insert_admin  ON public.courts;
+DROP POLICY IF EXISTS courts_update_admin  ON public.courts;
+DROP POLICY IF EXISTS courts_delete_admin  ON public.courts;
+CREATE POLICY courts_select_public ON public.courts FOR SELECT USING (true);
+CREATE POLICY courts_insert_admin  ON public.courts FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY courts_update_admin  ON public.courts FOR UPDATE USING (auth.uid() IS NOT NULL);
+CREATE POLICY courts_delete_admin  ON public.courts FOR DELETE USING (auth.uid() IS NOT NULL);
+
+-- SETTINGS
+ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS settings_select_public ON public.settings;
+DROP POLICY IF EXISTS settings_insert_admin  ON public.settings;
+DROP POLICY IF EXISTS settings_update_admin  ON public.settings;
+DROP POLICY IF EXISTS settings_delete_admin  ON public.settings;
+CREATE POLICY settings_select_public ON public.settings FOR SELECT USING (true);
+CREATE POLICY settings_insert_admin  ON public.settings FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY settings_update_admin  ON public.settings FOR UPDATE USING (auth.uid() IS NOT NULL);
+CREATE POLICY settings_delete_admin  ON public.settings FOR DELETE USING (auth.uid() IS NOT NULL);
+
+-- ACCOUNTS
+ALTER TABLE public.accounts ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS accounts_select_admin  ON public.accounts;
+DROP POLICY IF EXISTS accounts_insert_admin  ON public.accounts;
+DROP POLICY IF EXISTS accounts_update_admin  ON public.accounts;
+DROP POLICY IF EXISTS accounts_delete_admin  ON public.accounts;
+CREATE POLICY accounts_select_admin ON public.accounts FOR SELECT USING (auth.uid() IS NOT NULL);
+CREATE POLICY accounts_insert_admin ON public.accounts FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY accounts_update_admin ON public.accounts FOR UPDATE USING (auth.uid() IS NOT NULL);
+CREATE POLICY accounts_delete_admin ON public.accounts FOR DELETE USING (auth.uid() IS NOT NULL);
+
+-- BLOCKED DATES
+ALTER TABLE public.blocked_dates ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS blocked_dates_select_public ON public.blocked_dates;
+DROP POLICY IF EXISTS blocked_dates_insert_admin  ON public.blocked_dates;
+DROP POLICY IF EXISTS blocked_dates_delete_admin  ON public.blocked_dates;
+CREATE POLICY blocked_dates_select_public ON public.blocked_dates FOR SELECT USING (true);
+CREATE POLICY blocked_dates_insert_admin  ON public.blocked_dates FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY blocked_dates_delete_admin  ON public.blocked_dates FOR DELETE USING (auth.uid() IS NOT NULL);
+
+-- OPEN PLAY REGISTRATIONS
+ALTER TABLE public.open_play_registrations ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS open_play_select_public ON public.open_play_registrations;
+DROP POLICY IF EXISTS open_play_insert_public ON public.open_play_registrations;
+DROP POLICY IF EXISTS open_play_delete_admin  ON public.open_play_registrations;
+CREATE POLICY open_play_select_public ON public.open_play_registrations FOR SELECT USING (true);
+CREATE POLICY open_play_insert_public ON public.open_play_registrations FOR INSERT WITH CHECK (true);
+CREATE POLICY open_play_delete_admin  ON public.open_play_registrations FOR DELETE USING (auth.uid() IS NOT NULL);
+
+-- PAYMENT SESSIONS (service-role only via Edge Functions)
+ALTER TABLE public.payment_sessions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS payment_sessions_no_direct_access ON public.payment_sessions;
+CREATE POLICY payment_sessions_no_direct_access ON public.payment_sessions FOR ALL TO authenticated USING (false);
+
+
+-- ── 11. SEED DEFAULT COURTS ──────────────────────────────────
+INSERT INTO public.courts (id, name, description, rate, blocked, feats)
+VALUES
+  ('c1', 'Court Alpha', 'Outdoor · Open Air · Standard Flooring', 350, false, ARRAY['Outdoor','Open Air','Standard Floor']),
+  ('c2', 'Court Beta',  'Outdoor · Open Air · Standard Flooring', 280, false, ARRAY['Outdoor','Open Air','Standard Floor'])
+ON CONFLICT (id) DO NOTHING;
+
+
+-- ── 12. SEED DEFAULT SETTINGS ────────────────────────────────
+INSERT INTO public.settings (key, value)
+VALUES
+  ('venue_name',    'Smash Grove'),
+  ('open_time',     '6'),
+  ('close_time',    '22'),
+  ('booking_fee',   '5'),
+  ('open_play_fee', '100')
+ON CONFLICT (key) DO NOTHING;
+
+
+-- ============================================================
+-- DONE! After running this:
+-- 1. Go to Authentication → Providers → Email
+--    → Disable "Confirm email" → Save
+-- 2. Go to Project Settings → API
+--    → Copy "Project URL" and "anon public" key
+-- 3. Share those two values to update the app config
+-- ============================================================

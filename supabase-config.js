@@ -272,10 +272,21 @@ window.DB = {
       hour: reg.hour,
       time_label: reg.timeLabel,
       payment_type: reg.paymentType,
+      payment_method: reg.paymentMethod || 'cash',
+      gcash_ref: reg.gcashRef || null,
+      payment_status: 'pending',
       amount: reg.amount,
       created_at: new Date().toISOString(),
     });
     if (error) { console.error('addOpenPlayRegistration:', error); throw error; }
+  },
+
+  async updateOpenPlayRegistration(id, updates) {
+    const row = {};
+    if (updates.paymentStatus !== undefined) row.payment_status = updates.paymentStatus;
+    if (updates.gcashRef      !== undefined) row.gcash_ref      = updates.gcashRef;
+    const { error } = await _sb.from('open_play_registrations').update(row).eq('id', id);
+    if (error) { console.error('updateOpenPlayRegistration:', error); throw error; }
   },
 
   async getOpenPlayCountForDate(date) {

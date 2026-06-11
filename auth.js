@@ -3,15 +3,43 @@
    ============================================================ */
 
 const Auth = (() => {
+  // ── Role model ──────────────────────────────────────────
+  // owner       → System Owner   (full access: everything + accounts)
+  // court_owner → Court Owner    (operations + settings, no account mgmt)
+  // staff       → Court Staff    (front-desk: bookings, payments, open play)
+  const ROLES = ['owner', 'court_owner', 'staff'];
+
+  const ROLE_LABELS = {
+    owner: 'System Owner',
+    court_owner: 'Court Owner',
+    staff: 'Court Staff',
+  };
+
+  // Permission matrix — which roles may perform each action.
+  const ROLE_PERMISSIONS = {
+    owner:       ['dashboard', 'bookings', 'reports', 'courts', 'open_play', 'maintenance', 'payments', 'accounts', 'booking_delete', 'export', 'settings'],
+    court_owner: ['dashboard', 'bookings', 'reports', 'courts', 'open_play', 'maintenance', 'payments', 'export', 'settings'],
+    staff:       ['bookings', 'open_play', 'payments'],
+  };
+
+  function permissionsFor(role) {
+    return ROLE_PERMISSIONS[role] || [];
+  }
+
+  function can(action, role) {
+    const r = role || (getSession() && getSession().role);
+    return permissionsFor(r).includes(action);
+  }
+
   // Default accounts stored in localStorage under 'pb_accounts'
   const DEFAULT_ACCOUNTS = [
     {
-      id: 'dev_001',
+      id: 'owner_001',
       username: 'developer',
       password: 'dev123',
-      role: 'developer',
-      fullName: 'Super Admin',
-      email: 'dev@pickleballhub.com',
+      role: 'owner',
+      fullName: 'System Owner',
+      email: 'owner@courtyardpickleball.com',
       createdAt: new Date().toISOString(),
     },
   ];
@@ -73,20 +101,21 @@ const Auth = (() => {
   function hasRole(role) {
     const session = getSession();
     if (!session) return false;
-    if (session.role === 'developer') return true; // developer has all access
+    if (session.role === 'owner') return true; // system owner has all access
     return session.role === role;
   }
 
-  // Add manager account (developer only)
+  // Add a staff/court-owner account (owner only). Defaults to 'staff'.
   function addManager(data) {
     const accounts = getAccounts();
     const exists = accounts.find((a) => a.username === data.username);
     if (exists) return { success: false, message: 'Username already exists.' };
+    const role = ROLES.includes(data.role) ? data.role : 'staff';
     const newAccount = {
-      id: 'mgr_' + Date.now(),
+      id: 'acc_' + Date.now(),
       username: data.username,
       password: data.password,
-      role: 'manager',
+      role,
       fullName: data.fullName,
       email: data.email,
       createdAt: new Date().toISOString(),
@@ -114,5 +143,5 @@ const Auth = (() => {
   }
 
   // Expose public API
-  return { login, logout, getSession, requireAuth, hasRole, getAccounts, addManager, updateAccount, deleteAccount, initAccounts };
+  return { login, logout, getSession, requireAuth, hasRole, can, permissionsFor, getAccounts, addManager, updateAccount, deleteAccount, initAccounts, ROLES, ROLE_LABELS };
 })();

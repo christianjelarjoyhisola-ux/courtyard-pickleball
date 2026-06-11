@@ -398,6 +398,34 @@ window.DB = {
 // =============================================
 window.Auth = {
 
+  // ── Role model ──────────────────────────────────────────
+  // owner       → System Owner   (full access: everything + accounts)
+  // court_owner → Court Owner    (operations + settings, no account mgmt)
+  // staff       → Court Staff    (front-desk: bookings, payments, open play)
+  ROLES: ['owner', 'court_owner', 'staff'],
+  ROLE_LABELS: { owner: 'System Owner', court_owner: 'Court Owner', staff: 'Court Staff' },
+  ROLE_PERMISSIONS: {
+    owner:       ['dashboard', 'bookings', 'reports', 'courts', 'open_play', 'maintenance', 'payments', 'accounts', 'booking_delete', 'export', 'settings'],
+    court_owner: ['dashboard', 'bookings', 'reports', 'courts', 'open_play', 'maintenance', 'payments', 'export', 'settings'],
+    staff:       ['bookings', 'open_play', 'payments'],
+  },
+
+  permissionsFor(role) {
+    return this.ROLE_PERMISSIONS[role] || [];
+  },
+
+  can(action, role) {
+    const r = role || (this.getSession() && this.getSession().role);
+    return this.permissionsFor(r).includes(action);
+  },
+
+  hasRole(role) {
+    const sess = this.getSession();
+    if (!sess) return false;
+    if (sess.role === 'owner') return true; // system owner has all access
+    return sess.role === role;
+  },
+
   async login(email, password, remember = false) {
     // Sign in via Supabase Auth — establishes a verified JWT session
     const { data, error } = await _sb.auth.signInWithPassword({ email, password });
@@ -407,7 +435,7 @@ window.Auth = {
     const { data: acc } = await _sb.from('accounts').select('*').eq('email', email).single();
     const session = acc
       ? { ...rowToAccount(acc), loginAt: new Date().toISOString() }
-      : { id: data.user.id, email: data.user.email, role: 'admin', fullName: 'Admin', loginAt: new Date().toISOString() };
+      : { id: data.user.id, email: data.user.email, role: 'staff', fullName: 'Court Staff', loginAt: new Date().toISOString() };
 
     // Use localStorage when "remember me" is checked so session survives browser close
     const store = remember ? localStorage : sessionStorage;
@@ -455,7 +483,7 @@ window.Auth = {
       fullName: d.fullName,
       username: d.username,
       email: d.email,
-      role: d.role || 'manager',
+      role: this.ROLES.includes(d.role) ? d.role : 'staff',
       createdAt: new Date().toISOString(),
     };
     try { await DB.saveAccount(acc); return { ok: true }; }

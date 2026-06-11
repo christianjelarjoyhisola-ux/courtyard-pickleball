@@ -66,8 +66,8 @@ CREATE TABLE IF NOT EXISTS public.accounts (
   username   text UNIQUE NOT NULL,
   full_name  text,
   email      text UNIQUE,
-  role       text NOT NULL DEFAULT 'manager'
-    CHECK (role IN ('developer','admin','manager')),
+  role       text NOT NULL DEFAULT 'staff'
+    CHECK (role IN ('owner','court_owner','staff')),
   created_at timestamptz NOT NULL DEFAULT now()
 );
 

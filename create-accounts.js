@@ -10,8 +10,9 @@ const sb = createClient(SUPABASE_URL, SERVICE_KEY, {
 });
 
 const ACCOUNTS = [
-  { email: 'owner@smashgrove.demo', password: 'SmashDemo2026!', username: 'courtowner', full_name: 'Court Owner', role: 'developer' },
-  { email: 'manager@smashgrove.demo', password: 'SmashDemo2026!', username: 'courtmanager', full_name: 'Court Manager', role: 'manager' },
+  { email: 'owner@courtyardpickleball.com',      password: 'CourtYard2026!', username: 'sysowner',   full_name: 'System Owner', role: 'owner' },
+  { email: 'courtowner@courtyardpickleball.com', password: 'CourtYard2026!', username: 'courtowner', full_name: 'Court Owner',  role: 'court_owner' },
+  { email: 'staff@courtyardpickleball.com',      password: 'CourtYard2026!', username: 'courtstaff', full_name: 'Court Staff',  role: 'staff' },
 ];
 
 async function run() {
@@ -49,9 +50,10 @@ async function run() {
   }
 
   console.log('\nDone! Login credentials:');
-  console.log('  URL:      https://smash-grove-bambulo-dun.vercel.app/login.html');
+  console.log('  URL:      <your-deployed-url>/login.html');
+  const roleLabel = { owner: 'System Owner', court_owner: 'Court Owner ', staff: 'Court Staff ' };
   for (const acc of ACCOUNTS) {
-    console.log(`  ${acc.role === 'developer' ? 'Owner  ' : 'Manager'}: ${acc.email} / ${acc.password}`);
+    console.log(`  ${roleLabel[acc.role] || acc.role}: ${acc.email} / ${acc.password}`);
   }
 }
 

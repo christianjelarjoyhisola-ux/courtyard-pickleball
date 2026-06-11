@@ -6,6 +6,37 @@ Types: **Added**, **Changed**, **Fixed**, **Removed**, **Security**, **DB**
 
 ---
 
+## [2026-06-15] — 3-Tier Role-Based Access Control
+
+### Added
+- New 3-tier role system replacing old 2-role model (`developer/manager`):
+  - **System Owner** (`owner`) — full access: all sections + account management
+  - **Court Owner** (`court_owner`) — operations & settings, no account management
+  - **Court Staff** (`staff`) — front-desk only: bookings, payments, open play
+- Permission matrix defined in `supabase-config.js → window.Auth.ROLE_PERMISSIONS`
+- `Auth.can(action, role)` and `Auth.permissionsFor(role)` helpers for checking permissions
+- Role selector dropdown in the Add/Edit Account modal
+- `applyRoleVisibility(role)` function in `admin.html` — hides sidebar nav items and buttons via `data-perm` attributes
+- Navigation guard in `goto()` — prevents accessing sections without permission
+- 3 default accounts created in Supabase: `sysowner`, `courtowner`, `courtstaff`
+- Migration file: `supabase/migrations/20260615_three_tier_roles.sql`
+
+### Changed
+- `admin.html`: sidebar nav items now carry `data-perm` attributes; role badge updated for 3 roles; booking delete guard uses `Auth.can('booking_delete')` instead of `isDev` check; fallback session role changed from `admin` → `staff` (least-privilege)
+- `supabase-config.js`: `window.Auth` extended with role model, `ROLES`, `ROLE_LABELS`, `ROLE_PERMISSIONS`, `can()`, `permissionsFor()`, `hasRole()`; account `add()` default role changed from `manager` → `staff`; login fallback role changed from `admin` → `staff`
+- `auth.js`: updated DEFAULT_ACCOUNTS to use `owner` role; `hasRole()` now checks `owner` for full access; `addManager()` accepts role parameter
+- `create-accounts.js`: updated to 3 accounts (`owner`, `court_owner`, `staff`) with new emails
+- `SETUP_NEW_SUPABASE.sql`: accounts table default role `manager` → `staff`, CHECK constraint updated
+
+### DB
+- Dropped old `accounts_role_check` constraint (`developer/admin/manager`)
+- Remapped existing rows: `developer→owner`, `admin→court_owner`, `manager→staff`
+- Added new `accounts_role_check` constraint: `('owner','court_owner','staff')`
+
+**Files affected:** `admin.html`, `supabase-config.js`, `auth.js`, `create-accounts.js`, `SETUP_NEW_SUPABASE.sql`, `supabase/migrations/20260615_three_tier_roles.sql`, `CHANGELOG.md`
+
+---
+
 ## [2026-06-12] — Rebrand + Color Theme Update
 
 ### Changed

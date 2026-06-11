@@ -1,8 +1,8 @@
 // Creates admin accounts directly via Supabase Auth Admin API (no email confirmation needed)
 // Run: node create-accounts.js
 
-const SUPABASE_URL = 'https://yadedluhybhgkelifmuo.supabase.co';
-const SERVICE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlhZGVkbHVoeWJoZ2tlbGlmbXVvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MDU1MDMxNiwiZXhwIjoyMDk2MTI2MzE2fQ.ddNoh3VPiGqgzs0plu-y1E54GgoEcEGhsxayttwBuzQ';
+const SUPABASE_URL = 'https://ruoyywzehhgkkxswicoa.supabase.co';
+const SERVICE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ1b3l5d3plaGhna2t4c3dpY29hIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MTE5NTA2MywiZXhwIjoyMDk2NzcxMDYzfQ.1rMr2rCTq5Hsr7FzJjN2wH0jcHZC0C2O_qpERkQmQe0';
 
 const { createClient } = require('@supabase/supabase-js');
 const sb = createClient(SUPABASE_URL, SERVICE_KEY, {

@@ -6,6 +6,70 @@ Types: **Added**, **Changed**, **Fixed**, **Removed**, **Security**, **DB**
 
 ---
 
+## [2026-06-12] — Mobile UX, Slot Colors & Past-Date Booking Fix
+
+### Fixed
+- **Past date booking** — Selecting a past date (e.g. Jun 11 when today is Jun 12) now marks all slots as "Past" and blocks booking. `toggleCardSlot()` also guards against past-date calls with a toast error
+- `isPastDate_` flag added to `renderCourtsGrid()` slot renderer; availability badge now uses `curHour_badge = 999` for past dates (shows 0 available)
+
+### Changed
+- **Slot color redesign** — New dark navy + blue palette matching the logo/brand theme:
+  - Available: `#0d1b2e` bg + blue-tint border (`rgba(37,99,235,.4)`), price in `#60a5fa`
+  - Selected: Solid `#1d4ed8` blue fill + white text + blue glow ring — fully solid, no ambiguity
+  - Booked/Taken: `#1c0a0a` dark red bg + red strikethrough time + masked name in red
+  - Past: 38% opacity ghost — clearly unclickable
+  - Hover transitions now use `@media (hover: hover)` — no stuck hover states on touch devices
+  - Removed `scale()` and `translateY()` transforms on selected/hover — eliminates layout jank on mobile
+
+**Files affected:** `index.html`
+
+---
+
+## [2026-06-12] — Mobile-Friendly Admin Dashboard
+
+### Added
+- **Sidebar backdrop overlay** — `#sidebarOverlay` div with dark semi-transparent background; tapping it closes the sidebar on mobile
+- `toggleSidebar()` JS function — replaces inline `onclick` on burger button; syncs sidebar and overlay open/close state
+- `.sidebar-overlay` CSS class with `backdrop-filter: blur(2px)`
+
+### Changed
+- **Responsive CSS overhaul** — replaced scattered media queries with consolidated breakpoints:
+  - `≤900px`: sidebar fixed overlay, burger visible, `topbar` padding reduced to `14px 16px 0`
+  - `≤700px`: `.toolbar` stacks vertically; nav badge hidden; Sign Out becomes ⏻ icon; reports period filter stacks; sidebar gets `box-shadow`
+  - `≤480px`: modal becomes **bottom sheet** (slides up, `border-radius: 20px 20px 0 0`); modal footer buttons stack vertically
+- Sidebar `open` state now includes `box-shadow: 4px 0 24px rgba(0,0,0,0.3)`
+- `.role-bdg` gets `white-space: nowrap; flex-shrink: 0` — prevents "SYSTEM OWNER" from wrapping to two lines
+- Sign Out button: text wrapped in `.sign-out-text` (hidden ≤700px) + `.sign-out-icon` ⏻ (shown ≤700px)
+- Nav actions gap reduced to `6px` on mobile; `.btn-d` reduced to `8px 10px` padding on mobile
+- `goto()` now also removes `.show` from `#sidebarOverlay` when navigating
+
+**Files affected:** `admin.html`
+
+---
+
+## [2026-06-12] — Splash Screen Bottom Label Fix
+
+### Fixed
+- `.sp-bottom` ("COURTYARD PICKLEBALL · SIBAGAT, AGUSAN DEL SUR") was positioned at bottom-left instead of bottom-center
+- Added `left: 50%; transform: translateX(-50%); white-space: nowrap` to center it horizontally
+
+**Files affected:** `index.html`
+
+---
+
+## [2026-06-12] — Staff Login Link in Footer + Platform Fee Panel
+
+### Added
+- **Staff Login link** added to footer Support section in `index.html` — styled with muted color + separator line above it for subtle admin access
+- **Platform Fee panel** in admin Payments section (`data-perm="owner_only"`) — System Owner configures per-hour or flat booking fee; labeled "SYSTEM OWNER" badge
+
+### Changed
+- Platform fee / developer rate moved from Courts section → Payments section; only visible to `owner` role
+
+**Files affected:** `index.html`, `admin.html`
+
+---
+
 ## [2026-06-15] — 3-Tier Role-Based Access Control
 
 ### Added

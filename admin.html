@@ -340,20 +340,41 @@ tr:hover td { background: var(--bg2); }
 .toast.err { border-left: 3px solid var(--red); }
 .toast.inf { border-left: 3px solid #4fc3f7; }
 
+/* ── SIDEBAR BACKDROP ─────────────────────────────────── */
+.sidebar-overlay {
+  display: none; position: fixed; inset: 0; top: 60px;
+  z-index: 140; background: rgba(0,0,0,0.5); backdrop-filter: blur(2px);
+}
+.sidebar-overlay.show { display: block; }
+
 /* ── RESPONSIVE ────────────────────────────────────────── */
 @media (max-width: 900px) {
   .sidebar { display: none; position: fixed; top: 60px; left: 0; bottom: 0; z-index: 150; }
-  .sidebar.open { display: flex; flex-direction: column; }
+  .sidebar.open { display: flex; flex-direction: column; box-shadow: 4px 0 24px rgba(0,0,0,0.3); }
   .admin-layout { display: block; }
   .burger { display: flex; }
   .rev-grid { grid-template-columns: 1fr; }
   .stat-cards { grid-template-columns: 1fr 1fr; }
   .content { padding: 16px; }
+  .topbar { padding: 14px 16px 0; }
 }
-@media (max-width: 480px) { .content { padding: 14px; } .frow { grid-template-columns: 1fr; } .stat-cards { grid-template-columns: 1fr; } }
 
-/* ── MOBILE CARD TABLES ────────────────────────────────── */
+/* ── MOBILE CARD TABLES + LAYOUT ──────────────────────── */
 @media (max-width: 700px) {
+  /* Toolbar (section headers + action buttons) */
+  .toolbar { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .toolbar h2, .topbar h2 { font-size: 22px; }
+  .toolbar > div { width: 100%; }
+  /* Top nav tighten */
+  .topnav { padding: 0 12px; gap: 8px; }
+  .nav-brand span { display: none; }
+  .nav-user .u-name { display: none; }
+  .nav-actions .btn { padding: 6px 10px; font-size: 12px; }
+  /* Reports period filter */
+  .rp-period { flex-direction: column; align-items: stretch; }
+  .rp-period > span { display: flex; gap: 6px; }
+  .rp-period > span input { flex: 1; }
+  /* Mobile card tables */
   .tbl-scroll table thead { display: none; }
   .tbl-scroll table, .tbl-scroll tbody, .tbl-scroll tr, .tbl-scroll td { display: block; width: 100%; }
   .tbl-scroll tr {
@@ -376,12 +397,22 @@ tr:hover td { background: var(--bg2); }
   .tbl-scroll td[data-label="Actions"] { margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--border); }
   .filters { flex-direction: column; }
   .filters input, .filters select { width: 100%; }
-  .topnav { padding: 0 12px; gap: 8px; }
-  .nav-brand span { display: none; }
-  .nav-user .u-name { display: none; }
+  /* Modals */
   .modal { border-radius: 12px; }
   .m-hd { padding: 14px 16px; }
   .m-body { padding: 14px 16px; }
+}
+
+@media (max-width: 480px) {
+  .content { padding: 12px; }
+  .frow { grid-template-columns: 1fr; }
+  .stat-cards { grid-template-columns: 1fr; }
+  /* Modal footer buttons stack vertically */
+  .m-foot { flex-direction: column; }
+  .m-foot .btn { width: 100%; justify-content: center; }
+  /* Modal full-height from bottom */
+  .overlay { align-items: flex-end; padding: 0; }
+  .modal { border-radius: 20px 20px 0 0; max-height: 92vh; }
 }
 
 /* ── CALENDAR VIEW ─────────────────────────────────────── */
@@ -562,13 +593,14 @@ tr:hover td { background: var(--bg2); }
       <span class="u-name" id="uName">—</span>
       <span class="role-bdg r-dev" id="uRole">—</span>
     </div>
-    <button class="btn-icon burger" onclick="document.getElementById('sidebar').classList.toggle('open')">&#9776;</button>
+    <button class="btn-icon burger" onclick="toggleSidebar()">&#9776;</button>
     <button class="btn-icon" onclick="toggleTheme()" id="themeBtn" title="Toggle Theme"></button>
     <button class="btn btn-d" onclick="logout()" style="font-size:13px">Sign Out</button>
   </div>
 </nav>
 
 <!-- ADMIN LAYOUT -->
+<div id="sidebarOverlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
 <div class="admin-layout">
   <aside class="sidebar" id="sidebar">
     <div class="sb-section">
@@ -1366,6 +1398,12 @@ tr:hover td { background: var(--bg2); }
 /* ==============================================
    UTILS
    ============================================== */
+function toggleSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+  const isOpen = sidebar.classList.toggle('open');
+  overlay.classList.toggle('show', isOpen);
+}
 const $=id=>document.getElementById(id);
 const fmt=n=>'₱'+Number(n).toLocaleString('en-PH',{minimumFractionDigits:2});
 const fmtD=s=>{if(!s)return'—';return new Date(s+'T00:00:00').toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'});};
@@ -1395,6 +1433,7 @@ async function goto(s){
   $('sec-'+s).classList.add('on');
   $('topTitle').textContent=titles[s]||s;
   document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('show');
   const loaders={dash:renderDash,bookings:renderBookings,reports:renderReport,courts:renderCourts,accounts:renderAccounts,blocked:renderBlocked,maintenance:renderMaintenance,payments:renderPaymentSettings};
   if(loaders[s]) await loaders[s]();
 }

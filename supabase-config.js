@@ -432,6 +432,28 @@ window.DB = {
       }]);
     }
   },
+
+  // Check if user has accepted the current agreement version
+  async getAgreement(userId, version = 1) {
+    const { data } = await _sb.from('agreements').select('id, full_name, agreed_at').eq('user_id', userId).eq('version', version).maybeSingle();
+    return data || null;
+  },
+
+  // Save signed agreement
+  async saveAgreement({ userId, email, fullName, role, signatureData, ipAddress, userAgent, version = 1 }) {
+    const { error } = await _sb.from('agreements').upsert({
+      user_id:        userId,
+      email,
+      full_name:      fullName,
+      role,
+      version,
+      signature_data: signatureData,
+      ip_address:     ipAddress || null,
+      user_agent:     userAgent || null,
+      agreed_at:      new Date().toISOString(),
+    }, { onConflict: 'user_id,version' });
+    if (error) throw error;
+  },
 };
 
 // =============================================

@@ -3655,7 +3655,9 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   const firstAllowed = Auth.can('dashboard', role) ? 'dash'
     : Auth.can('bookings', role) ? 'bookings'
     : 'payments';
-  await goto(firstAllowed);
+  // Show agreement gate for court_owner before entering dashboard
+  const gated = await checkAgreementGate(sess);
+  if (!gated) await goto(firstAllowed);
 });
 
 /* ==============================================
@@ -3668,6 +3670,204 @@ function applyRoleVisibility(role) {
   });
 }
 </script>
+<!-- ============================================================
+     ELECTRONIC USAGE AGREEMENT MODAL (court_owner only)
+     Shown once per version after login. Blocks dashboard access
+     until the user scrolls, types their legal name, draws a
+     signature, and clicks "I Agree & Sign".
+     ============================================================ -->
+<div id="agreementOverlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);backdrop-filter:blur(6px);align-items:center;justify-content:center;">
+  <div id="agreementModal" style="background:var(--card,#161f2c);border:1px solid rgba(74,154,74,.3);border-radius:14px;width:min(680px,96vw);max-height:92vh;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,.6);">
+
+    <!-- Header -->
+    <div style="padding:22px 26px 16px;border-bottom:1px solid rgba(255,255,255,.07);flex-shrink:0">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="font-size:1.7rem">📋</div>
+        <div>
+          <div style="font-size:1.05rem;font-weight:800;letter-spacing:.5px;color:var(--text,#e8eaf0)">SYSTEM USAGE AGREEMENT</div>
+          <div style="font-size:.73rem;color:var(--muted,#7a8a9a);margin-top:2px">CourtYard Pickleball Booking System — Version 1</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scrollable body -->
+    <div id="agreeScrollBody" style="overflow-y:auto;padding:22px 26px;flex:1;font-size:.87rem;line-height:1.75;color:var(--text,#e8eaf0)">
+
+      <p style="margin:0 0 14px;color:#a0b0c0;font-size:.8rem;font-style:italic">Read the full agreement before signing. The <strong>Sign</strong> button unlocks only after you scroll to the bottom.</p>
+
+      <h4 style="margin:0 0 8px;color:var(--green,#4a9a4a);font-size:.85rem;letter-spacing:.6px;text-transform:uppercase">1. Parties</h4>
+      <p style="margin:0 0 14px">This Agreement is entered into between <strong>Jelar Joy Hisola</strong> ("System Owner"), the developer and operator of the CourtYard Pickleball Booking System, and the <strong>Court Owner</strong> identified below ("Court Owner"), who is granted access to the system for the purpose of managing pickleball court reservations in Sibagat, Agusan del Sur.</p>
+
+      <h4 style="margin:0 0 8px;color:var(--green,#4a9a4a);font-size:.85rem;letter-spacing:.6px;text-transform:uppercase">2. System Fee</h4>
+      <p style="margin:0 0 14px">For each <strong>confirmed booking</strong> processed through the system, the Court Owner agrees to pay the System Owner a <strong>system fee of ₱15.00 (Philippine Pesos, fifteen pesos)</strong> per booking. This fee covers platform hosting, fraud detection, automated receipt verification, and technical maintenance.</p>
+
+      <h4 style="margin:0 0 8px;color:var(--green,#4a9a4a);font-size:.85rem;letter-spacing:.6px;text-transform:uppercase">3. Billing Schedule</h4>
+      <p style="margin:0 0 14px">System fees are due <strong>every Sunday</strong>. The System Owner will send a weekly billing statement via GCash message or SMS to the Court Owner's registered contact number. Payment must be made to the System Owner's GCash number <strong>09683666003</strong> (Christian Jelar Joy Hisola) no later than <strong>11:59 PM on the Sunday</strong> of the billing week.</p>
+
+      <h4 style="margin:0 0 8px;color:var(--green,#4a9a4a);font-size:.85rem;letter-spacing:.6px;text-transform:uppercase">4. Late Payment & Suspension</h4>
+      <p style="margin:0 0 14px">Failure to remit payment within <strong>3 days</strong> of the weekly due date will result in suspension of the Court Owner's admin access until the outstanding balance is settled in full. Repeated non-payment (2 or more consecutive weeks) may result in permanent termination of access.</p>
+
+      <h4 style="margin:0 0 8px;color:var(--green,#4a9a4a);font-size:.85rem;letter-spacing:.6px;text-transform:uppercase">5. Fee Adjustment</h4>
+      <p style="margin:0 0 14px">The System Owner may adjust the per-booking fee with a minimum of <strong>7 days written notice</strong> (via GCash message or email). Continued use of the system after the notice period constitutes acceptance of the updated fee.</p>
+
+      <h4 style="margin:0 0 8px;color:var(--green,#4a9a4a);font-size:.85rem;letter-spacing:.6px;text-transform:uppercase">6. Data & Confidentiality</h4>
+      <p style="margin:0 0 14px">Booking records, customer contact information, and payment data are confidential. The Court Owner agrees not to share system credentials or export customer data for purposes outside the management of the court.</p>
+
+      <h4 style="margin:0 0 8px;color:var(--green,#4a9a4a);font-size:.85rem;letter-spacing:.6px;text-transform:uppercase">7. Acceptance by Electronic Signature</h4>
+      <p style="margin:0 0 14px">Pursuant to the Philippine <strong>Electronic Commerce Act of 2000 (Republic Act No. 8792)</strong>, this Agreement is legally binding when accepted via electronic signature. By typing your legal full name and drawing your signature below, and clicking "I Agree & Sign", you confirm that:</p>
+      <ul style="margin:0 0 14px;padding-left:20px">
+        <li>You have read and understood the full terms above.</li>
+        <li>You are the authorized Court Owner or representative.</li>
+        <li>You agree to the ₱15.00 per-booking system fee billed every Sunday.</li>
+        <li>This electronic signature carries the same legal weight as a handwritten signature under RA 8792.</li>
+      </ul>
+
+      <div style="background:rgba(74,154,74,.07);border:1px solid rgba(74,154,74,.2);border-radius:8px;padding:14px 16px;margin-bottom:20px;font-size:.8rem;color:#a0b0c0">
+        📍 <strong>Agreement recorded with:</strong> timestamp (UTC), IP address, browser fingerprint, typed name, and drawn signature — stored securely in the CourtYard Pickleball database.
+      </div>
+
+      <!-- Signature section (unlocked after scroll) -->
+      <div id="agreeSignSection">
+        <div style="margin-bottom:16px">
+          <label style="font-size:.75rem;text-transform:uppercase;letter-spacing:.8px;color:var(--green,#4a9a4a);font-weight:700;display:block;margin-bottom:6px">Legal Full Name <span style="color:#e53935">*</span></label>
+          <input id="agreeName" type="text" placeholder="Enter your full legal name as it appears on your ID"
+            style="width:100%;box-sizing:border-box;padding:10px 13px;background:var(--input,#1a2535);border:1.5px solid var(--border,rgba(255,255,255,.1));border-radius:8px;color:var(--text,#e8eaf0);font-size:.9rem;outline:none"
+            oninput="agreeCheckReady()" />
+        </div>
+
+        <div style="margin-bottom:16px">
+          <label style="font-size:.75rem;text-transform:uppercase;letter-spacing:.8px;color:var(--green,#4a9a4a);font-weight:700;display:block;margin-bottom:6px">Draw Your Signature <span style="color:#e53935">*</span></label>
+          <div style="position:relative;background:var(--input,#1a2535);border:1.5px solid var(--border,rgba(255,255,255,.1));border-radius:8px;overflow:hidden">
+            <canvas id="agreeCanvas" width="620" height="140" style="display:block;width:100%;cursor:crosshair;touch-action:none"></canvas>
+            <button type="button" onclick="agreeClearSig()" style="position:absolute;top:8px;right:10px;background:rgba(229,57,53,.15);color:#e53935;border:1px solid rgba(229,57,53,.3);border-radius:6px;font-size:.7rem;padding:3px 10px;cursor:pointer">✕ Clear</button>
+          </div>
+          <div style="font-size:.68rem;color:var(--muted,#7a8a9a);margin-top:5px">Draw your signature using your mouse or finger. This will be stored as evidence of acceptance.</div>
+        </div>
+
+        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;margin-bottom:20px;font-size:.84rem">
+          <input id="agreeCheck" type="checkbox" style="margin-top:3px;width:16px;height:16px;flex-shrink:0;cursor:pointer" onchange="agreeCheckReady()" />
+          <span>I have read and fully understood the System Usage Agreement above. I agree to pay <strong>₱15.00 per confirmed booking</strong>, billed weekly every Sunday via GCash to <strong>09683666003</strong>. I understand this electronic signature is legally binding under RA 8792.</span>
+        </label>
+
+        <button id="agreeSubmitBtn" onclick="submitAgreement()" disabled
+          style="width:100%;padding:14px;background:linear-gradient(135deg,#1a5c1a,#2a8a2a);color:#fff;border:none;border-radius:10px;font-size:.95rem;font-weight:800;letter-spacing:.5px;cursor:not-allowed;opacity:.5;transition:opacity .2s,cursor .2s">
+          ✍️ I Agree &amp; Sign
+        </button>
+        <div id="agreeError" style="display:none;margin-top:10px;background:rgba(229,57,53,.1);color:#e53935;border-radius:8px;padding:10px 14px;font-size:.82rem;font-weight:600"></div>
+      </div>
+
+    </div><!-- end scroll body -->
+  </div>
+</div>
+
+<script>
+/* ── AGREEMENT MODAL ── */
+const AGREEMENT_VERSION = 1;
+let _agreeDrawing = false, _agreeHasSig = false;
+let _agreePrevX = 0, _agreePrevY = 0;
+
+function agreeInitCanvas() {
+  const canvas = document.getElementById('agreeCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  function getPos(e) {
+    const r = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / r.width;
+    const scaleY = canvas.height / r.height;
+    const src = e.touches ? e.touches[0] : e;
+    return { x: (src.clientX - r.left) * scaleX, y: (src.clientY - r.top) * scaleY };
+  }
+  function start(e) { e.preventDefault(); const p=getPos(e); _agreeDrawing=true; _agreePrevX=p.x; _agreePrevY=p.y; ctx.beginPath(); ctx.moveTo(p.x,p.y); }
+  function move(e) { if (!_agreeDrawing) return; e.preventDefault(); const p=getPos(e); ctx.lineWidth=2.2; ctx.lineCap='round'; ctx.strokeStyle='#4ade80'; ctx.beginPath(); ctx.moveTo(_agreePrevX,_agreePrevY); ctx.lineTo(p.x,p.y); ctx.stroke(); _agreePrevX=p.x; _agreePrevY=p.y; _agreeHasSig=true; agreeCheckReady(); }
+  function stop() { _agreeDrawing=false; }
+  canvas.addEventListener('mousedown',start); canvas.addEventListener('mousemove',move); canvas.addEventListener('mouseup',stop); canvas.addEventListener('mouseleave',stop);
+  canvas.addEventListener('touchstart',start,{passive:false}); canvas.addEventListener('touchmove',move,{passive:false}); canvas.addEventListener('touchend',stop);
+}
+
+function agreeClearSig() {
+  const canvas = document.getElementById('agreeCanvas');
+  canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);
+  _agreeHasSig = false;
+  agreeCheckReady();
+}
+
+function agreeCheckReady() {
+  const name = (document.getElementById('agreeName')?.value || '').trim();
+  const checked = document.getElementById('agreeCheck')?.checked;
+  const btn = document.getElementById('agreeSubmitBtn');
+  const ready = name.length >= 3 && checked && _agreeHasSig;
+  if (btn) { btn.disabled = !ready; btn.style.opacity = ready ? '1' : '.5'; btn.style.cursor = ready ? 'pointer' : 'not-allowed'; }
+}
+
+async function submitAgreement() {
+  const name  = (document.getElementById('agreeName')?.value || '').trim();
+  const errEl = document.getElementById('agreeError');
+  const btn   = document.getElementById('agreeSubmitBtn');
+  if (!name || name.length < 3) { errEl.textContent='Please enter your full legal name.'; errEl.style.display=''; return; }
+  if (!_agreeHasSig)             { errEl.textContent='Please draw your signature.';       errEl.style.display=''; return; }
+  if (!document.getElementById('agreeCheck').checked) { errEl.textContent='Please tick the agreement checkbox.'; errEl.style.display=''; return; }
+  errEl.style.display = 'none';
+  btn.disabled = true; btn.textContent = '⏳ Saving…';
+  try {
+    const canvas = document.getElementById('agreeCanvas');
+    const sigData = canvas.toDataURL('image/png');
+    const session = sess || Auth.getSession();
+    await DB.saveAgreement({
+      userId:        session.id,
+      email:         session.email,
+      fullName:      name,
+      role:          session.role,
+      signatureData: sigData,
+      ipAddress:     null,
+      userAgent:     navigator.userAgent,
+      version:       AGREEMENT_VERSION,
+    });
+    document.getElementById('agreementOverlay').style.display = 'none';
+    document.getElementById('agreementOverlay').style.alignItems = '';
+    toast('✅ Agreement signed and recorded. Welcome!', 'ok');
+    // Now land on the dashboard
+    const role = session.role;
+    const firstAllowed = Auth.can('dashboard', role) ? 'dash' : Auth.can('bookings', role) ? 'bookings' : 'payments';
+    await goto(firstAllowed);
+  } catch(e) {
+    errEl.textContent = 'Failed to save agreement: ' + (e.message || 'Unknown error. Please try again.');
+    errEl.style.display = '';
+    btn.disabled = false; btn.textContent = '✍️ I Agree & Sign';
+  }
+}
+
+async function checkAgreementGate(session) {
+  // Only court_owner must sign — owner is the system operator, staff don't pay fees
+  if (session.role !== 'court_owner') return false; // no gate
+  // Skip on local dev
+  if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') return false;
+  try {
+    const existing = await DB.getAgreement(session.id, AGREEMENT_VERSION);
+    if (existing) return false; // already signed
+  } catch(_) {}
+  // Show the gate
+  const overlay = document.getElementById('agreementOverlay');
+  overlay.style.display = 'flex';
+  agreeInitCanvas();
+  // Auto-unlock sign section immediately (no scroll gate needed — all content visible in scrollable pane)
+  // Scroll detection: unlock Sign button only after user scrolls near bottom
+  const body = document.getElementById('agreeScrollBody');
+  const section = document.getElementById('agreeSignSection');
+  section.style.opacity = '0.35';
+  section.style.pointerEvents = 'none';
+  section.style.transition = 'opacity .4s';
+  function onScroll() {
+    if (body.scrollTop + body.clientHeight >= body.scrollHeight - 40) {
+      section.style.opacity = '1';
+      section.style.pointerEvents = '';
+      body.removeEventListener('scroll', onScroll);
+    }
+  }
+  body.addEventListener('scroll', onScroll);
+  return true; // gated — caller should NOT call goto()
+}
+</script>
+
 <script src="supabase.min.js"></script>
 <script src="supabase-config.js"></script>
 </body>

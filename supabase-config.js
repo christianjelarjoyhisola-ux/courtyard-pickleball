@@ -457,13 +457,23 @@ window.DB = {
 
   // ---- WEEKLY BILLING (system owner) ----
   async getWeeklyFees() {
-    const { data, error } = await _sb
-      .from('weekly_fees')
-      .select('*')
-      .order('week_start', { ascending: false })
-      .order('created_at', { ascending: false });
-    if (error) { console.error('getWeeklyFees:', error); return []; }
-    return data || [];
+    try {
+      // Use REST API directly to bypass schema cache
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/weekly_fees?order=week_start.desc,created_at.desc`, {
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        }
+      });
+      if (!res.ok) {
+        console.error('getWeeklyFees REST error:', res.status, res.statusText);
+        return [];
+      }
+      return await res.json();
+    } catch (err) {
+      console.error('getWeeklyFees:', err);
+      return [];
+    }
   },
 
   async saveWeeklyFee(statement) {
@@ -485,14 +495,29 @@ window.DB = {
       paid_by_user_id: statement.paidByUserId || null,
     };
 
-    const { data, error } = await _sb
-      .from('weekly_fees')
-      .upsert(row, { onConflict: 'court_owner_user_id,week_start,week_end' })
-      .select('*')
-      .single();
-
-    if (error) { console.error('saveWeeklyFee:', error); throw error; }
-    return data;
+    try {
+      // Use REST API directly to bypass schema cache
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/weekly_fees`, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+          Prefer: 'return=representation',
+        },
+        body: JSON.stringify(row),
+      });
+      if (!res.ok) {
+        const errText = await res.text();
+        console.error('saveWeeklyFee error:', res.status, errText);
+        throw new Error(`HTTP ${res.status}: ${errText}`);
+      }
+      const data = await res.json();
+      return Array.isArray(data) ? data[0] : data;
+    } catch (err) {
+      console.error('saveWeeklyFee:', err);
+      throw err;
+    }
   },
 
   async updateWeeklyFee(id, updates) {
@@ -505,8 +530,26 @@ window.DB = {
     if (updates.sentAt !== undefined) row.sent_at = updates.sentAt;
     if (updates.dueAt !== undefined) row.due_at = updates.dueAt;
 
-    const { error } = await _sb.from('weekly_fees').update(row).eq('id', id);
-    if (error) { console.error('updateWeeklyFee:', error); throw error; }
+    try {
+      // Use REST API directly to bypass schema cache
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/weekly_fees?id=eq.${id}`, {
+        method: 'PATCH',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(row),
+      });
+      if (!res.ok) {
+        const errText = await res.text();
+        console.error('updateWeeklyFee error:', res.status, errText);
+        throw new Error(`HTTP ${res.status}: ${errText}`);
+      }
+    } catch (err) {
+      console.error('updateWeeklyFee:', err);
+      throw err;
+    }
   },
 };
 

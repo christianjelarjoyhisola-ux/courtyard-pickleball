@@ -615,7 +615,6 @@ tr:hover td { background: var(--bg2); }
       <div class="nav-item on" data-s="dash" data-perm="dashboard" onclick="goto('dash')"><span>&#128202;</span> Dashboard</div>
       <div class="nav-item" data-s="bookings" data-perm="bookings" onclick="goto('bookings')"><span>&#128203;</span> Bookings</div>
       <div class="nav-item" data-s="reports" data-perm="reports" onclick="goto('reports')"><span>&#128200;</span> Reports</div>
-      <div class="nav-item" data-s="fees" data-perm="fees" onclick="goto('fees')"><span>&#128181;</span> Platform Fees</div>
     </div>
     <div class="sb-section">
       <div class="nav-grp">Management</div>
@@ -680,37 +679,6 @@ tr:hover td { background: var(--bg2); }
         </div>
         <div style="margin-top:10px;font-size:.75rem;color:var(--text3);text-align:center">
           Only counts <strong>confirmed</strong> and <strong>completed</strong> bookings · Cancelled bookings are excluded
-        </div>
-      </div>
-
-      <!-- PLATFORM BOOKING FEES PANEL -->
-      <div class="panel" id="pfPanel" style="margin-bottom:16px;border:1.5px solid rgba(74,154,74,.35);background:rgba(74,154,74,.04)">
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px">
-          <h4 style="margin:0;color:var(--green)">💸 Platform Booking Fees</h4>
-          <div style="display:flex;align-items:center;gap:8px">
-            <label style="font-size:.78rem;color:var(--text3)">Week:</label>
-            <select id="pfWeekSelect" style="font-size:.82rem;padding:5px 10px;border-radius:7px;border:1.5px solid var(--border);background:var(--input);color:var(--text);cursor:pointer" onchange="renderPlatformFees()"></select>
-          </div>
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px">
-          <div style="background:var(--input);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center">
-            <div style="font-size:1.6rem;font-weight:800;color:var(--text)" id="pfCount">0</div>
-            <div style="font-size:.72rem;color:var(--text3);margin-top:3px;text-transform:uppercase;letter-spacing:.5px">Confirmed Bookings</div>
-          </div>
-          <div style="background:var(--input);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center">
-            <div style="font-size:.72rem;color:var(--text3);margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">Rate</div>
-            <div style="font-size:1rem;font-weight:700;color:var(--text)">₱15.00 / booking</div>
-          </div>
-          <div style="background:rgba(74,154,74,.12);border:1.5px solid rgba(74,154,74,.4);border-radius:10px;padding:14px;text-align:center">
-            <div style="font-size:1.6rem;font-weight:800;color:var(--green)" id="pfTotal">₱0.00</div>
-            <div style="font-size:.72rem;color:var(--text3);margin-top:3px;text-transform:uppercase;letter-spacing:.5px">Due to Platform</div>
-          </div>
-        </div>
-        <div style="background:var(--input);border:1px solid var(--border);border-radius:9px;padding:12px 14px;font-size:.82rem;color:var(--text2);line-height:1.7" id="pfBreakdown">
-          —
-        </div>
-        <div style="margin-top:10px;font-size:.75rem;color:var(--text3);text-align:center">
-          📋 Remit via <strong>GCash</strong> every <strong>Friday</strong> covering Mon–Sun of the previous week · Forward GCash screenshot as proof
         </div>
       </div>
 
@@ -858,12 +826,6 @@ tr:hover td { background: var(--bg2); }
         <h4>Monthly Trend (Last 6 Months)</h4>
         <div id="rpTrend"><p class="rp-empty">No data.</p></div>
       </div>
-    </div>
-
-    <!-- PLATFORM FEES -->
-    <div id="sec-fees" class="adm-sec">
-      <div class="toolbar"><h2>&#128181; PLATFORM FEES</h2></div>
-      <div id="feesContent" style="padding:0 4px"></div>
     </div>
 
     <!-- COURTS -->
@@ -1500,7 +1462,7 @@ let sess;
    NAVIGATION
    ============================================== */
 const titles={dash:'Dashboard',bookings:'Bookings',reports:'Reports',courts:'Courts',accounts:'Accounts',blocked:'Open Play',maintenance:'Maintenance',payments:'Payments'};
-const SECTION_PERM={dash:'dashboard',bookings:'bookings',reports:'reports',fees:'fees',courts:'courts',accounts:'accounts',blocked:'open_play',maintenance:'maintenance',payments:'payments'};
+const SECTION_PERM={dash:'dashboard',bookings:'bookings',reports:'reports',courts:'courts',accounts:'accounts',blocked:'open_play',maintenance:'maintenance',payments:'payments'};
 async function goto(s){
   // Block navigation to sections the current role can't access
   const perm=SECTION_PERM[s];
@@ -1511,7 +1473,7 @@ async function goto(s){
   $('topTitle').textContent=titles[s]||s;
   document.getElementById('sidebar').classList.remove('open');
   document.getElementById('sidebarOverlay').classList.remove('show');
-  const loaders={dash:renderDash,bookings:renderBookings,reports:renderReport,fees:renderFees,courts:renderCourts,accounts:renderAccounts,blocked:renderBlocked,maintenance:renderMaintenance,payments:renderPaymentSettings};
+  const loaders={dash:renderDash,bookings:renderBookings,reports:renderReport,courts:renderCourts,accounts:renderAccounts,blocked:renderBlocked,maintenance:renderMaintenance,payments:renderPaymentSettings};
   if(loaders[s]) await loaders[s]();
 }
 
@@ -1525,8 +1487,6 @@ async function renderDash(){
   const _mEl = $('maintMonth');
   if (_mEl && !_mEl.value) _mEl.value = _curMonth;
   renderMaintFee();
-  initPfWeekSelect();
-  renderPlatformFees();
 
   const bks=await DB.getBookings();
   const today=new Date().toISOString().split('T')[0];
@@ -1646,80 +1606,6 @@ async function saveMaintRate() {
   } catch(e) {
     toast('Failed to save rate.', 'err');
   }
-}
-
-// ── PLATFORM BOOKING FEES ─────────────────────────────────────────
-const PLATFORM_FEE = 15;
-
-function getWeekRange(weeksBack = 0) {
-  const now = new Date();
-  const dow = now.getDay();
-  const monday = new Date(now);
-  monday.setDate(now.getDate() - ((dow + 6) % 7) - weeksBack * 7);
-  monday.setHours(0, 0, 0, 0);
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-  sunday.setHours(23, 59, 59, 999);
-  return { start: monday, end: sunday };
-}
-
-function initPfWeekSelect() {
-  const sel = $('pfWeekSelect');
-  if (!sel) return;
-  sel.innerHTML = '';
-  for (let w = 0; w <= 7; w++) {
-    const { start, end } = getWeekRange(w);
-    const fmtShort = d => d.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
-    const label = w === 0
-      ? `Current week (${fmtShort(start)} \u2013 ${fmtShort(end)})`
-      : `${fmtShort(start)} \u2013 ${fmtShort(end)}`;
-    const opt = document.createElement('option');
-    opt.value = w;
-    opt.textContent = label;
-    sel.appendChild(opt);
-  }
-}
-
-async function renderPlatformFees() {
-  const weeksBack = parseInt($('pfWeekSelect')?.value ?? 0);
-  const { start, end } = getWeekRange(weeksBack);
-  const bks = await DB.getBookings();
-  const filtered = bks.filter(b => {
-    if (b.status !== 'confirmed' && b.status !== 'completed') return false;
-    const d = new Date(b.date + 'T00:00:00');
-    return d >= start && d <= end;
-  });
-  const count = filtered.length;
-  const total = count * PLATFORM_FEE;
-  if ($('pfCount')) $('pfCount').textContent = count;
-  if ($('pfTotal')) $('pfTotal').textContent = `\u20b1${total.toFixed(2)}`;
-  const fmtDate = d => d.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
-  const periodLabel = `${fmtDate(start)} \u2013 ${fmtDate(end)}`;
-  if (count === 0) {
-    $('pfBreakdown').innerHTML = `<span style="color:var(--text3)">No confirmed bookings for ${periodLabel}.</span>`;
-    return;
-  }
-  const byDate = {};
-  filtered.forEach(b => {
-    if (!byDate[b.date]) byDate[b.date] = 0;
-    byDate[b.date]++;
-  });
-  const rows = Object.entries(byDate)
-    .sort()
-    .map(([date, cnt]) => {
-      const dateLabel = new Date(date + 'T00:00:00').toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric' });
-      return `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)">
-        <span>\ud83d\udcc5 ${dateLabel}</span>
-        <span>${cnt} booking${cnt !== 1 ? 's' : ''} \u00d7 \u20b115 = <span style="color:var(--green)">\u20b1${(cnt * 15).toFixed(2)}</span></span>
-      </div>`;
-    }).join('');
-  $('pfBreakdown').innerHTML = `
-    <div style="font-weight:700;margin-bottom:8px;color:var(--text)">\ud83d\udcca ${periodLabel}</div>
-    ${rows}
-    <div style="display:flex;justify-content:space-between;margin-top:10px;padding-top:8px;font-weight:700;font-size:.9rem;border-top:2px solid var(--border)">
-      <span>Total Due</span>
-      <span>${count} booking${count !== 1 ? 's' : ''} \u00d7 \u20b115 = <span style="color:var(--green);font-size:1rem">\u20b1${total.toFixed(2)}</span></span>
-    </div>`;
 }
 // ─────────────────────────────────────────────────────────────
 
@@ -3829,21 +3715,13 @@ function applyRoleVisibility(role) {
       <h4 style="margin:0 0 8px;color:var(--green,#4a9a4a);font-size:.85rem;letter-spacing:.6px;text-transform:uppercase">4. Court Owner's Revenue</h4>
       <p style="margin:0 0 14px">All court booking fees set by the Court Owner (e.g. ₱200/hr, ₱250/hr) belong <strong>exclusively to the Court Owner</strong>. The Platform Provider does not take any share of the court rental revenue. The Court Owner receives 100% of the court rate from every confirmed booking. Only the separate ₱15.00 platform fee (paid by the customer) goes to the Platform Provider.</p>
 
-      <h4 style="margin:0 0 8px;color:var(--green,#4a9a4a);font-size:.85rem;letter-spacing:.6px;text-transform:uppercase">5. Weekly Fee Remittance</h4>
-      <p style="margin:0 0 14px"><strong>5.1 Collection.</strong> The ₱15.00 Platform Fee per confirmed booking is included in the total amount paid by the customer. The Court Owner holds these fees in trust for the Platform Provider until remitted.</p>
-      <p style="margin:0 0 14px"><strong>5.2 Schedule.</strong> The Court Owner shall remit all accumulated Platform Fees to the Platform Provider every <strong>Friday</strong> of each week (or the next business day if Friday is a public holiday), covering all confirmed bookings from Monday 12:00 AM to Sunday 11:59 PM of that week.</p>
-      <p style="margin:0 0 14px"><strong>5.3 Method.</strong> Remittance shall be sent via <strong>GCash</strong> to the Platform Provider's registered number. The Court Owner must forward the GCash transaction screenshot to the Platform Provider as proof immediately after each remittance.</p>
-      <p style="margin:0 0 14px"><strong>5.4 System Dashboard.</strong> The admin dashboard displays the running weekly platform fee total based on confirmed bookings. This system count is the <strong>authoritative record</strong> for remittance calculation. Disputes must be raised in writing within 24 hours of the booking event; undisputed records are binding.</p>
-      <p style="margin:0 0 14px"><strong>5.5 Late Remittance.</strong> Failure to remit within 3 calendar days after the Friday due date constitutes a material breach and may result in immediate suspension or termination of platform access. Outstanding amounts remain owed regardless of suspension.</p>
-      <p style="margin:0 0 14px"><strong>5.6 Zero-Balance Weeks.</strong> If no confirmed bookings occur in a given week, no remittance is required for that period.</p>
-
-      <h4 style="margin:0 0 8px;color:var(--green,#4a9a4a);font-size:.85rem;letter-spacing:.6px;text-transform:uppercase">6. Anti-Circumvention</h4>
+      <h4 style="margin:0 0 8px;color:var(--green,#4a9a4a);font-size:.85rem;letter-spacing:.6px;text-transform:uppercase">5. Anti-Circumvention</h4>
       <p style="margin:0 0 14px">The Court Owner agrees <strong>not to direct, encourage, or assist customers to bypass the platform</strong> in order to avoid the ₱15.00 booking fee. This includes but is not limited to: advertising a direct booking channel at a lower price, accepting bookings verbally or via personal chat for slots visible on the platform, or instructing customers to "book directly" to avoid the fee.<br><br>Circumvention of the platform fee is a material breach of this Agreement and may result in immediate termination of platform access.</p>
 
-      <h4 style="margin:0 0 8px;color:var(--green,#4a9a4a);font-size:.85rem;letter-spacing:.6px;text-transform:uppercase">7. Obligation to Honor Bookings</h4>
+      <h4 style="margin:0 0 8px;color:var(--green,#4a9a4a);font-size:.85rem;letter-spacing:.6px;text-transform:uppercase">6. Obligation to Honor Bookings</h4>
       <p style="margin:0 0 14px">The Court Owner agrees to <strong>honor all confirmed bookings</strong> made through the platform. Customers who receive a booking confirmation with a reference number must be allowed access to the court at the reserved time. Cancellations due to the Court Owner's failure (not the customer's) are a breach of this Agreement.</p>
 
-      <h4 style="margin:0 0 8px;color:var(--green,#4a9a4a);font-size:.85rem;letter-spacing:.6px;text-transform:uppercase">8. Court Owner's Responsibilities</h4>
+      <h4 style="margin:0 0 8px;color:var(--green,#4a9a4a);font-size:.85rem;letter-spacing:.6px;text-transform:uppercase">7. Court Owner's Responsibilities</h4>
       <ul style="margin:0 0 14px;padding-left:20px">
         <li>Keep court availability, rates, and operating hours accurate on the platform</li>
         <li>Manage and respond to customer concerns about the physical court experience</li>
@@ -3852,7 +3730,7 @@ function applyRoleVisibility(role) {
         <li>Not export or misuse customer data for purposes unrelated to court management</li>
       </ul>
 
-      <h4 style="margin:0 0 8px;color:var(--green,#4a9a4a);font-size:.85rem;letter-spacing:.6px;text-transform:uppercase">9. Independence of Parties</h4>
+      <h4 style="margin:0 0 8px;color:var(--green,#4a9a4a);font-size:.85rem;letter-spacing:.6px;text-transform:uppercase">8. Independence of Parties</h4>
       <p style="margin:0 0 14px">The Court Owner and Platform Provider are fully independent parties. This Agreement does not create a partnership, franchise, joint venture, employment, or agency relationship. The Platform Provider is not responsible for:</p>
       <ul style="margin:0 0 14px;padding-left:20px">
         <li>Disputes between the Court Owner and customers</li>
@@ -3861,22 +3739,21 @@ function applyRoleVisibility(role) {
         <li>Any business, tax, or legal obligations of the Court Owner</li>
       </ul>
 
-      <h4 style="margin:0 0 8px;color:var(--green,#4a9a4a);font-size:.85rem;letter-spacing:.6px;text-transform:uppercase">10. Platform Availability</h4>
+      <h4 style="margin:0 0 8px;color:var(--green,#4a9a4a);font-size:.85rem;letter-spacing:.6px;text-transform:uppercase">9. Platform Availability</h4>
       <p style="margin:0 0 14px">The Platform Provider will make reasonable efforts to keep the system available. However, the Platform Provider does not guarantee 100% uptime and is not liable for losses caused by temporary platform outages, third-party service interruptions (e.g. Supabase, Cloudflare), or force majeure events.</p>
 
-      <h4 style="margin:0 0 8px;color:var(--green,#4a9a4a);font-size:.85rem;letter-spacing:.6px;text-transform:uppercase">11. Termination</h4>
-      <p style="margin:0 0 14px">Either party may terminate this Agreement with <strong>14 days written notice</strong> via GCash message or email. The Platform Provider may terminate immediately and without notice if the Court Owner breaches Sections 5 (Weekly Fee Remittance), 6 (Anti-Circumvention), or 7 (Honor Bookings), fails to remit platform fees for 2 or more consecutive weeks, engages in fraud, or misuses customer data.</p>
+      <h4 style="margin:0 0 8px;color:var(--green,#4a9a4a);font-size:.85rem;letter-spacing:.6px;text-transform:uppercase">10. Termination</h4>
+      <p style="margin:0 0 14px">Either party may terminate this Agreement with <strong>14 days written notice</strong> via GCash message or email. The Platform Provider may terminate immediately and without notice if the Court Owner breaches Sections 5 (Anti-Circumvention) or 6 (Honor Bookings), engages in fraud, or misuses customer data.</p>
 
-      <h4 style="margin:0 0 8px;color:var(--green,#4a9a4a);font-size:.85rem;letter-spacing:.6px;text-transform:uppercase">12. Governing Law</h4>
+      <h4 style="margin:0 0 8px;color:var(--green,#4a9a4a);font-size:.85rem;letter-spacing:.6px;text-transform:uppercase">11. Governing Law</h4>
       <p style="margin:0 0 14px">This Agreement is governed by the laws of the <strong>Republic of the Philippines</strong>, including the Electronic Commerce Act of 2000 (RA 8792), the Data Privacy Act of 2012 (RA 10173), and the Civil Code of the Philippines. Any disputes shall be resolved in the proper courts of Agusan del Sur.</p>
 
-      <h4 style="margin:0 0 8px;color:var(--green,#4a9a4a);font-size:.85rem;letter-spacing:.6px;text-transform:uppercase">13. Acceptance by Electronic Signature</h4>
+      <h4 style="margin:0 0 8px;color:var(--green,#4a9a4a);font-size:.85rem;letter-spacing:.6px;text-transform:uppercase">12. Acceptance by Electronic Signature</h4>
       <p style="margin:0 0 14px">Pursuant to the Philippine <strong>Electronic Commerce Act of 2000 (Republic Act No. 8792)</strong>, this Agreement is legally binding upon electronic acceptance. By typing your legal full name and drawing your signature below and clicking "I Agree & Sign", you confirm that:</p>
       <ul style="margin:0 0 14px;padding-left:20px">
         <li>You have read and fully understood all terms of this Agreement.</li>
         <li>You are the authorized Court Owner or duly authorized representative.</li>
         <li>You authorize the platform to collect ₱15.00 from customers per confirmed booking.</li>
-        <li>You agree to remit all collected ₱15.00 platform fees to the Platform Provider every Friday via GCash as required by Section 5.</li>
         <li>You agree to honor all platform bookings and not circumvent the platform fee.</li>
         <li>You understand the Platform Provider is the software provider only and does not operate the court.</li>
         <li>This electronic signature has the same legal force as a handwritten signature under RA 8792.</li>
@@ -3906,7 +3783,7 @@ function applyRoleVisibility(role) {
 
         <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;margin-bottom:20px;font-size:.84rem">
           <input id="agreeCheck" type="checkbox" style="margin-top:3px;width:16px;height:16px;flex-shrink:0;cursor:pointer" onchange="agreeCheckReady()" />
-          <span>I have read and fully understood the Platform Access &amp; Booking Fee Authorization Agreement above. I authorize the platform to collect a <strong>fixed ₱15.00 platform booking fee from customers</strong> per confirmed booking. I agree to honor all platform bookings and not to direct customers to book outside the platform to avoid the platform fee, and I agree to remit all collected platform fees to the Platform Provider every Friday via GCash. I understand that Jelar Joy Hisola is the software provider only and does not operate the court. This electronic signature is legally binding under RA 8792.</span>
+          <span>I have read and fully understood the Platform Access &amp; Booking Fee Authorization Agreement above. I authorize the platform to collect a <strong>fixed ₱15.00 platform booking fee from customers</strong> per confirmed booking. I agree to honor all platform bookings and not direct customers to book directly to circumvent this fee. I understand that Jelar Joy Hisola is the software provider only and does not operate the court. This electronic signature is legally binding under RA 8792.</span>
         </label>
 
         <button id="agreeSubmitBtn" onclick="submitAgreement()" disabled

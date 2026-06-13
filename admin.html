@@ -402,6 +402,12 @@ tr:hover td { background: var(--bg2); }
   }
   .tbl-scroll td:empty { display: none; }
   .tbl-scroll td[data-label="Actions"] { margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--border); }
+  /* Long values (txn IDs, refs) wrap instead of overflowing the card */
+  .tbl-scroll td code { word-break: break-all; white-space: normal; }
+  /* Billing panel header controls go full-width and stack */
+  .bill-controls { width: 100%; }
+  .bill-controls #billWeekMode { flex: 1 1 100%; width: 100% !important; }
+  .bill-controls .btn { flex: 1 1 auto; justify-content: center; }
   .filters { flex-direction: column; }
   .filters input, .filters select { width: 100%; }
   /* Modals */
@@ -420,6 +426,8 @@ tr:hover td { background: var(--bg2); }
   /* Modal full-height from bottom */
   .overlay { align-items: flex-end; padding: 0; }
   .modal { border-radius: 20px 20px 0 0; max-height: 92vh; }
+  /* Long values inside modals wrap instead of overflowing */
+  .m-body code { word-break: break-all; white-space: normal; }
 }
 
 /* ── CALENDAR VIEW ─────────────────────────────────────── */
@@ -1200,7 +1208,7 @@ tr:hover td { background: var(--bg2); }
       <div class="panel" data-perm="owner_only" style="max-width:980px;margin-bottom:20px;border:1.5px solid rgba(74,154,74,.35);background:rgba(74,154,74,.04)">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px">
           <h4 style="margin:0;color:var(--green)">🧾 Weekly Billing Statements</h4>
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <div class="bill-controls" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
             <label style="font-size:.78rem;color:var(--text3)">Statement Week:</label>
             <select class="fi" id="billWeekMode" style="padding:5px 10px;font-size:.82rem;width:auto">
               <option value="1" selected>Previous Week (Mon-Sun)</option>

@@ -1612,6 +1612,8 @@ async function saveMaintRate() {
 
 let _chartBookings = null, _chartRevenue = null;
 function renderDashCharts(bookings) {
+  // Only chart confirmed + completed — exclude verifying/pending with null totals
+  const chartBks = bookings.filter(b => b.status === 'confirmed' || b.status === 'completed');
   const months = [];
   const now = new Date();
   for (let i = 5; i >= 0; i--) {
@@ -1620,9 +1622,9 @@ function renderDashCharts(bookings) {
   }
   const countByMonth = {}, revByMonth = {};
   months.forEach(m => { countByMonth[m.key] = 0; revByMonth[m.key] = 0; });
-  bookings.forEach(b => {
+  chartBks.forEach(b => {
     const mk = b.date?.slice(0,7);
-    if (mk && countByMonth[mk] !== undefined) { countByMonth[mk]++; revByMonth[mk] += b.total || 0; }
+    if (mk && countByMonth[mk] !== undefined) { countByMonth[mk]++; revByMonth[mk] += Number(b.total) || 0; }
   });
 
   const isDark = document.body.getAttribute('data-theme') === 'dark';
@@ -1643,6 +1645,8 @@ function renderDashCharts(bookings) {
   if (_chartBookings) _chartBookings.destroy();
   if (_chartRevenue) _chartRevenue.destroy();
 
+  const maxRev = Math.max(...months.map(m => revByMonth[m.key]), 100);
+
   _chartBookings = new Chart($('chartBookings'), {
     type: 'bar',
     data: {
@@ -1654,7 +1658,7 @@ function renderDashCharts(bookings) {
         borderWidth: 2, borderRadius: 6, barPercentage: 0.6
       }]
     },
-    options: { ...baseOpts, scales: { ...baseOpts.scales, y: { ...baseOpts.scales.y, ticks: { ...baseOpts.scales.y.ticks, stepSize: 1 } } } }
+    options: { ...baseOpts, scales: { ...baseOpts.scales, y: { ...baseOpts.scales.y, min: 0, ticks: { ...baseOpts.scales.y.ticks, stepSize: 1, precision: 0 } } } }
   });
 
   _chartRevenue = new Chart($('chartRevenue'), {
@@ -1668,7 +1672,7 @@ function renderDashCharts(bookings) {
         tension: 0.3, fill: true
       }]
     },
-    options: { ...baseOpts, scales: { ...baseOpts.scales, y: { ...baseOpts.scales.y, ticks: { ...baseOpts.scales.y.ticks, callback: v => '₱' + v.toLocaleString() } } } }
+    options: { ...baseOpts, scales: { ...baseOpts.scales, y: { ...baseOpts.scales.y, min: 0, suggestedMax: maxRev, ticks: { ...baseOpts.scales.y.ticks, callback: v => '₱' + v.toLocaleString() } } } }
   });
 }
 

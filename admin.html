@@ -1580,7 +1580,7 @@ tr:hover td { background: var(--bg2); }
         <textarea class="fi" id="pbNote" rows="2" placeholder="e.g. paid via GCash on 2026-06-13" style="resize:none"></textarea>
       </div>
       <div class="fg" style="margin:0">
-        <label class="fl">Receipt Screenshot (optional)</label>
+        <label class="fl">Receipt Screenshot <span style="color:#e53935">*</span></label>
         <label style="display:flex;align-items:center;gap:9px;padding:11px 13px;background:var(--input);border:1.5px dashed var(--border);border-radius:8px;cursor:pointer;font-size:.84rem;color:var(--muted);" onmouseover="this.style.borderColor='var(--yellow)'" onmouseout="this.style.borderColor='var(--border)'">
           📷 Upload screenshot
           <input type="file" accept="image/*" id="pbProofFile" style="display:none" onchange="pbHandleProofUpload(event)" />
@@ -3552,6 +3552,7 @@ async function submitMyPayment() {
   const note = ($('pbNote').value || '').trim();
   if (!id) return;
   if (!txnId) { toast('GCash Transaction ID is required.', 'err'); return; }
+  if (!_payBillingProofData) { toast('Receipt screenshot is required.', 'err'); return; }
 
   try {
     await DB.submitWeeklyFeePayment(id, {

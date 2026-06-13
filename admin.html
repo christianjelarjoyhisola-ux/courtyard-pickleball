@@ -1595,6 +1595,19 @@ tr:hover td { background: var(--bg2); }
   </div>
 </div>
 
+<div class="overlay" id="billProofModal">
+  <div class="modal" style="max-width:560px">
+    <div class="m-hd"><h2>📎 Payment Receipt</h2><button class="m-x" onclick="closeModal('billProofModal')">✕</button></div>
+    <div class="m-body">
+      <div id="billProofMeta" style="font-size:.82rem;color:var(--muted);margin-bottom:12px"></div>
+      <img id="billProofImg" src="" alt="Payment receipt" style="width:100%;max-height:70vh;object-fit:contain;border-radius:8px;border:1px solid var(--border);background:#fff" />
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-g" onclick="closeModal('billProofModal')">Close</button>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ==============================================
    UTILS
@@ -3285,6 +3298,17 @@ function _billStatusBadge(status) {
   return '<span class="bdg bdg-d">Draft</span>';
 }
 
+async function viewBillingProof(id) {
+  const all = await DB.getWeeklyFees();
+  const r = all.find(x => x.id === id);
+  if (!r || !r.submitted_proof_url) { toast('No receipt attached.', 'err'); return; }
+  $('billProofImg').src = r.submitted_proof_url;
+  const ref = r.submitted_ref ? ` • Txn: ${r.submitted_ref}` : '';
+  const when = r.submitted_at ? ` • ${new Date(r.submitted_at).toLocaleString('en-PH')}` : '';
+  $('billProofMeta').textContent = `${r.court_owner_email || 'Court Owner'}${ref}${when}`;
+  $('billProofModal').classList.add('show');
+}
+
 async function renderWeeklyBilling() {
   const body = $('billBody');
   if (!body || !Auth.can('owner_only', sess.role)) return;
@@ -3293,7 +3317,6 @@ async function renderWeeklyBilling() {
     DB.getWeeklyFees(),
     DB.getAccounts(),
   ]);
-
   const ownerById = {};
   accounts.forEach(a => { ownerById[a.id] = a; });
 
@@ -3320,7 +3343,7 @@ async function renderWeeklyBilling() {
     const canMarkPaid = status !== 'paid';
     const canMarkOverdue = ['draft', 'sent'].includes(status);
     const proofBtn = (status === 'submitted' && r.submitted_proof_url)
-      ? `<a href="${r.submitted_proof_url}" target="_blank" rel="noopener" class="btn btn-sm" style="background:rgba(91,140,210,.12);color:#5b8cd2;border:1px solid rgba(91,140,210,.3);text-decoration:none">📎 Proof</a>`
+      ? `<button class="btn btn-sm" style="background:rgba(91,140,210,.12);color:#5b8cd2;border:1px solid rgba(91,140,210,.3)" onclick="viewBillingProof('${r.id}')">📎 Proof</button>`
       : '';
 
     return `<tr>

@@ -1,5 +1,6 @@
 # Secret / API key files
 *.txt
+!ads.txt
 resendAPIKEY.txt
 .env
 .env.local

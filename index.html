@@ -243,16 +243,18 @@ body.light .nav { background:rgba(248,250,252,.92); }
   .cc { flex-direction:column; display:none; }
   .cc.active-mobile { display:flex; }
   .cc-photo {
-    width:100%; min-height:0; max-height:none;
-    background:rgba(var(--ac),.06); border-bottom:1px solid rgba(var(--ac),.15);
-    display:flex; flex-direction:column; align-items:flex-start; gap:6px;
-    padding:10px 14px;
+    width:100%; min-height:150px; max-height:150px;
+    position:relative;
   }
-  .cc-photo-bg { display:none !important; }      /* hide court diagram/photo on mobile (beats inline style) */
-  .cc-photo-avail { position:static; top:auto; left:auto; }
-  .cc-photo-bar { position:static; background:none; padding:0; }
-  .cc-photo-name { display:none; }               /* name already shown in mobile header */
-  .cc-photo-rate { font-size:.72rem; color:var(--dark-muted); margin-top:0; line-height:1.35; }
+  .cc-photo-bg { display:flex !important; }       /* show court photo/diagram banner on mobile */
+  .cc-photo-avail { position:absolute; top:10px; left:10px; }
+  .cc-photo-bar {
+    position:absolute; bottom:0; left:0; right:0;
+    background:linear-gradient(transparent,rgba(0,0,0,.82));
+    padding:22px 14px 10px;
+  }
+  .cc-photo-name { display:none; }                /* name already shown in mobile header */
+  .cc-photo-rate { font-size:.74rem; color:rgba(255,255,255,.85); margin-top:0; line-height:1.35; }
   .cc-photo-feats { display:none; }
   .cc-times { padding:10px 12px 12px; }
   .cc-times-sub { display:none; }

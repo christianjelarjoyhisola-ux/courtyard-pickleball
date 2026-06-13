@@ -1618,7 +1618,8 @@ function renderDashCharts(bookings) {
   const now = new Date();
   for (let i = 5; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    months.push({ key: d.toISOString().slice(0,7), label: d.toLocaleString('default',{month:'short',year:'2-digit'}) });
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    months.push({ key, label: d.toLocaleString('default',{month:'short',year:'2-digit'}) });
   }
   const countByMonth = {}, revByMonth = {};
   months.forEach(m => { countByMonth[m.key] = 0; revByMonth[m.key] = 0; });

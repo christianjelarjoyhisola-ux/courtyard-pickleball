@@ -3171,32 +3171,35 @@ async function generateWeeklyStatement() {
 
   const mode = $('billWeekMode')?.value || 'last';
   const { startDate, endDate, end } = _weekBounds(mode);
-  const [accounts, settings, bookings] = await Promise.all([
-    DB.getAccounts(),
-    DB.getSettings(),
-    DB.getBookings(),
-  ]);
-
-  // Look for court_owner, or fallback to system owner (for testing)
-  let courtOwner = accounts.find(a => a.role === 'court_owner');
-  if (!courtOwner) {
-    courtOwner = accounts.find(a => a.role === 'owner') || accounts[0];
-    if (!courtOwner) { toast('No accounts found.', 'err'); return; }
-  }
-
-  const feePerBooking = Math.max(0, Number(settings.maintenance_fee || 15));
-  const eligible = bookings.filter(b =>
-    (b.status === 'confirmed' || b.status === 'completed') &&
-    b.date >= startDate && b.date <= endDate
-  );
-  const bookingsCount = eligible.length;
-  const amountDue = bookingsCount * feePerBooking;
-
-  const due = new Date(end);
-  due.setDate(end.getDate() + 5); // Friday after Sunday cut-off
-  due.setHours(17, 0, 0, 0);
-
+  
   try {
+    const [accounts, settings, bookings] = await Promise.all([
+      DB.getAccounts(),
+      DB.getSettings(),
+      DB.getBookings(),
+    ]);
+
+    // Look for court_owner, or fallback to system owner (for testing)
+    let courtOwner = accounts.find(a => a.role === 'court_owner');
+    if (!courtOwner) {
+      courtOwner = accounts.find(a => a.role === 'owner') || accounts[0];
+      if (!courtOwner) { toast('No accounts found.', 'err'); return; }
+    }
+
+    const feePerBooking = Math.max(0, Number(settings.maintenance_fee || 15));
+    const eligible = bookings.filter(b =>
+      (b.status === 'confirmed' || b.status === 'completed') &&
+      b.date >= startDate && b.date <= endDate
+    );
+    const bookingsCount = eligible.length;
+    const amountDue = bookingsCount * feePerBooking;
+
+    const due = new Date(end);
+    due.setDate(end.getDate() + 5); // Friday after Sunday cut-off
+    due.setHours(17, 0, 0, 0);
+
+    console.log('[billGenerate] mode=', mode, 'week=', startDate, 'to', endDate, 'owner=', courtOwner.email, 'eligible=', bookingsCount);
+
     await DB.saveWeeklyFee({
       courtOwnerUserId: courtOwner.id,
       courtOwnerEmail: courtOwner.email,
@@ -3213,7 +3216,8 @@ async function generateWeeklyStatement() {
     toast(`Statement generated: ${bookingsCount} bookings × ${fmt(feePerBooking)} = ${fmt(amountDue)}`);
     await renderWeeklyBilling();
   } catch (e) {
-    toast('Failed to generate weekly statement.', 'err');
+    console.error('[billGenerate] error:', e);
+    toast('Failed to generate weekly statement: ' + (e?.message || e), 'err');
   }
 }
 

@@ -236,6 +236,8 @@ body.light .nav { background:rgba(248,250,252,.92); }
   grid-template-columns:repeat(5,1fr);
   gap:8px;
 }
+/* responsive time label: full on desktop, compact on mobile */
+.csl-time .t-compact { display:none; }
 @media(max-width:900px){ .cc-slots-grid{ grid-template-columns:repeat(4,1fr); } }
 @media(max-width:700px){
   .cc { flex-direction:column; display:none; }
@@ -246,10 +248,13 @@ body.light .nav { background:rgba(248,250,252,.92); }
   .cc-times-sub { display:none; }
   .cc-slots-grid{ grid-template-columns:repeat(3,1fr); gap:6px; }
   .cc-slot-btn { padding:6px 4px; min-height:auto; }
-  .csl-time  { font-size:.68rem; }
-  .csl-price { font-size:.65rem; }
+  .csl-time  { font-size:.7rem; }
+  .csl-time .t-full { display:none; }
+  .csl-time .t-compact { display:inline; }
+  .csl-price { font-size:.66rem; }
 }
-@media(max-width:480px){ .cc-slots-grid{ grid-template-columns:repeat(2,1fr); } }
+@media(max-width:480px){ .cc-slots-grid{ grid-template-columns:repeat(3,1fr); gap:5px; } }
+@media(max-width:340px){ .cc-slots-grid{ grid-template-columns:repeat(2,1fr); } }
 
 /* ── MOBILE COURT TABS ── */
 .court-tabs {
@@ -2251,6 +2256,9 @@ function getPricingTiersForCourt(c) {
 }
 
 const fmtTs = h => h === 24 ? '12A' : `${h % 12 || 12}${h < 12 ? 'A' : 'P'}`;
+/* compact range label for mobile, e.g. 6AM–7AM / 11AM–12PM */
+const fmtTc = h => h === 24 ? '12AM' : `${h % 12 || 12}${h < 12 ? 'AM' : 'PM'}`;
+const slotTimeLabel = h => `<span class="t-full">${fmtT(h)} – ${fmtT(h+1)}</span><span class="t-compact">${fmtTc(h)}–${fmtTc(h+1)}</span>`;
 
 /* =============================================
    CARD SLOT MULTI-SELECT
@@ -2664,7 +2672,7 @@ async function onCardDate(courtId, date) {
     const isBooked_ = bookedHrs.has(h);
     const isOpenPlay_ = isOpenPlayHour(date, h);
     const isMaint_ = isMaintenanceHour(date, h, courtId);
-    const timeRange = `${fmtT(h)} – ${fmtT(h+1)}`;
+    const timeRange = slotTimeLabel(h);
     if (isPast_)    return `<div class="cc-slot-btn past-slot"><div class="csl-time">${timeRange}</div><div class="csl-tag">${isPastDate_ ? 'Past' : 'Done'}</div></div>`;
     if (isBooked_ && verifyingHrs.has(h)) return `<div class="cc-slot-btn processing"><div class="csl-time">${timeRange}</div><div class="csl-tag">⏳ Processing…</div></div>`;
     if (isBooked_) return `<div class="cc-slot-btn taken"><div class="csl-time">${timeRange}</div><div class="csl-name">${maskName(slotNameMap[h])}</div></div>`;
@@ -2731,7 +2739,7 @@ async function renderCourts() {
           const isBooked_ = bookedHours.has(h);
           const isOpenPlay_ = isOpenPlayHour(today, h);
           const isMaint_ = isMaintenanceHour(today, h, c.id);
-          const timeRange = `${fmtT(h)} – ${fmtT(h+1)}`;
+          const timeRange = slotTimeLabel(h);
           if (isPast_)    return `<div class="cc-slot-btn past-slot"><div class="csl-time">${timeRange}</div><div class="csl-tag">Done</div></div>`;
           if (isBooked_ && verifyingHoursSet.has(h)) return `<div class="cc-slot-btn processing"><div class="csl-time">${timeRange}</div><div class="csl-tag">⏳ Processing…</div></div>`;
           if (isBooked_) return `<div class="cc-slot-btn taken"><div class="csl-time">${timeRange}</div><div class="csl-name">${maskName(slotNameMap[h])}</div></div>`;

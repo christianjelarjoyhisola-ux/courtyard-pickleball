@@ -3177,8 +3177,12 @@ async function generateWeeklyStatement() {
     DB.getBookings(),
   ]);
 
-  const courtOwner = accounts.find(a => a.role === 'court_owner');
-  if (!courtOwner) { toast('No court owner account found.', 'err'); return; }
+  // Look for court_owner, or fallback to system owner (for testing)
+  let courtOwner = accounts.find(a => a.role === 'court_owner');
+  if (!courtOwner) {
+    courtOwner = accounts.find(a => a.role === 'owner') || accounts[0];
+    if (!courtOwner) { toast('No accounts found.', 'err'); return; }
+  }
 
   const feePerBooking = Math.max(0, Number(settings.maintenance_fee || 15));
   const eligible = bookings.filter(b =>

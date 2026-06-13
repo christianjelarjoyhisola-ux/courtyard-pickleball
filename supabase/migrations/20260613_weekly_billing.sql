@@ -12,17 +12,21 @@ create table if not exists public.weekly_fees (
   bookings_count integer not null default 0,
   fee_per_booking numeric not null default 15,
   amount_due numeric not null default 0,
-  status text not null default 'draft', -- draft | sent | paid | overdue
+  status text not null default 'draft', -- draft | sent | submitted | paid | overdue
   generated_at timestamptz not null default now(),
   sent_at timestamptz,
   due_at timestamptz,
+  submitted_at timestamptz,
+  submitted_ref text,
+  submitted_note text,
+  submitted_proof_url text,
   paid_at timestamptz,
   paid_ref text,
   paid_note text,
   paid_by_user_id text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  constraint weekly_fees_status_check check (status in ('draft','sent','paid','overdue')),
+  constraint weekly_fees_status_check check (status in ('draft','sent','submitted','paid','overdue')),
   constraint weekly_fees_bookings_count_check check (bookings_count >= 0),
   constraint weekly_fees_amount_due_check check (amount_due >= 0),
   constraint weekly_fees_week_range_check check (week_end >= week_start)
@@ -80,3 +84,15 @@ create policy weekly_fees_delete_auth
   for delete
   to authenticated
   using (true);
+
+-- ------------------------------------------------------------
+-- Idempotent backfill: ensure court-owner payment-submission
+-- columns exist even if the table was created by an earlier run.
+-- ------------------------------------------------------------
+alter table public.weekly_fees add column if not exists submitted_at timestamptz;
+alter table public.weekly_fees add column if not exists submitted_ref text;
+alter table public.weekly_fees add column if not exists submitted_note text;
+alter table public.weekly_fees add column if not exists submitted_proof_url text;
+
+notify pgrst, 'reload schema';
+

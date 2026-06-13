@@ -551,6 +551,36 @@ window.DB = {
       throw err;
     }
   },
+
+  // Court owner submits a payment proof for their statement
+  async submitWeeklyFeePayment(id, { submittedRef, submittedNote, submittedProofUrl }) {
+    const row = {
+      status: 'submitted',
+      submitted_at: new Date().toISOString(),
+      submitted_ref: submittedRef || null,
+      submitted_note: submittedNote || null,
+      submitted_proof_url: submittedProofUrl || null,
+    };
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/weekly_fees?id=eq.${id}`, {
+        method: 'PATCH',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(row),
+      });
+      if (!res.ok) {
+        const errText = await res.text();
+        console.error('submitWeeklyFeePayment error:', res.status, errText);
+        throw new Error(`HTTP ${res.status}: ${errText}`);
+      }
+    } catch (err) {
+      console.error('submitWeeklyFeePayment:', err);
+      throw err;
+    }
+  },
 };
 
 // =============================================
@@ -568,7 +598,7 @@ window.Auth = {
   ROLE_LABELS: { owner: 'System Owner', court_owner: 'Court Owner', staff: 'Court Staff' },
   ROLE_PERMISSIONS: {
     owner:       ['dashboard', 'bookings', 'reports', 'courts', 'open_play', 'maintenance', 'payments', 'accounts', 'booking_delete', 'export', 'settings', 'owner_only'],
-    court_owner: ['dashboard', 'bookings', 'reports', 'courts', 'open_play', 'maintenance', 'payments', 'export', 'settings'],
+    court_owner: ['dashboard', 'bookings', 'reports', 'courts', 'open_play', 'maintenance', 'payments', 'export', 'settings', 'court_owner_only'],
     staff:       ['bookings', 'open_play', 'payments'],
   },
 

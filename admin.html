@@ -1021,6 +1021,66 @@ tr:hover td { background: var(--bg2); }
         </div>
         <div id="maintRateSummary" style="margin-top:12px;padding:10px 14px;background:var(--input);border:1px solid var(--border);border-radius:8px;font-size:.84rem;color:var(--muted);display:none"></div>
       </div>
+
+      <!-- COURT OWNER MY BILLING — visible to court_owner only -->
+      <div class="panel" data-perm="court_owner_only" style="max-width:980px;margin-bottom:20px;border:2px solid rgba(255,160,0,.45);background:rgba(255,160,0,.04)">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+          <h4 style="margin:0;color:var(--yellow)">🧾 My Billing Statements <span style="font-size:.7rem;background:rgba(255,160,0,.15);color:var(--yellow);padding:2px 8px;border-radius:8px;margin-left:6px;font-family:'DM Mono',monospace;letter-spacing:1px">COURT OWNER</span></h4>
+          <button class="btn btn-g btn-sm" onclick="renderMyBilling()">🔄 Refresh</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:12px">
+          <div style="background:var(--input);border:1px solid var(--border);border-radius:9px;padding:10px 12px;text-align:center">
+            <div style="font-size:.7rem;color:var(--text3);text-transform:uppercase;letter-spacing:.6px">Open Statements</div>
+            <div id="myBillOpenCount" style="font-size:1.25rem;font-weight:800;color:var(--text);margin-top:4px">0</div>
+          </div>
+          <div style="background:var(--input);border:1px solid var(--border);border-radius:9px;padding:10px 12px;text-align:center">
+            <div style="font-size:.7rem;color:var(--text3);text-transform:uppercase;letter-spacing:.6px">Total Owed</div>
+            <div id="myBillOutstanding" style="font-size:1.25rem;font-weight:800;color:var(--yellow);margin-top:4px">₱0.00</div>
+          </div>
+          <div style="background:var(--input);border:1px solid var(--border);border-radius:9px;padding:10px 12px;text-align:center">
+            <div style="font-size:.7rem;color:var(--text3);text-transform:uppercase;letter-spacing:.6px">Next Due</div>
+            <div id="myBillNextDue" style="font-size:.88rem;font-weight:700;color:var(--text);margin-top:4px">—</div>
+          </div>
+        </div>
+        <div class="tbl-scroll" style="max-height:360px;overflow:auto;border:1px solid var(--border);border-radius:9px;background:var(--card)">
+          <table>
+            <thead>
+              <tr>
+                <th>Week</th>
+                <th>Bookings</th>
+                <th>Rate</th>
+                <th>Amount Due</th>
+                <th>Status</th>
+                <th>Due Date</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="myBillBody"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:22px">No statements yet.</td></tr></tbody>
+          </table>
+        </div>
+        <div style="margin-top:10px;font-size:.76rem;color:var(--text3)">Send your platform fee to the GCash account shown when you click <strong>Pay Now</strong>. Then submit the GCash transaction ID for verification.</div>
+      </div>
+
+      <!-- PLATFORM REMITTANCE — System Owner only (where court owners send fees) -->
+      <div class="panel" data-perm="owner_only" style="max-width:680px;margin-bottom:20px;border:1.5px solid rgba(255,160,0,.35);background:rgba(255,160,0,.04)">
+        <h4>🏦 Platform Remittance Account <span style="font-size:.7rem;background:rgba(255,160,0,.15);color:var(--yellow);padding:2px 8px;border-radius:8px;margin-left:6px;font-family:'DM Mono',monospace;letter-spacing:1px">SYSTEM OWNER</span></h4>
+        <p style="color:var(--muted);font-size:.84rem;margin:8px 0 14px">This is the GCash account where court owners send weekly platform fees. Shown to them in the Pay Now dialog.</p>
+        <div class="frow" style="gap:10px;margin-bottom:10px;">
+          <div class="fg" style="margin:0;flex:1">
+            <label class="fl">Platform GCash Number</label>
+            <input type="text" class="fi" id="platformGcashNumInput" placeholder="e.g. 0917 123 4567" />
+          </div>
+          <div class="fg" style="margin:0;flex:1">
+            <label class="fl">Platform GCash Account Name</label>
+            <input type="text" class="fi" id="platformGcashNameInput" placeholder="e.g. CourtYard Platform Inc." />
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px">
+          <button class="btn btn-p btn-sm" onclick="savePlatformRemittance()">💾 Save Remittance Account</button>
+          <span id="platformRemSummary" style="font-size:.78rem;color:var(--muted)"></span>
+        </div>
+      </div>
+
       <div class="panel" style="max-width:680px;margin-bottom:20px;border:1px solid var(--border);">
         <h4>📲 Payment QR Settings</h4>
         <p style="color:var(--muted);font-size:.84rem;margin:8px 0 16px">
@@ -1458,6 +1518,62 @@ tr:hover td { background: var(--bg2); }
     <div class="m-foot">
       <button class="btn btn-g" onclick="closeModal('rescheduleModal')">Cancel</button>
       <button class="btn btn-p" onclick="saveReschedule()">📅 Reschedule & Notify</button>
+    </div>
+  </div>
+</div>
+
+<!-- PAY NOW MODAL — court_owner submits platform fee remittance -->
+<div class="overlay" id="payBillingModal">
+  <div class="modal" style="max-width:520px">
+    <div class="m-hd"><h2>💸 Pay Platform Fee</h2><button class="m-x" onclick="closeModal('payBillingModal')">✕</button></div>
+    <div class="m-body">
+      <input type="hidden" id="pbStatementId" />
+      <div style="background:rgba(255,160,0,.08);border:1px solid rgba(255,160,0,.3);border-radius:10px;padding:12px 14px;margin-bottom:14px">
+        <div style="font-size:.72rem;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">Statement</div>
+        <div id="pbWeekLabel" style="font-weight:700;color:var(--text);font-size:.95rem">—</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+          <span style="font-size:.76rem;color:var(--text3)">Amount Due</span>
+          <span id="pbAmount" style="font-size:1.4rem;font-weight:800;color:var(--yellow)">₱0.00</span>
+        </div>
+      </div>
+
+      <div style="background:var(--input);border:1.5px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px">
+        <div style="font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--green);margin-bottom:8px">📲 Send to GCash</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+          <div style="font-size:.76rem;color:var(--text3)">Number</div>
+          <div style="display:flex;align-items:center;gap:6px"><code id="pbPlatformNum" style="font-size:.86rem;color:var(--text);font-weight:700">—</code><button class="btn btn-sm" style="padding:3px 8px;font-size:.72rem" onclick="pbCopy('pbPlatformNum')">Copy</button></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+          <div style="font-size:.76rem;color:var(--text3)">Account Name</div>
+          <div style="display:flex;align-items:center;gap:6px"><code id="pbPlatformName" style="font-size:.82rem;color:var(--text)">—</code><button class="btn btn-sm" style="padding:3px 8px;font-size:.72rem" onclick="pbCopy('pbPlatformName')">Copy</button></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0">
+          <div style="font-size:.76rem;color:var(--text3)">Reference Note</div>
+          <div style="display:flex;align-items:center;gap:6px"><code id="pbRefNote" style="font-size:.82rem;color:var(--text)">—</code><button class="btn btn-sm" style="padding:3px 8px;font-size:.72rem" onclick="pbCopy('pbRefNote')">Copy</button></div>
+        </div>
+        <div style="font-size:.7rem;color:var(--text3);margin-top:6px">Tip: paste the reference note in your GCash transfer message so we can match it faster.</div>
+      </div>
+
+      <div class="fg">
+        <label class="fl">Your GCash Transaction ID <span style="color:#e53935">*</span></label>
+        <input type="text" class="fi" id="pbTxnId" placeholder="e.g. 1234567890123" />
+      </div>
+      <div class="fg">
+        <label class="fl">Note (optional)</label>
+        <textarea class="fi" id="pbNote" rows="2" placeholder="e.g. paid via GCash on 2026-06-13" style="resize:none"></textarea>
+      </div>
+      <div class="fg" style="margin:0">
+        <label class="fl">Receipt Screenshot (optional)</label>
+        <label style="display:flex;align-items:center;gap:9px;padding:11px 13px;background:var(--input);border:1.5px dashed var(--border);border-radius:8px;cursor:pointer;font-size:.84rem;color:var(--muted);" onmouseover="this.style.borderColor='var(--yellow)'" onmouseout="this.style.borderColor='var(--border)'">
+          📷 Upload screenshot
+          <input type="file" accept="image/*" id="pbProofFile" style="display:none" onchange="pbHandleProofUpload(event)" />
+        </label>
+        <img id="pbProofPreview" src="" alt="" style="display:none;width:100%;max-height:160px;object-fit:contain;border-radius:8px;margin-top:8px;border:1px solid var(--border);background:#fff" />
+      </div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-g" onclick="closeModal('payBillingModal')">Cancel</button>
+      <button class="btn btn-p" onclick="submitMyPayment()">✅ Submit Payment Proof</button>
     </div>
   </div>
 </div>
@@ -3064,6 +3180,8 @@ async function renderPaymentSettings() {
   if ($('gcashNameInput')) $('gcashNameInput').value = settings.gcash_merchant_name || '';
   if ($('gotymeNameInput')) $('gotymeNameInput').value = settings.gotyme_merchant_name || '';
   if ($('pnbNameInput')) $('pnbNameInput').value = settings.pnb_merchant_name || '';
+  if ($('platformGcashNumInput')) $('platformGcashNumInput').value = settings.platform_gcash_number || '';
+  if ($('platformGcashNameInput')) $('platformGcashNameInput').value = settings.platform_gcash_name || '';
 
   const gcashQr = settings.gcash_qr_image || '';
   if (gcashQr && $('gcashQrPreview')) {
@@ -3084,7 +3202,15 @@ async function renderPaymentSettings() {
   const summaryParts = [`Methods: ${(cashOn?'Cash ':'')}${(gcashOn?'GCash ':'')}${(gotymeOn?'GoTyme ':'')}${(pnbOn?'PNB':'')}`.trim() || 'none'];
   $('paySettingsSummary').textContent = summaryParts.join(' • ');
 
+  // Platform remittance summary
+  if ($('platformRemSummary')) {
+    const pn = settings.platform_gcash_number || '';
+    const pnm = settings.platform_gcash_name || '';
+    $('platformRemSummary').textContent = pn ? `Receiving via GCash: ${pn}${pnm ? ' (' + pnm + ')' : ''}` : 'Not configured yet — court owners cannot pay until set.';
+  }
+
   await renderWeeklyBilling();
+  await renderMyBilling();
 }
 
 function _weekBounds(mode = 'last') {
@@ -3111,6 +3237,7 @@ function _billStatusBadge(status) {
   const s = (status || 'draft').toLowerCase();
   if (s === 'paid') return '<span class="bdg bdg-c">Paid</span>';
   if (s === 'overdue') return '<span class="bdg bdg-x">Overdue</span>';
+  if (s === 'submitted') return '<span class="bdg bdg-p" style="background:rgba(255,160,0,.18);color:#ffa000;border:1px solid rgba(255,160,0,.4)">Submitted</span>';
   if (s === 'sent') return '<span class="bdg bdg-p">Sent</span>';
   return '<span class="bdg bdg-d">Draft</span>';
 }
@@ -3142,10 +3269,16 @@ async function renderWeeklyBilling() {
     const owner = ownerById[r.court_owner_user_id];
     const ownerName = owner?.fullName || owner?.full_name || r.court_owner_email || 'Court Owner';
     const dueLabel = r.due_at ? new Date(r.due_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
-    const paidRef = r.paid_ref || '—';
+    const status = (r.status || 'draft').toLowerCase();
+    const refDisplay = status === 'paid' ? (r.paid_ref || '—')
+                     : status === 'submitted' ? (r.submitted_ref || '—')
+                     : '—';
     const week = `${_dateLabel(r.week_start)} – ${_dateLabel(r.week_end)}`;
-    const canMarkPaid = (r.status || 'draft') !== 'paid';
-    const canMarkOverdue = ['draft', 'sent'].includes((r.status || 'draft').toLowerCase());
+    const canMarkPaid = status !== 'paid';
+    const canMarkOverdue = ['draft', 'sent'].includes(status);
+    const proofBtn = (status === 'submitted' && r.submitted_proof_url)
+      ? `<a href="${r.submitted_proof_url}" target="_blank" rel="noopener" class="btn btn-sm" style="background:rgba(91,140,210,.12);color:#5b8cd2;border:1px solid rgba(91,140,210,.3);text-decoration:none">📎 Proof</a>`
+      : '';
 
     return `<tr>
       <td data-label="Week">${week}</td>
@@ -3155,10 +3288,11 @@ async function renderWeeklyBilling() {
       <td data-label="Amount Due"><strong style="color:var(--yellow)">${fmt(r.amount_due)}</strong></td>
       <td data-label="Status">${_billStatusBadge(r.status)}</td>
       <td data-label="Due Date">${dueLabel}</td>
-      <td data-label="Paid Ref"><code style="font-size:.74rem;color:var(--text)">${paidRef}</code></td>
+      <td data-label="Paid Ref"><code style="font-size:.74rem;color:var(--text)">${refDisplay}</code></td>
       <td data-label="Actions">
         <div style="display:flex;gap:5px;flex-wrap:wrap">
-          ${canMarkPaid ? `<button class="btn btn-sm" style="background:rgba(74,154,74,.12);color:var(--green);border:1px solid rgba(74,154,74,.3)" onclick="markWeeklyFeePaid('${r.id}')">✅ Mark Paid</button>` : ''}
+          ${proofBtn}
+          ${canMarkPaid ? `<button class="btn btn-sm" style="background:rgba(74,154,74,.12);color:var(--green);border:1px solid rgba(74,154,74,.3)" onclick="markWeeklyFeePaid('${r.id}', '${(r.submitted_ref || '').replace(/'/g,"\\'")}')">✅ Mark Paid</button>` : ''}
           ${canMarkOverdue ? `<button class="btn btn-sm" style="background:rgba(229,57,53,.12);color:#e53935;border:1px solid rgba(229,57,53,.3)" onclick="markWeeklyFeeOverdue('${r.id}')">⚠️ Overdue</button>` : ''}
         </div>
       </td>
@@ -3221,8 +3355,9 @@ async function generateWeeklyStatement() {
   }
 }
 
-async function markWeeklyFeePaid(id) {
-  const paidRef = (prompt('Enter remittance reference (GCash Txn ID):') || '').trim();
+async function markWeeklyFeePaid(id, prefillRef = '') {
+  const defaultRef = prefillRef || '';
+  const paidRef = (prompt('Enter remittance reference (GCash Txn ID):', defaultRef) || '').trim();
   if (!paidRef) { toast('Reference is required to mark as paid.', 'err'); return; }
   const paidNote = (prompt('Optional note (leave blank if none):') || '').trim();
 
@@ -3248,6 +3383,156 @@ async function markWeeklyFeeOverdue(id) {
     await renderWeeklyBilling();
   } catch (e) {
     toast('Failed to mark statement overdue.', 'err');
+  }
+}
+
+/* ==============================================
+   COURT OWNER — MY BILLING (read-only + Pay Now)
+   ============================================== */
+async function renderMyBilling() {
+  const body = $('myBillBody');
+  if (!body || !Auth.can('court_owner_only', sess.role)) return;
+
+  const all = await DB.getWeeklyFees();
+  const mine = all.filter(r => r.court_owner_user_id === sess.id || r.court_owner_email === sess.email);
+
+  const open = mine.filter(r => !['paid'].includes((r.status || 'draft').toLowerCase()));
+  const outstanding = open.reduce((s, r) => s + (Number(r.amount_due) || 0), 0);
+  const nextDue = open
+    .filter(r => r.due_at)
+    .sort((a, b) => new Date(a.due_at) - new Date(b.due_at))[0];
+
+  $('myBillOpenCount').textContent = open.length;
+  $('myBillOutstanding').textContent = fmt(outstanding);
+  $('myBillNextDue').textContent = nextDue?.due_at
+    ? new Date(nextDue.due_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
+    : '—';
+
+  if (!mine.length) {
+    body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:22px">No statements yet.</td></tr>';
+    return;
+  }
+
+  body.innerHTML = mine.map(r => {
+    const status = (r.status || 'draft').toLowerCase();
+    const week = `${_dateLabel(r.week_start)} – ${_dateLabel(r.week_end)}`;
+    const dueLabel = r.due_at ? new Date(r.due_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+    const canPay = ['sent', 'overdue'].includes(status);
+    const submittedLabel = status === 'submitted'
+      ? `<div style="font-size:.7rem;color:var(--text3);margin-top:3px">Ref: <code>${r.submitted_ref || '—'}</code></div>`
+      : '';
+    const action = canPay
+      ? `<button class="btn btn-p btn-sm" onclick="openPayBilling('${r.id}')">💸 Pay Now</button>`
+      : status === 'submitted'
+        ? `<span style="font-size:.74rem;color:var(--muted)">Awaiting verification</span>`
+        : status === 'paid'
+          ? `<span style="font-size:.74rem;color:var(--green)">✓ Paid</span>`
+          : `<span style="font-size:.74rem;color:var(--muted)">—</span>`;
+
+    return `<tr>
+      <td data-label="Week">${week}${submittedLabel}</td>
+      <td data-label="Bookings">${r.bookings_count}</td>
+      <td data-label="Rate">${fmt(r.fee_per_booking)}</td>
+      <td data-label="Amount Due"><strong style="color:var(--yellow)">${fmt(r.amount_due)}</strong></td>
+      <td data-label="Status">${_billStatusBadge(r.status)}</td>
+      <td data-label="Due Date">${dueLabel}</td>
+      <td data-label="Action">${action}</td>
+    </tr>`;
+  }).join('');
+}
+
+let _payBillingProofData = '';
+async function openPayBilling(id) {
+  const all = await DB.getWeeklyFees();
+  const r = all.find(x => x.id === id);
+  if (!r) { toast('Statement not found.', 'err'); return; }
+
+  const settings = await DB.getSettings();
+  const platformNum = settings.platform_gcash_number || '';
+  const platformName = settings.platform_gcash_name || '';
+  if (!platformNum) {
+    toast('Platform GCash account not configured. Contact System Owner.', 'err');
+    return;
+  }
+
+  const refNote = `WK-${r.week_start}`;
+  $('pbStatementId').value = id;
+  $('pbWeekLabel').textContent = `${_dateLabel(r.week_start)} – ${_dateLabel(r.week_end)} • ${r.bookings_count} bookings`;
+  $('pbAmount').textContent = fmt(r.amount_due);
+  $('pbPlatformNum').textContent = platformNum;
+  $('pbPlatformName').textContent = platformName || '(name not set)';
+  $('pbRefNote').textContent = refNote;
+  $('pbTxnId').value = '';
+  $('pbNote').value = '';
+  $('pbProofPreview').src = '';
+  $('pbProofPreview').style.display = 'none';
+  if ($('pbProofFile')) $('pbProofFile').value = '';
+  _payBillingProofData = '';
+
+  $('payBillingModal').classList.add('show');
+}
+
+function pbCopy(elId) {
+  const el = $(elId);
+  if (!el) return;
+  const text = el.textContent || '';
+  if (!text || text === '—') return;
+  navigator.clipboard?.writeText(text).then(
+    () => toast(`Copied: ${text}`),
+    () => toast('Could not copy. Long-press to copy manually.', 'err')
+  );
+}
+
+function pbHandleProofUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (file.size > 4 * 1024 * 1024) {
+    toast('Image too large (max 4MB).', 'err');
+    e.target.value = '';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = ev => {
+    _payBillingProofData = ev.target.result;
+    $('pbProofPreview').src = _payBillingProofData;
+    $('pbProofPreview').style.display = '';
+  };
+  reader.readAsDataURL(file);
+}
+
+async function submitMyPayment() {
+  const id = $('pbStatementId').value;
+  const txnId = ($('pbTxnId').value || '').trim();
+  const note = ($('pbNote').value || '').trim();
+  if (!id) return;
+  if (!txnId) { toast('GCash Transaction ID is required.', 'err'); return; }
+
+  try {
+    await DB.submitWeeklyFeePayment(id, {
+      submittedRef: txnId,
+      submittedNote: note,
+      submittedProofUrl: _payBillingProofData || null,
+    });
+    closeModal('payBillingModal');
+    toast('✅ Payment proof submitted. Waiting for verification.');
+    await renderMyBilling();
+  } catch (e) {
+    console.error('[submitMyPayment]', e);
+    toast('Failed to submit: ' + (e?.message || e), 'err');
+  }
+}
+
+async function savePlatformRemittance() {
+  if (!Auth.can('owner_only', sess.role)) { toast('Only system owner can edit this.', 'err'); return; }
+  const num = ($('platformGcashNumInput')?.value || '').trim();
+  const name = ($('platformGcashNameInput')?.value || '').trim();
+  try {
+    await DB.saveSetting('platform_gcash_number', num);
+    await DB.saveSetting('platform_gcash_name', name);
+    await renderPaymentSettings();
+    toast('✅ Platform remittance saved.');
+  } catch (e) {
+    toast('Failed to save remittance settings.', 'err');
   }
 }
 

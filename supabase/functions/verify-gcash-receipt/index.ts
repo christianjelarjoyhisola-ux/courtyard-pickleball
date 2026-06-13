@@ -212,7 +212,7 @@ function checkReceiverNumber(text: string, expectedRaw: string): NumberCheck {
   return "unreadable";
 }
 
-// Loose masked-name match (e.g. "CO**TY**D P*CKL*B*LL" vs "CourtYard Pickleball").
+// Loose masked-name match (e.g. "HSN*TH***DDLE" vs "HRSN - The Paddle District").
 function checkReceiverName(text: string, expectedName: string): "match" | "mismatch" | "unreadable" {
   const expected = (expectedName || "").toUpperCase().replace(/[^A-Z]/g, "");
   if (expected.length < 3) return "unreadable";

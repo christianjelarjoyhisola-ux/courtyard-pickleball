@@ -52,8 +52,8 @@ function buildHtml(p: Payload): string {
       <!-- Header -->
       <tr><td style="background:linear-gradient(135deg,#2d7a2d,#1a4a1a);padding:32px 36px;text-align:center;">
         <div style="font-size:2rem;margin-bottom:6px;">🏓</div>
-        <div style="font-family:'Bebas Neue',Georgia,serif;font-size:1.6rem;letter-spacing:3px;color:#fff;line-height:1.1;">COURTYARD PICKLEBALL</div>
-        <div style="font-size:.75rem;color:rgba(255,255,255,.7);letter-spacing:2px;text-transform:uppercase;margin-top:4px;">Sibagat, Agusan del Sur</div>
+        <div style="font-family:'Bebas Neue',Georgia,serif;font-size:1.6rem;letter-spacing:3px;color:#fff;line-height:1.1;">HRSN - THE PADDLE DISTRICT</div>
+        <div style="font-size:.75rem;color:rgba(255,255,255,.7);letter-spacing:2px;text-transform:uppercase;margin-top:4px;">Mangnao-Canal, Dumaguete City</div>
       </td></tr>
 
       <!-- Blue bar -->
@@ -102,7 +102,7 @@ function buildHtml(p: Payload): string {
 
       <!-- Footer -->
       <tr><td style="background:#f4faf4;padding:18px 36px;text-align:center;border-top:1px solid #d8ead8;">
-        <div style="font-size:.75rem;color:#8a9a8a;">CourtYard Pickleball</div>
+        <div style="font-size:.75rem;color:#8a9a8a;">HRSN - The Paddle District</div>
         <div style="font-size:.72rem;color:#aabcaa;margin-top:4px;">This is an automated notification email.</div>
       </td></tr>
 

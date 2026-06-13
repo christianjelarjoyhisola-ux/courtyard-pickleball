@@ -343,6 +343,21 @@ body.light .nav { background:rgba(242,237,229,.95); }
   box-shadow: 0 0 0 3px rgba(59,130,246,.3), 0 4px 16px rgba(29,78,216,.5);
 }
 .cc-slot-btn.selected .csl-price { color: rgba(255,255,255,.85); font-weight: 800; }
+/* ── PROCESSING/VERIFYING ── yellow, slot reserved while OCR runs */
+.cc-slot-btn.processing {
+  background: rgba(202,138,4,.08);
+  border: 1.5px solid rgba(202,138,4,.45);
+  color: var(--dark-muted);
+  cursor: not-allowed;
+  animation: pulse-yellow 1.8s ease-in-out infinite;
+}
+.cc-slot-btn.processing .csl-time { color: #fbbf24; font-size: .62rem; }
+.cc-slot-btn.processing .csl-tag  { color: #fbbf24; font-size: .55rem; font-weight: 700; letter-spacing: .3px; }
+.cc-slot-btn.processing:hover { transform: none; box-shadow: none; }
+@keyframes pulse-yellow {
+  0%,100% { border-color: rgba(202,138,4,.45); box-shadow: none; }
+  50%      { border-color: rgba(202,138,4,.8);  box-shadow: 0 0 6px rgba(202,138,4,.3); }
+}
 /* ── TAKEN/BOOKED ── muted red, name masked, strikethrough */
 .cc-slot-btn.taken {
   background: #1c0a0a;
@@ -467,6 +482,22 @@ body.light .nav { background:rgba(242,237,229,.95); }
 }
 .bk-modal-x:hover { background:var(--red); border-color:var(--red); color:#fff; }
 .bk-modal-body { overflow-y:auto; padding:22px 22px; flex:1; }
+/* Slot reservation countdown banner */
+#slotCountdown {
+  display:none;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:9px 16px;
+  background:rgba(202,138,4,.13);
+  border-bottom:1px solid rgba(202,138,4,.3);
+  font-size:.78rem;
+  color:#fbbf24;
+  font-weight:600;
+}
+#slotCountdown .scd-timer { font-size:1rem; font-weight:800; font-variant-numeric:tabular-nums; letter-spacing:.5px; }
+#slotCountdown.urgent { background:rgba(220,38,38,.13); border-color:rgba(220,38,38,.3); color:#f87171; }
+#slotCountdown.urgent .scd-timer { animation: pulse-yellow .7s ease-in-out infinite; }
 .bk-modal-ft {
   padding:14px 22px; border-top:1px solid var(--border); flex-shrink:0;
   display:flex; gap:10px; background:var(--card); border-radius:0 0 18px 18px;
@@ -671,6 +702,12 @@ footer { background:var(--card); border-top:1px solid var(--border); padding:40p
 .inv-status-bdg { display:inline-block; margin-top:10px; padding:4px 14px; border-radius:20px; font-size:.75rem; font-weight:600; letter-spacing:.5px; position:relative; z-index:1; }
 .inv-status-pending { background:rgba(200,160,96,.15); color:var(--yellow); border:1px solid rgba(200,160,96,.35); }
 .inv-status-confirmed { background:rgba(74,154,74,.15); color:var(--green); border:1px solid rgba(74,154,74,.35); }
+.inv-status-rejected { background:rgba(229,57,53,.15); color:#e53935; border:1px solid rgba(229,57,53,.35); }
+.inv-status-review { background:rgba(184,126,0,.15); color:#b87e00; border:1px solid rgba(184,126,0,.35); }
+.inv-hero--rejected { background:linear-gradient(135deg,#2e0d0d 0%,#3d1a1a 100%) !important; }
+.inv-hero--rejected::before { background:radial-gradient(circle at 50% 0%,rgba(229,57,53,.25) 0%,transparent 70%) !important; }
+.inv-hero--rejected .inv-check-wrap { background:linear-gradient(135deg,#c0392b,#8b1c1c) !important; box-shadow:0 0 0 8px rgba(229,57,53,.15),0 0 0 16px rgba(229,57,53,.07) !important; }
+.inv-hero--approved .inv-check-wrap { background:linear-gradient(135deg,#1a8a4a,#0d5c30) !important; box-shadow:0 0 0 8px rgba(26,138,74,.2),0 0 0 16px rgba(26,138,74,.09) !important; }
 
 .inv-ref-wrap {
   padding:18px 24px 0; text-align:center;
@@ -1443,6 +1480,12 @@ body.light #splashScreen { background: var(--bg); }
 <div class="bk-modal-overlay" id="bookModal">
   <div class="bk-modal">
 
+    <!-- Slot reservation countdown -->
+    <div id="slotCountdown">
+      <span>⏳ Slot reserved — complete booking within <span id="scdTime">15:00</span></span>
+      <span class="scd-timer" id="scdTimerBig">15:00</span>
+    </div>
+
     <!-- Step indicator -->
     <div class="wiz-steps">
       <div class="wiz-step active" id="wizStep1">
@@ -1702,6 +1745,27 @@ body.light #splashScreen { background: var(--bg); }
               </div>
               <div style="font-size:.7rem;color:var(--muted);margin-top:7px;line-height:1.6">
                 Open your GCash/GoTyme/PNB receipt and copy the reference number here. The owner will verify this before confirming your slot.
+              </div>
+
+              <!-- Receipt screenshot upload (auto-verification) -->
+              <div style="margin-top:12px;border-top:1px dashed rgba(74,154,74,.3);padding-top:12px;">
+                <label style="font-size:.73rem;text-transform:uppercase;letter-spacing:1px;color:var(--green);font-weight:700;display:block;margin-bottom:6px">
+                  📸 Upload Payment Receipt <span style="color:#e53935;font-size:.8rem">*</span> <span style="color:var(--muted);text-transform:none;font-size:.72rem;font-weight:400;letter-spacing:0">— required for GCash / GoTyme / PNB</span>
+                </label>
+                <label id="bReceiptDrop" style="display:flex;align-items:center;gap:9px;padding:11px 13px;background:var(--card);border:1.5px dashed var(--border);border-radius:8px;cursor:pointer;font-size:.84rem;color:var(--muted);"
+                  onmouseover="this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='var(--border)'">
+                  📷 Tap to attach your receipt screenshot
+                  <input type="file" accept="image/*" id="bReceiptImg" style="display:none" onchange="onReceiptPicked(event)" />
+                </label>
+                <div id="bReceiptPreviewWrap" style="display:none;margin-top:8px;align-items:center;gap:10px">
+                  <img id="bReceiptPreview" alt="Receipt preview" style="width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--border)" />
+                  <span id="bReceiptName" style="font-size:.76rem;color:var(--text);flex:1;word-break:break-all"></span>
+                  <button type="button" onclick="clearReceipt()" style="background:none;border:none;color:#e53935;font-size:.74rem;font-weight:700;cursor:pointer">✕ Remove</button>
+                </div>
+                <div id="bReceiptStatus" style="display:none;margin-top:8px;font-size:.78rem;font-weight:700;border-radius:8px;padding:8px 10px;line-height:1.5"></div>
+                <div id="bReceiptRequired" style="font-size:.68rem;color:var(--muted);margin-top:7px;line-height:1.6">
+                  Required for digital payments. We auto-check the amount, reference, date/time and receiver — confirming your slot instantly.
+                </div>
               </div>
             </div>
           </div>
@@ -2255,6 +2319,31 @@ function updateCardUI(courtId) {
   }
 }
 
+// Holds the ref of the currently-reserved (verifying) booking so we can
+// cancel it if the user closes the modal without completing.
+let _reservedRef = null;
+let _countdownInterval = null;
+const RESERVATION_MINUTES = 15;
+
+// A `verifying` booking only HOLDS its slot for RESERVATION_MINUTES. After that
+// the reservation is considered expired and the slot is treated as free at
+// RENDER time — even if no cleanup write ever succeeded (browser closed, network
+// drop, edge-fn failure). This makes the grid self-healing: stale "Processing…"
+// slots free themselves automatically instead of getting stuck forever.
+function isHeldVerifying(b) {
+  if (b.status !== 'verifying') return false;
+  if (!b.createdAt) return true; // no timestamp → treat as fresh hold
+  return (Date.now() - new Date(b.createdAt).getTime()) < RESERVATION_MINUTES * 60 * 1000;
+}
+
+// True if this booking currently occupies its slot (confirmed/pending always do;
+// verifying only while still within its reservation window).
+function bookingHoldsSlot(b) {
+  if (b.status === 'cancelled') return false;
+  if (b.status === 'verifying') return isHeldVerifying(b);
+  return true;
+}
+
 async function proceedToBook(courtId) {
   await ensureCourt(courtId);
   if (!cardSel.courtId || cardSel.slots.length === 0) {
@@ -2265,6 +2354,45 @@ async function proceedToBook(courtId) {
     if (cardSel.date) await onCardDate(courtId, cardSel.date);
     return;
   }
+
+  // ── Lock the slot NOW before showing the form ─────────────────────────
+  const reserveRef = genRef();
+  const reserveData = {
+    ref:           reserveRef,
+    fullName:      'Reserving…',
+    contactNumber: '00000000000',
+    email:         'reserve@hold.internal',
+    courtId:       cardSel.courtId,
+    courtName:     court.name,
+    date:          cardSel.date,
+    slots:         [...cardSel.slots],
+    startTime:     fmtT(Math.min(...cardSel.slots)),
+    endTime:       fmtT(Math.max(...cardSel.slots) + 1),
+    duration:      cardSel.slots.length,
+    rate:          court.rate,
+    total:         cardSel.slots.reduce((s, h) => s + getRateForHour(h), 0) + calcSvcFee(cardSel.slots.length),
+    paymentMethod: 'gcash',
+    paymentFlow:   null,
+    paymentStatus: 'for_verification',
+    status:        'verifying',
+    createdAt:     new Date().toISOString(),
+    downpayment:   null,
+    gcashRef:      null,
+  };
+  try {
+    await DB.addBooking(reserveData);
+  } catch (err) {
+    const msg = err?.message || '';
+    if (msg.toLowerCase().includes('no longer available') || msg.toLowerCase().includes('already booked')) {
+      toast('⚠️ Sorry, someone just reserved that slot! Please choose another time.', 'err');
+    } else {
+      toast('Could not reserve slot: ' + msg, 'err');
+    }
+    if (cardSel.date) await onCardDate(courtId, cardSel.date);
+    return;
+  }
+  _reservedRef = reserveRef;
+
   selSlots = [...cardSel.slots];
   $('bDate').value = cardSel.date;
   updatePrice();
@@ -2273,13 +2401,65 @@ async function proceedToBook(courtId) {
   document.body.style.overflow = 'hidden';
   const _mb1 = $('mobileBookBar'); if (_mb1) _mb1.style.display = 'none';
   wizGoTo(3);
+  startSlotCountdown();
 }
 
 function closeBookModal() {
   $('bookModal').classList.remove('active');
   document.body.style.overflow = '';
+  stopSlotCountdown();
+  // Cancel the reservation if the user closes without submitting.
+  if (_reservedRef) {
+    const ref = _reservedRef;
+    _reservedRef = null;
+    DB.updateBooking(ref, { status: 'cancelled', paymentStatus: 'rejected' }).catch(() => {});
+  }
   const _mb = $('mobileBookBar');
   if (_mb) _mb.style.display = (cardSel.slots && cardSel.slots.length > 0) ? 'flex' : 'none';
+}
+
+function startSlotCountdown() {
+  stopSlotCountdown();
+  const banner = $('slotCountdown');
+  const timeEl = $('scdTime');
+  const bigEl  = $('scdTimerBig');
+  if (!banner) return;
+  banner.style.display = 'flex';
+  banner.classList.remove('urgent');
+  let secsLeft = RESERVATION_MINUTES * 60;
+  function fmt(s) {
+    const m = Math.floor(s / 60), sec = s % 60;
+    return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+  }
+  function tick() {
+    const t = fmt(secsLeft);
+    if (timeEl) timeEl.textContent = t;
+    if (bigEl)  bigEl.textContent  = t;
+    if (secsLeft <= 60) banner.classList.add('urgent');
+    if (secsLeft <= 0) {
+      stopSlotCountdown();
+      banner.style.display = 'none';
+      // Time expired — cancel reservation and close modal.
+      toast('⏰ Time expired! Your slot reservation was released.', 'err');
+      if (_reservedRef) {
+        const ref = _reservedRef;
+        _reservedRef = null;
+        DB.updateBooking(ref, { status: 'cancelled', paymentStatus: 'rejected' }).catch(() => {});
+      }
+      closeBookModal();
+      renderCourts();
+      return;
+    }
+    secsLeft--;
+  }
+  tick();
+  _countdownInterval = setInterval(tick, 1000);
+}
+
+function stopSlotCountdown() {
+  if (_countdownInterval) { clearInterval(_countdownInterval); _countdownInterval = null; }
+  const banner = $('slotCountdown');
+  if (banner) banner.style.display = 'none';
 }
 
 /* ── BOOKING WIZARD ── */
@@ -2429,11 +2609,13 @@ async function onCardDate(courtId, date) {
     return;
   }
 
-  // Build slot → name map for this date
+  // Build slot → name map for this date (verifying = yellow lock, others = red taken)
   const slotNameMap = {};
-  bookings.filter(b => b.courtId === courtId && b.date === date && b.status !== 'cancelled')
+  const verifyingHrs = new Set();
+  bookings.filter(b => b.courtId === courtId && b.date === date && bookingHoldsSlot(b))
           .forEach(b => b.slots.forEach(h => {
             slotNameMap[h] = b.fullName || '';
+            if (b.status === 'verifying') verifyingHrs.add(Number(h));
           }));
   const bookedHrs = new Set(Object.keys(slotNameMap).map(Number));
 
@@ -2469,7 +2651,8 @@ async function onCardDate(courtId, date) {
     const isOpenPlay_ = isOpenPlayHour(date, h);
     const isMaint_ = isMaintenanceHour(date, h, courtId);
     const timeRange = `${fmtT(h)} – ${fmtT(h+1)}`;
-    if (isPast_)   return `<div class="cc-slot-btn past-slot"><div class="csl-time">${timeRange}</div><div class="csl-tag">${isPastDate_ ? 'Past' : 'Done'}</div></div>`;
+    if (isPast_)    return `<div class="cc-slot-btn past-slot"><div class="csl-time">${timeRange}</div><div class="csl-tag">${isPastDate_ ? 'Past' : 'Done'}</div></div>`;
+    if (isBooked_ && verifyingHrs.has(h)) return `<div class="cc-slot-btn processing"><div class="csl-time">${timeRange}</div><div class="csl-tag">⏳ Processing…</div></div>`;
     if (isBooked_) return `<div class="cc-slot-btn taken"><div class="csl-time">${timeRange}</div><div class="csl-name">${maskName(slotNameMap[h])}</div></div>`;
     if (isMaint_)  { const _ml=getMaintenanceLabel(date,h,courtId); return `<div class="cc-slot-btn maintenance"><div class="csl-time">${timeRange}</div><div class="csl-tag">${_ml.icon} ${_ml.text}</div></div>`; }
     if (isOpenPlay_) return `<div class="cc-slot-btn open-play" onclick="event.stopPropagation(); openPlaySignup('${courtId}','${date}',${h},'${(c.name||'').replace(/'/g,"\\'")}')" title="Tap to join Open Play"><div class="csl-time">${timeRange}</div><div class="csl-tag">🏓 Open Play<div style="font-size:.5rem;color:rgba(244,168,37,.75);font-weight:600;letter-spacing:.2px;margin-top:2px">Tap to register</div></div></div>`;
@@ -2501,9 +2684,11 @@ async function renderCourts() {
 
     // Build slot → booking name map
     const slotNameMap = {};
-    bookings.filter(b => b.courtId === c.id && b.date === today && b.status !== 'cancelled')
+    const verifyingHoursSet = new Set();
+    bookings.filter(b => b.courtId === c.id && b.date === today && bookingHoldsSlot(b))
             .forEach(b => b.slots.forEach(h => {
               slotNameMap[h] = b.fullName || '';
+              if (b.status === 'verifying') verifyingHoursSet.add(h);
             }));
     const bookedHours = new Set(Object.keys(slotNameMap).map(Number));
 
@@ -2533,7 +2718,8 @@ async function renderCourts() {
           const isOpenPlay_ = isOpenPlayHour(today, h);
           const isMaint_ = isMaintenanceHour(today, h, c.id);
           const timeRange = `${fmtT(h)} – ${fmtT(h+1)}`;
-          if (isPast_)   return `<div class="cc-slot-btn past-slot"><div class="csl-time">${timeRange}</div><div class="csl-tag">Done</div></div>`;
+          if (isPast_)    return `<div class="cc-slot-btn past-slot"><div class="csl-time">${timeRange}</div><div class="csl-tag">Done</div></div>`;
+          if (isBooked_ && verifyingHoursSet.has(h)) return `<div class="cc-slot-btn processing"><div class="csl-time">${timeRange}</div><div class="csl-tag">⏳ Processing…</div></div>`;
           if (isBooked_) return `<div class="cc-slot-btn taken"><div class="csl-time">${timeRange}</div><div class="csl-name">${maskName(slotNameMap[h])}</div></div>`;
           if (isMaint_)  { const _ml=getMaintenanceLabel(today,h,c.id); return `<div class="cc-slot-btn maintenance"><div class="csl-time">${timeRange}</div><div class="csl-tag">${_ml.icon} ${_ml.text}</div></div>`; }
           if (isOpenPlay_) return `<div class="cc-slot-btn open-play" onclick="event.stopPropagation(); openPlaySignup('${c.id}','${today}',${h},'${(c.name||'').replace(/'/g,"\\'")}')" title="Tap to join Open Play"><div class="csl-time">${timeRange}</div><div class="csl-tag">🏓 Open Play<div style="font-size:.5rem;color:rgba(244,168,37,.75);font-weight:600;letter-spacing:.2px;margin-top:2px">Tap to register</div></div></div>`;
@@ -2985,11 +3171,24 @@ async function submitBooking(e) {
     [!payMethod, 'Please select a payment method.'],
     [!!payMethod && !paymentMethods[payMethod], 'Selected payment method is no longer available.'],
     [(payMethod === 'gcash' || payMethod === 'gotyme' || payMethod === 'pnb') && !gcashRef, 'Please enter your GCash/GoTyme/PNB reference number after paying.'],
+    [(payMethod === 'gcash' || payMethod === 'gotyme' || payMethod === 'pnb') && !_receiptFile, () => {
+      // Scroll to and flash the upload zone so the user knows exactly what's missing.
+      const drop = $('bReceiptDrop');
+      if (drop) {
+        drop.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        drop.style.transition = 'border-color .2s, background .2s';
+        drop.style.borderColor = '#e53935';
+        drop.style.background  = 'rgba(229,57,53,.07)';
+        setTimeout(() => { drop.style.borderColor = ''; drop.style.background = ''; }, 2000);
+      }
+      return 'Please upload your receipt screenshot before confirming.';
+    }],
     [!!getCourtRepair(court?.name, $('bDate').value), `${court?.name} is closed for repairs on this date (Apr 27–29). Please choose a different date or another court.`],
   ];
   for (const [fail, msg] of checks) {
     if (fail) {
-      toast(msg, 'err');
+      const message = typeof msg === 'function' ? msg() : msg;
+      toast(message, 'err');
       if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '🎾 Confirm Booking'; }
       return;
     }
@@ -2998,8 +3197,13 @@ async function submitBooking(e) {
   const hrs = selSlots.length;
   const startH = Math.min(...selSlots);
   const endH = Math.max(...selSlots) + 1;
+  const total = selSlots.reduce((s, h) => s + getRateForHour(h), 0) + calcSvcFee(selSlots.length);
+  const downpayment = payFull ? total : total / 2;
+
+  // Use the already-reserved ref from proceedToBook so no new INSERT is needed.
+  const bookingRef = _reservedRef || genRef();
   const booking = {
-    ref: genRef(),
+    ref: bookingRef,
     fullName: $('bName').value.trim(),
     contactNumber: $('bPhone').value.trim(),
     email: $('bEmail').value.trim(),
@@ -3011,22 +3215,41 @@ async function submitBooking(e) {
     endTime: fmtT(endH),
     duration: hrs,
     rate: court.rate,
-    total: selSlots.reduce((s, h) => s + getRateForHour(h), 0) + calcSvcFee(selSlots.length),
+    total,
     paymentMethod: payMethod,
     gcashRef: gcashRef || null,
-    paymentFlow: gcashNeedsCheckout ? 'gcash_checkout_link' : payMethod,
-    downpayment: payFull
-      ? selSlots.reduce((s, h) => s + getRateForHour(h), 0) + calcSvcFee(selSlots.length)
-      : (selSlots.reduce((s, h) => s + getRateForHour(h), 0) + calcSvcFee(selSlots.length)) / 2,
-    paymentStatus: gcashNeedsCheckout ? 'pending' : (payMethod === 'cash' ? 'unpaid' : 'for_verification'),
-    status: 'pending',
+    paymentFlow: payMethod,
+    downpayment,
+    paymentStatus: payMethod === 'cash' ? 'unpaid' : 'for_verification',
+    status: (payMethod === 'gcash' || payMethod === 'gotyme' || payMethod === 'pnb') ? 'verifying' : 'pending',
     createdAt: new Date().toISOString(),
   };
+
+  // Stop the countdown — we're submitting now.
+  stopSlotCountdown();
 
   let bookingSaved = false;
   let checkoutOpened = false;
   try {
-    await DB.addBooking(booking);
+    if (_reservedRef) {
+      // Slot was already reserved at Book Now — just fill in the details.
+      await DB.updateBooking(_reservedRef, {
+        fullName:      booking.fullName,
+        contactNumber: booking.contactNumber,
+        email:         booking.email,
+        paymentMethod: booking.paymentMethod,
+        paymentFlow:   booking.paymentFlow,
+        gcashRef:      booking.gcashRef,
+        downpayment:   booking.downpayment,
+        total:         booking.total,
+        paymentStatus: booking.paymentStatus,
+        status:        booking.status,
+      });
+      _reservedRef = null;
+    } else {
+      // Fallback: no prior reservation (e.g. wizard flow) — insert fresh.
+      await DB.addBooking(booking);
+    }
     bookingSaved = true;
 
     // Notify owner via Telegram (fire-and-forget — never blocks booking flow)
@@ -3048,6 +3271,34 @@ async function submitBooking(e) {
         gcashRef:      booking.gcashRef || null,
       }),
     }).catch(() => {}); // Silent fail — never interrupt booking
+
+    // ── Run OCR against the saved booking ────────────────────────────────
+    if (_receiptFile && (payMethod === 'gcash' || payMethod === 'gotyme' || payMethod === 'pnb')) {
+      try { booking._receiptResult = await verifyUploadedReceipt(booking.ref, payMethod); } catch(_) {}
+      const ocrStatus = booking._receiptResult?.status;
+      if (ocrStatus === 'rejected') {
+        // Edge fn already set status=cancelled on the booking. Show rejection
+        // screen then refresh the grid so the slot turns free immediately.
+        showInvoice(booking);
+        resetForm();
+        // Refresh both the card grid (today) AND the specific date-picker view
+        // for the rejected booking's date so the slot turns free right away.
+        await renderCourts();
+        onCardDate(booking.courtId, booking.date).catch(() => {});
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '🎾 Confirm Booking'; }
+        return;
+      } else if (ocrStatus === 'auto_approved') {
+        booking.status = 'confirmed';
+        booking.paymentStatus = (booking.downpayment >= booking.total - 1) ? 'paid' : 'downpayment_paid';
+      } else {
+        // manual_review or OCR error — downgrade from verifying to pending so
+        // slot shows as taken (red) while admin reviews it, not yellow forever.
+        booking.status = 'pending';
+        booking.paymentStatus = 'for_verification';
+        await DB.updateBooking(booking.ref, { status: 'pending', paymentStatus: 'for_verification' }).catch(() => {});
+        onCardDate(booking.courtId, booking.date).catch(() => {});
+      }
+    }
 
     if (gcashNeedsCheckout) {
       try {
@@ -3100,8 +3351,72 @@ async function submitBooking(e) {
   }
 }
 
+/* =============================================
+   RECEIPT UPLOAD + AUTO-VERIFICATION
+   ============================================= */
+let _receiptFile = null;
+
+function onReceiptPicked(e) {
+  const f = e.target.files && e.target.files[0];
+  if (!f) return;
+  if (!f.type.startsWith('image/')) { toast('Please choose an image file.', 'err'); e.target.value = ''; return; }
+  if (f.size > 5 * 1024 * 1024) { toast('Image too large (max 5 MB).', 'err'); e.target.value = ''; return; }
+  _receiptFile = f;
+  const prev = $('bReceiptPreview'); if (prev) prev.src = URL.createObjectURL(f);
+  if ($('bReceiptName')) $('bReceiptName').textContent = f.name;
+  if ($('bReceiptPreviewWrap')) $('bReceiptPreviewWrap').style.display = 'flex';
+  const drop = $('bReceiptDrop'); if (drop) drop.style.display = 'none';
+}
+
+function clearReceipt() {
+  _receiptFile = null;
+  if ($('bReceiptImg')) $('bReceiptImg').value = '';
+  if ($('bReceiptPreviewWrap')) $('bReceiptPreviewWrap').style.display = 'none';
+  const drop = $('bReceiptDrop'); if (drop) drop.style.display = '';
+  const st = $('bReceiptStatus'); if (st) st.style.display = 'none';
+}
+
+function _fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result));
+    r.onerror = () => reject(new Error('Could not read file'));
+    r.readAsDataURL(file);
+  });
+}
+
+async function verifyUploadedReceipt(bookingRef, method, inlineData = null) {
+  const st = $('bReceiptStatus');
+  if (st) { st.style.display = ''; st.style.background = 'rgba(74,154,220,.1)'; st.style.color = '#3b82f6'; st.textContent = '🔎 Verifying your receipt…'; }
+  try {
+    const dataUrl = await _fileToBase64(_receiptFile);
+    const payload = {
+      bookingRef,
+      provider: method,
+      imageBase64: dataUrl,
+      contentType: _receiptFile.type || 'image/jpeg',
+    };
+    if (inlineData) payload.bookingData = inlineData;
+    const res = await DB.verifyGcashReceipt(payload);
+    const status = res?.status || 'manual_review';
+    const msg = res?.message || 'Receipt received.';
+    if (st) {
+      if (status === 'auto_approved') { st.style.background = 'rgba(74,154,74,.12)'; st.style.color = '#2a8a4a'; st.textContent = '✅ ' + msg; }
+      else if (status === 'rejected') { st.style.background = 'rgba(229,57,53,.1)'; st.style.color = '#e53935'; st.textContent = '⚠️ ' + msg; }
+      else { st.style.background = 'rgba(184,126,0,.12)'; st.style.color = '#b87e00'; st.textContent = '🕓 ' + msg; }
+    }
+    return { status, message: msg, flags: res?.flags || [] };
+  } catch (err) {
+    if (st) { st.style.background = 'rgba(184,126,0,.12)'; st.style.color = '#b87e00'; st.textContent = '🕓 Receipt uploaded — the owner will verify it manually.'; }
+    return { status: 'manual_review', message: 'Receipt uploaded — pending manual verification.', flags: [] };
+  }
+}
+
 function resetForm() {
   $('bookForm').reset();
+  clearReceipt();
+  stopSlotCountdown();
+  _reservedRef = null;
   court = null;
   selSlots = [];
   cardSel = { courtId: null, date: null, slots: [], rate: 0 };
@@ -3142,7 +3457,12 @@ function showInvoice(b) {
   const isFullPay = b.downpayment >= b.total;
   const payLabel = b.paymentMethod === 'gcash' ? 'GCash' : b.paymentMethod === 'gotyme' ? 'GoTyme Bank' : 'Cash';
 
-  // Hero
+  // Hero — base state (may be overridden by receipt result below)
+  const heroEl = $('invModal') && $('invModal').querySelector('.inv-hero');
+  const checkWrapEl = heroEl && heroEl.querySelector('.inv-check-wrap');
+  const checkIconEl = heroEl && heroEl.querySelector('.inv-check-icon');
+  if (heroEl) heroEl.classList.remove('inv-hero--rejected','inv-hero--approved');
+
   set('iTitle', isConfirmed ? 'Booking Confirmed!' : 'Booking Received!');
   set('iHeroSub', isConfirmed ? 'Your court is confirmed. See you on the court!' : 'Your slot is reserved — pending owner confirmation.');
   const statusEl = $('iStatus');
@@ -3150,6 +3470,7 @@ function showInvoice(b) {
     statusEl.textContent = isConfirmed ? '✓ Confirmed' : '⏳ Pending Confirmation';
     statusEl.className = 'inv-status-bdg ' + (isConfirmed ? 'inv-status-confirmed' : 'inv-status-pending');
   }
+  if (checkIconEl) checkIconEl.textContent = '✓';
 
   // Ref & details
   set('iRef', b.ref);
@@ -3176,6 +3497,44 @@ function showInvoice(b) {
   set('iDownNote', isFullPay ? '✅ Fully paid — no balance due on arrival.' :
     b.gcashRef ? `${payLabel} ref submitted ✓ — owner will verify shortly.` :
     'Pay downpayment at the front desk before your session.');
+
+  if (b._receiptResult) {
+    const s = b._receiptResult.status;
+    const flags = b._receiptResult.flags || [];
+    const noteEl = $('iDownNote');
+
+    if (s === 'rejected') {
+      // Red hero
+      if (heroEl) heroEl.classList.add('inv-hero--rejected');
+      if (checkIconEl) checkIconEl.textContent = '✕';
+      set('iTitle', 'Receipt Rejected');
+      set('iHeroSub', 'Your receipt could not be verified — your booking has been cancelled.');
+      if (statusEl) {
+        statusEl.textContent = '⚠️ Receipt Rejected';
+        statusEl.className = 'inv-status-bdg inv-status-rejected';
+      }
+      if (noteEl) {
+        const flagText = flags.length ? ' Reason: ' + flags.map(f => f.replace(/_/g,' ')).join(', ') + '.' : '';
+        noteEl.textContent = '❌ Your booking has been cancelled. Please make a new booking and upload a valid GCash receipt.' + flagText;
+      }
+    } else if (s === 'auto_approved') {
+      if (heroEl) heroEl.classList.add('inv-hero--approved');
+      set('iTitle', 'Payment Verified!');
+      set('iHeroSub', 'Your receipt is verified — your slot is being confirmed.');
+      if (statusEl) {
+        statusEl.textContent = '✅ Payment Verified';
+        statusEl.className = 'inv-status-bdg inv-status-confirmed';
+      }
+      if (noteEl) noteEl.textContent = '✅ Payment auto-verified from your receipt! Your slot is being confirmed.';
+    } else {
+      // manual_review
+      if (statusEl) {
+        statusEl.textContent = '🕓 Pending Verification';
+        statusEl.className = 'inv-status-bdg inv-status-review';
+      }
+      if (noteEl) noteEl.textContent = '🕓 Receipt received — the owner will verify your payment shortly.';
+    }
+  }
 
   // What's next steps
   const nextEl = $('iNext');
@@ -3309,6 +3668,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   initDark();
   await DB.seedDefaultData();
   await loadOperatingHours();
+  await expireStaleVerifyingBookings();
   await renderCourts();
   startRealtime();
   $('bDate').min = todayStr();
@@ -3320,6 +3680,23 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeBookModal(); closeOpModal(); } });
   initScrollReveal();
 });
+
+// Cancel any booking stuck in 'verifying' for more than 10 minutes.
+// These are slots where the user paid but closed the tab / lost connection
+// before OCR finished — slot must be freed so others can book it.
+async function expireStaleVerifyingBookings() {
+  try {
+    const all = await DB.getBookings();
+    const cutoff = Date.now() - RESERVATION_MINUTES * 60 * 1000; // align with render-time hold
+    const stale = all.filter(b =>
+      b.status === 'verifying' &&
+      b.createdAt && new Date(b.createdAt).getTime() < cutoff
+    );
+    await Promise.all(stale.map(b =>
+      DB.updateBooking(b.ref, { status: 'cancelled', paymentStatus: 'rejected' }).catch(() => {})
+    ));
+  } catch(_) {}
+}
 
 /* =============================================
    OPEN PLAY MAY 9 ANNOUNCEMENT

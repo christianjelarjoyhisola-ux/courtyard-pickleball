@@ -225,6 +225,87 @@ DROP POLICY IF EXISTS payment_sessions_no_direct_access ON public.payment_sessio
 CREATE POLICY payment_sessions_no_direct_access ON public.payment_sessions FOR ALL TO authenticated USING (false);
 
 
+-- ── 10b. RECEIPT VERIFICATION / FRAUD DETECTION ──────────────
+-- Receipt-image columns on bookings, a reference-reuse ledger,
+-- a perceptual-hash duplicate guard, and an immutable audit trail.
+-- Expected merchant number/name are reused from settings keys
+-- gcash_merchant_number / gcash_merchant_name.
+ALTER TABLE public.bookings
+  ADD COLUMN IF NOT EXISTS receipt_image_url  text,
+  ADD COLUMN IF NOT EXISTS receipt_image_hash text,
+  ADD COLUMN IF NOT EXISTS receipt_phash      text,
+  ADD COLUMN IF NOT EXISTS receipt_status     text NOT NULL DEFAULT 'none',
+  ADD COLUMN IF NOT EXISTS receipt_flags      text[] NOT NULL DEFAULT '{}',
+  ADD COLUMN IF NOT EXISTS receipt_extracted  jsonb,
+  ADD COLUMN IF NOT EXISTS receipt_confidence numeric,
+  ADD COLUMN IF NOT EXISTS receipt_verified_at timestamptz;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bookings_receipt_status_check') THEN
+    ALTER TABLE public.bookings
+      ADD CONSTRAINT bookings_receipt_status_check
+      CHECK (receipt_status IN ('none','auto_approved','manual_review','rejected'));
+  END IF;
+END $$;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_bookings_receipt_phash
+  ON public.bookings (receipt_phash)
+  WHERE receipt_phash IS NOT NULL AND receipt_phash <> '';
+
+CREATE TABLE IF NOT EXISTS public.used_gcash_refs (
+  gcash_ref   text PRIMARY KEY,
+  booking_ref text NOT NULL,
+  provider    text,
+  used_at     timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_used_gcash_refs_booking_ref ON public.used_gcash_refs (booking_ref);
+
+CREATE TABLE IF NOT EXISTS public.receipt_verifications (
+  id           bigserial PRIMARY KEY,
+  booking_ref  text NOT NULL,
+  result       text NOT NULL,
+  flags        text[] NOT NULL DEFAULT '{}',
+  extracted    jsonb,
+  confidence   numeric,
+  image_hash   text,
+  phash        text,
+  raw_ocr_text text,
+  created_at   timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_receipt_verifications_booking_ref ON public.receipt_verifications (booking_ref);
+CREATE INDEX IF NOT EXISTS idx_receipt_verifications_created_at  ON public.receipt_verifications (created_at);
+
+ALTER TABLE public.used_gcash_refs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS used_gcash_refs_no_select ON public.used_gcash_refs;
+DROP POLICY IF EXISTS used_gcash_refs_no_write  ON public.used_gcash_refs;
+CREATE POLICY used_gcash_refs_no_select ON public.used_gcash_refs FOR SELECT TO authenticated USING (false);
+CREATE POLICY used_gcash_refs_no_write  ON public.used_gcash_refs FOR ALL TO authenticated USING (false) WITH CHECK (false);
+
+ALTER TABLE public.receipt_verifications ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS receipt_verifications_select_admin ON public.receipt_verifications;
+DROP POLICY IF EXISTS receipt_verifications_no_write     ON public.receipt_verifications;
+CREATE POLICY receipt_verifications_select_admin ON public.receipt_verifications FOR SELECT TO authenticated USING (true);
+CREATE POLICY receipt_verifications_no_write     ON public.receipt_verifications FOR ALL TO authenticated USING (false) WITH CHECK (false);
+
+-- Private storage bucket for receipt images (service-role access only).
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES ('receipts','receipts',false,5242880,
+  ARRAY['image/jpeg','image/png','image/webp','image/heic','image/heif'])
+ON CONFLICT (id) DO UPDATE
+  SET public = EXCLUDED.public, file_size_limit = EXCLUDED.file_size_limit,
+      allowed_mime_types = EXCLUDED.allowed_mime_types;
+
+DROP POLICY IF EXISTS receipts_no_select ON storage.objects;
+DROP POLICY IF EXISTS receipts_no_insert ON storage.objects;
+DROP POLICY IF EXISTS receipts_no_update ON storage.objects;
+DROP POLICY IF EXISTS receipts_no_delete ON storage.objects;
+CREATE POLICY receipts_no_select ON storage.objects FOR SELECT TO anon, authenticated USING (bucket_id <> 'receipts');
+CREATE POLICY receipts_no_insert ON storage.objects FOR INSERT TO anon, authenticated WITH CHECK (bucket_id <> 'receipts');
+CREATE POLICY receipts_no_update ON storage.objects FOR UPDATE TO anon, authenticated USING (bucket_id <> 'receipts');
+CREATE POLICY receipts_no_delete ON storage.objects FOR DELETE TO anon, authenticated USING (bucket_id <> 'receipts');
+
+
 -- ── 11. SEED DEFAULT COURTS ──────────────────────────────────
 INSERT INTO public.courts (id, name, description, rate, blocked, feats)
 VALUES

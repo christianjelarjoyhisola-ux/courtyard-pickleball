@@ -44,14 +44,14 @@ async function createPayMongoCheckoutSession(input: {
         send_email_receipt: false,
         show_description: true,
         show_line_items: true,
-        payment_method_types: ["qrph"],
+        payment_method_types: ["qrph", "paymaya"],
         line_items: [
           {
             currency: "PHP",
             amount: amountCents,
             name: `Booking ${input.bookingRef}`,
             quantity: 1,
-            description: `GCash downpayment for booking ${input.bookingRef}`,
+            description: `Downpayment for booking ${input.bookingRef}`,
           },
         ],
         reference_number: input.bookingRef,

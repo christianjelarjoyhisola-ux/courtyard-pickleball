@@ -91,6 +91,12 @@ function rowToBooking(r) {
     paidAt:        r.paid_at || null,
     gcashRef:      r.gcash_ref || null,
     downpayment:   r.downpayment || null,
+    receiptStatus:     r.receipt_status || 'none',
+    receiptFlags:      r.receipt_flags || [],
+    receiptExtracted:  r.receipt_extracted || null,
+    receiptConfidence: r.receipt_confidence != null ? Number(r.receipt_confidence) : null,
+    receiptImageUrl:   r.receipt_image_url || null,
+    receiptVerifiedAt: r.receipt_verified_at || null,
     status:        r.status,
     createdAt:     r.created_at,
   };
@@ -234,6 +240,10 @@ window.DB = {
     const row = {};
     if (updates.status    !== undefined) row.status = updates.status;
     if (updates.fullName  !== undefined) row.full_name = updates.fullName;
+    if (updates.contactNumber !== undefined) row.contact_number = updates.contactNumber;
+    if (updates.email     !== undefined) row.email = updates.email;
+    if (updates.total     !== undefined) row.total = updates.total;
+    if (updates.paymentMethod !== undefined) row.payment_method = updates.paymentMethod;
     if (updates.paymentStatus !== undefined) row.payment_status = updates.paymentStatus;
     if (updates.paymentFlow !== undefined) row.payment_flow = updates.paymentFlow;
     if (updates.paymentProvider !== undefined) row.payment_provider = updates.paymentProvider;
@@ -368,6 +378,39 @@ window.DB = {
       console.error('createPaymentSession.fallbackError:', fallbackErr);
       throw new Error(`${baseReason}. Fallback failed: ${fbReason}`);
     }
+  },
+
+  // Verify an uploaded GCash/GoTyme/PNB receipt image via the Edge Function.
+  // payload: { bookingRef, provider, imageBase64, contentType }
+  // Returns: { ok, status, flags, extracted, confidence, message }
+  async verifyGcashReceipt(payload) {
+    const { data, error } = await _sb.functions.invoke('verify-gcash-receipt', { body: payload });
+    if (!error && data) return data;
+
+    // Fallback: direct HTTP call (mirrors createPaymentSession fallback).
+    const fnUrl = `${SUPABASE_URL.replace(/\/+$/, '')}/functions/v1/verify-gcash-receipt`;
+    const sess = await _sb.auth.getSession();
+    const accessToken = sess?.data?.session?.access_token || '';
+    const authHeader = accessToken ? `Bearer ${accessToken}` : `Bearer ${SUPABASE_ANON_KEY}`;
+    const res = await fetch(fnUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': authHeader },
+      body: JSON.stringify(payload),
+    });
+    const txt = await res.text();
+    const json = _safeJsonParse(txt);
+    if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
+    return json;
+  },
+
+  // Request a short-lived signed URL to view a stored receipt (admin only).
+  async getReceiptSignedUrl(bookingRef) {
+    const { data, error } = await _sb.functions.invoke('verify-gcash-receipt', {
+      body: { action: 'sign', bookingRef },
+    });
+    if (error) throw new Error(_extractFnError(error, 'Could not load receipt'));
+    if (!data?.url) throw new Error(data?.error || 'No receipt available');
+    return data.url;
   },
 
   // ---- SEED DEFAULT DATA (runs once on first load) ----

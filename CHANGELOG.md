@@ -83,6 +83,75 @@ Types: **Added**, **Changed**, **Fixed**, **Removed**, **Security**, **DB**
 
 ---
 
+## [2026-06-13] — Slot Locking, Receipt Validation & Ghost Booking Fixes
+
+### Added
+- **Slot reservation on "Book Now"** — clicking Book Now immediately INSERTs a slim `verifying` booking (`status='verifying'`) before the form opens, so no other player can claim the same slot during the 15-minute fill-in window. If the slot is already taken, a toast blocks entry instead of letting two users race to the same DB insert.
+- **15-minute countdown timer** (`#slotCountdown` banner) inside the booking modal — turns red in the last 60 seconds. On expiry the reservation is auto-cancelled server-side and the modal closes.
+- **Yellow "⏳ Processing…" slot state** — `verifying` bookings render as animated yellow slots so other users immediately see a slot is being held. Slots held longer than 15 minutes automatically render as available (render-time expiry, no write needed).
+- **`isHeldVerifying()` / `bookingHoldsSlot()` helpers** — centralise the reservation-window check so both the card grid and date-picker grid always agree on which slots are held vs free.
+- **`expireStaleVerifyingBookings()`** called on DOMContentLoaded — cancels any `verifying` bookings older than 15 minutes in the DB on page load.
+- **Receipt upload made mandatory** for GCash / GoTyme / PNB payments — the upload zone flashes red and scrolls into view if the user tries to submit without a file.
+- **Cloudflare Pages deployment** — project connected to `jelarpickleball/courtyard-pickleball` GitHub repo; auto-deploys to `courtyardpickleball.pages.dev` on every push to `main`.
+
+### Fixed
+- **Ghost bookings / stuck "Processing…" slots** — root cause was a DB constraint: `bookings_payment_status_check` did not allow `'rejected'`, so every rejection UPDATE rolled back and the booking stayed `status='verifying'` forever. Fixed by adding `'rejected'` to the allowed values.
+- **Edge function UPDATE silently failing for DUPLICATE_IMAGE/DUPLICATE_REF rejections** — the single large UPDATE wrote 10 fields atomically; any transient failure on one receipt_* metadata column rolled back the entire UPDATE including the critical `status='cancelled'`. Refactored to **two-pass UPDATE**: Pass 1 writes only `status` + `payment_status` (slot-gating fields) with `.select()` RETURNING to verify it landed; Pass 2 writes receipt_* metadata. A last-resort fallback issues a minimal `SET status='cancelled'` if Pass 1 fails, so the slot is freed no matter what.
+- **`renderCourts()` not refreshing the active date-picker grid after rejection** — `renderCourts()` only refreshes the "today" card grid. After OCR rejection the code now also calls `onCardDate(courtId, date)` to free the slot in whichever date was selected at submit time.
+- **`prevent_double_booking()` DB trigger blocking new reservations on expired holds** — trigger was updated to ignore `verifying` rows older than 15 minutes (`AND NOT (b.status='verifying' AND b.created_at < now() - interval '15 minutes')`), so an abandoned hold can no longer block a new booking at the DB level even if cleanup writes never ran.
+- **30-second submit cooldown resetting after validation failures** — validation errors no longer consume the cooldown timer; only actual submission attempts count.
+- **`updateBooking()` missing field mappings** — added `contactNumber`, `email`, `total`, `paymentMethod` to the mapper so slot-reservation-to-booking upgrades carry all customer fields correctly.
+
+### Changed
+- **`submitBooking()` UPDATE flow** — instead of a fresh INSERT, re-uses the reservation ref from `proceedToBook()` and UPDATEs the existing `verifying` row with full customer details, avoiding a second slot-conflict check and ensuring the reservation holds atomically through checkout.
+- **Rejection message copy** — changed from "your booking is on hold" to "your booking has been cancelled — please make a new booking and upload a valid GCash receipt."
+- **`expireStaleVerifyingBookings()` cutoff** aligned to `RESERVATION_MINUTES` (15 min) instead of the previous hardcoded 10 min.
+- **Edge function response** now includes `warning` / `metadataWarning` fields when DB updates fail, making errors observable client-side instead of silently swallowed.
+
+### DB
+- `bookings_payment_status_check` constraint updated to include `'rejected'`
+- `prevent_double_booking()` trigger updated to be time-aware (ignores expired `verifying` rows)
+- Migration: `supabase/migrations/20260613_verifying_status.sql` — adds `'verifying'` to `bookings_status_check`
+
+### Security
+- Receipt upload required server-side (edge function always runs OCR) — client cannot skip verification by omitting the file
+- Duplicate image / reference detection fires before OCR cost is incurred (hash check short-circuits)
+- All rejection paths free the slot server-side regardless of client state (two-pass UPDATE + fallback)
+
+**Files affected:** `index.html`, `supabase-config.js`, `supabase/functions/verify-gcash-receipt/index.ts`, `supabase/migrations/20260613_verifying_status.sql`
+
+---
+
+
+
+### Added
+- **`verify-gcash-receipt` Edge Function** — server-side receipt image verification before a booking is confirmed
+- **OCR.space integration** (`https://api.ocr.space/parse/image`, `OCREngine=2`) as primary OCR provider; Google Vision API was attempted but rejected (billing disabled on GCP project `consummate-mark-499309-c7`, returns `403 BILLING_DISABLED`)
+- `runOCR(visionKey, ocrSpaceKey, base64, contentType)` helper — tries Vision API first, falls back to OCR.space automatically
+- `OCRSPACE_API_KEY` secret set in Supabase (`K82251457688957`, registered free key — 25k scans/month)
+- **Hard flag `IMAGE_UNREADABLE`** — no OCR text extracted (blank image, random photo, non-receipt) → automatically rejected; prevents submitting arbitrary images to bypass payment gate
+- **Soft flag `OCR_UNAVAILABLE`** — OCR service itself unreachable → routes to manual review instead of hard reject
+- **Decision routing**:
+  - Any hard flag → `rejected`
+  - Any soft flag → `manual_review`
+  - Clean (ref match, amount match, correct merchant) → `auto_approved`: sets `bookings.status = 'confirmed'` and `payment_status = 'paid'` or `'downpayment_paid'`
+- Migration: `supabase/migrations/20260613_receipt_verification.sql`
+
+### Security
+- Reference number cross-checked against booking record server-side — client cannot influence the comparison
+- Receipt reuse prevented: each reference number is validated as unique per booking
+- All verification decisions (approved / manual_review / rejected) stored with flag list for audit trail
+
+### Verified
+- End-to-end tested against live Edge Function:
+  - Real receipt → `auto_approved` + `status=confirmed` ✓
+  - Random image → `rejected (IMAGE_UNREADABLE)` ✓
+  - Wrong-ref receipt → `rejected (REF_MISMATCH)` ✓
+
+**Files affected:** `supabase/functions/verify-gcash-receipt/index.ts`, `supabase/migrations/20260613_receipt_verification.sql`
+
+---
+
 ## [2026-06-15] — 3-Tier Role-Based Access Control
 
 ### Added

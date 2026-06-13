@@ -1236,6 +1236,15 @@ tr:hover td { background: var(--bg2); }
         <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>Schedule</span><span id="vmDate">—</span></div>
         <div style="display:flex;justify-content:space-between;padding:6px 0"><span>Downpayment</span><strong style="color:var(--yellow)" id="vmAmount">—</strong></div>
       </div>
+      <div id="vmReceiptWrap" style="display:none;margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
+        <div style="font-size:.66rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px">Auto-Verification</div>
+        <div id="vmReceiptStatus" style="font-size:.82rem;font-weight:700;border-radius:8px;padding:8px 10px;margin-bottom:8px"></div>
+        <div id="vmReceiptFlags" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px"></div>
+        <a id="vmReceiptLink" href="#" target="_blank" rel="noopener" style="display:none">
+          <img id="vmReceiptImg" alt="Receipt" style="width:100%;max-height:320px;object-fit:contain;border-radius:8px;border:1px solid var(--border);background:#fff"/>
+        </a>
+        <div id="vmReceiptNoImg" style="display:none;font-size:.76rem;color:var(--muted)">No receipt image was uploaded for this booking.</div>
+      </div>
       <p style="font-size:.78rem;color:var(--muted);text-align:center;margin-top:12px;line-height:1.6">
         Open your GCash inbox and match the reference above, then mark as received to confirm the booking and send an email to the customer.
       </p>
@@ -1420,6 +1429,29 @@ function payStatusBdg(s){
   const label = v === 'paid' ? 'Fully Paid' : v === 'downpayment_paid' ? 'Downpayment Paid' : v === 'for_verification' ? 'For Verification' : v === 'pending' ? 'Pending' : v === 'failed' ? 'Failed' : 'Unpaid';
   const cls = v === 'paid' ? 'bdg-c' : v === 'downpayment_paid' ? 'bdg-p' : v === 'for_verification' ? 'bdg-p' : v === 'failed' ? 'bdg-x' : 'bdg-d';
   return `<span class="bdg ${cls}">${label}</span>`;
+}
+const RECEIPT_FLAG_LABELS = {
+  DUPLICATE_REF:'Duplicate ref', DUPLICATE_IMAGE:'Duplicate image', WRONG_GCASH_NUMBER:'Wrong number',
+  AMOUNT_MISMATCH:'Amount mismatch', DATE_NOT_TODAY:'Old date', TIME_EXPIRED:'Expired',
+  TIME_STALE:'Stale time', TIME_FUTURE:'Future time', RECEIVER_NAME_MISMATCH:'Name mismatch',
+  EDITED_METADATA:'Edited image', SUSPECTED_FAKE:'Looks fake', REF_FORMAT_INVALID:'Bad ref format',
+  LOW_OCR_CONFIDENCE:'Blurry', OCR_UNAVAILABLE:'No OCR', AMOUNT_UNREADABLE:'Amount unreadable',
+  DATE_UNREADABLE:'Date unreadable', TIME_UNREADABLE:'Time unreadable', NUMBER_UNREADABLE:'Number unreadable',
+};
+function receiptBadge(b){
+  const s = b.receiptStatus || 'none';
+  if (s === 'none') return '';
+  const map = {
+    auto_approved: ['#2a8a4a','rgba(74,154,74,.15)','✅ Auto-verified'],
+    manual_review: ['#b87e00','rgba(184,126,0,.15)','🕓 Review receipt'],
+    rejected:      ['#e53935','rgba(229,57,53,.12)','⚠️ Receipt flagged'],
+  };
+  const [c,bg,lbl] = map[s] || ['#888','var(--input)',s];
+  return `<div style="margin-top:5px;font-size:.66rem;font-weight:700;color:${c};background:${bg};border-radius:5px;padding:2px 7px;display:inline-block">${lbl}</div>`;
+}
+function receiptFlagChips(flags){
+  if (!flags || !flags.length) return '';
+  return flags.map(f => `<span style="font-size:.66rem;font-weight:700;background:rgba(229,57,53,.1);color:#e53935;border:1px solid rgba(229,57,53,.25);border-radius:10px;padding:1px 8px">${RECEIPT_FLAG_LABELS[f] || f}</span>`).join(' ');
 }
 function toast(msg,type='ok'){const icons={ok:'✅',err:'❌',inf:'ℹ️'};const el=document.createElement('div');el.className=`toast ${type}`;el.innerHTML=`<span>${icons[type]}</span><span>${msg}</span>`;$('toasts').appendChild(el);setTimeout(()=>el.remove(),3800);}
 function closeModal(id){$(id).classList.remove('show');}
@@ -1728,10 +1760,11 @@ async function renderBookings(){
           <option value="paid" ${b.paymentStatus==='paid'?'selected':''}>Fully Paid</option>
           <option value="for_verification" ${b.paymentStatus==='for_verification'?'selected':''}>For Verification</option>
         </select>
+        ${receiptBadge(b)}
       </td>
       <td data-label="Status">${statusBdg(b.status)}</td>
       <td data-label="Actions"><div style="display:flex;gap:5px;flex-wrap:wrap">
-        ${b.gcashRef && b.status==='pending' && (b.paymentMethod==='gcash'||b.paymentMethod==='gotyme')?`<button class="btn btn-sm" style="background:rgba(200,160,96,.15);color:var(--yellow);border:1px solid rgba(200,160,96,.35);font-weight:700" onclick="openVerifyModal('${b.ref}')">🔍 Verify</button>`:''}
+        ${(b.gcashRef || (b.receiptStatus && b.receiptStatus!=='none')) && b.status==='pending' && (b.paymentMethod==='gcash'||b.paymentMethod==='gotyme'||b.paymentMethod==='pnb')?`<button class="btn btn-sm" style="background:rgba(200,160,96,.15);color:var(--yellow);border:1px solid rgba(200,160,96,.35);font-weight:700" onclick="openVerifyModal('${b.ref}')">🔍 Verify</button>`:''}
         ${b.status!=='cancelled'?`<button class="btn btn-sm" style="background:rgba(74,154,220,.12);color:#5a9ad4;border:1px solid rgba(74,154,220,.3)" onclick="openRescheduleModal('${b.ref}')">📅 Reschedule</button>`:''}
         ${b.status==='confirmed' && b.email?`<button class="btn btn-sm" style="background:rgba(74,154,74,.12);color:#4a9a4a;border:1px solid rgba(74,154,74,.3)" onclick="resendConfirmationEmail('${b.ref}')">📧 Resend Email</button>`:''}
         <select class="fi" style="padding:4px 7px;font-size:.76rem;width:auto" onchange="updateStatus('${b.ref}',this.value)">
@@ -1910,7 +1943,7 @@ async function updateStatus(ref, status) {
 async function openVerifyModal(ref) {
   const b = await DB.getBookingByRef(ref);
   if (!b) { toast('Booking not found.', 'err'); return; }
-  $('vmMethod').textContent = b.paymentMethod === 'gotyme' ? 'GoTyme' : 'GCash';
+  $('vmMethod').textContent = b.paymentMethod === 'gotyme' ? 'GoTyme' : b.paymentMethod === 'pnb' ? 'PNB' : 'GCash';
   $('vmGcashRef').textContent = b.gcashRef || '—';
   $('vmName').textContent = b.fullName;
   $('vmContact').textContent = b.contactNumber;
@@ -1918,8 +1951,40 @@ async function openVerifyModal(ref) {
   $('vmCourt').textContent = b.courtName;
   $('vmDate').textContent = `${fmtD(b.date)} · ${b.startTime}–${b.endTime}`;
   $('vmAmount').textContent = fmt(b.downpayment || b.total / 2);
+  await vmPopulateReceipt(b);
   $('verifyModal').dataset.ref = ref;
   $('verifyModal').classList.add('show');
+}
+
+async function vmPopulateReceipt(b){
+  const wrap = $('vmReceiptWrap');
+  const s = b.receiptStatus || 'none';
+  if (s === 'none' && !b.receiptImageUrl) { if (wrap) wrap.style.display = 'none'; return; }
+  if (wrap) wrap.style.display = '';
+  const st = $('vmReceiptStatus');
+  const map = {
+    auto_approved: ['#2a8a4a','rgba(74,154,74,.12)','✅ Auto-verified — all checks passed'],
+    manual_review: ['#b87e00','rgba(184,126,0,.12)','🕓 Needs review — see flags below'],
+    rejected:      ['#e53935','rgba(229,57,53,.1)','⚠️ Flagged — review carefully before confirming'],
+    none:          ['#888','var(--input)','No automated result'],
+  };
+  const [c,bg,lbl] = map[s] || map.none;
+  if (st) { st.style.color = c; st.style.background = bg; st.textContent = lbl; }
+  $('vmReceiptFlags').innerHTML = receiptFlagChips(b.receiptFlags);
+  const link = $('vmReceiptLink'), img = $('vmReceiptImg'), noImg = $('vmReceiptNoImg');
+  if (link) link.style.display = 'none';
+  if (noImg) noImg.style.display = 'none';
+  if (b.receiptImageUrl) {
+    try {
+      const url = await DB.getReceiptSignedUrl(b.ref);
+      if (img) img.src = url;
+      if (link) { link.href = url; link.style.display = ''; }
+    } catch(e) {
+      if (noImg) { noImg.style.display = ''; noImg.textContent = 'Could not load receipt image.'; }
+    }
+  } else if (noImg) {
+    noImg.style.display = '';
+  }
 }
 
 async function verifyAndConfirm() {

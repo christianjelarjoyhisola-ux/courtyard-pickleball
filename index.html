@@ -537,7 +537,7 @@ select.fi option { background:var(--card); }
   transition:all .15s; user-select:none;
 }
 .slot:hover:not(.bkd) { border-color:var(--accent); color:var(--accent); }
-.slot.sel { background:var(--accent); border-color:var(--accent); color:#000; font-weight:700; }
+.slot.sel { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:700; transform:translateY(-2px); box-shadow:0 0 0 2px var(--card),0 0 0 4px var(--accent),0 6px 18px rgba(var(--ac),.45); position:relative; z-index:2; }
 .slot.bkd { background:rgba(248,81,73,.07); border-color:rgba(248,81,73,.2); color:var(--muted); cursor:not-allowed; text-decoration:line-through; }
 .slot-msg { font-size:.78rem; color:var(--muted); }
 
@@ -1019,8 +1019,18 @@ footer { background:var(--card); border-top:1px solid var(--border); padding:40p
 
 /* States */
 .slot.free:hover  { border-color: var(--accent); background: rgba(var(--ac),.08); color: var(--accent); }
-.slot.sel  { background: var(--accent); border-color: var(--accent); color: #000; }
-.slot.sel .slot-end { color: rgba(0,0,0,.6); }
+.slot.sel  { background: var(--accent); border-color: var(--accent); color: #fff; font-weight:700; transform:translateY(-2px); box-shadow:0 0 0 2px var(--card),0 0 0 4px var(--accent),0 6px 18px rgba(var(--ac),.45); position:relative; z-index:2; }
+.slot.sel .slot-time { color: #fff; }
+.slot.sel .slot-end { color: rgba(255,255,255,.72); }
+.slot.sel::after {
+  content: '✓';
+  position: absolute; top: -7px; right: -7px;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: #fff; color: var(--accent);
+  font-size: .62rem; font-weight: 900;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 1px 4px rgba(0,0,0,.35);
+}
 .slot.booked { background: rgba(248,81,73,.06); border-color: rgba(248,81,73,.18); cursor: not-allowed; }
 .slot.booked .slot-time { text-decoration: line-through; color: var(--muted); }
 .slot.booked .slot-tag.booked-tag { background: rgba(248,81,73,.15); color: var(--red); }

@@ -454,6 +454,60 @@ window.DB = {
     }, { onConflict: 'user_id,version' });
     if (error) throw error;
   },
+
+  // ---- WEEKLY BILLING (system owner) ----
+  async getWeeklyFees() {
+    const { data, error } = await _sb
+      .from('weekly_fees')
+      .select('*')
+      .order('week_start', { ascending: false })
+      .order('created_at', { ascending: false });
+    if (error) { console.error('getWeeklyFees:', error); return []; }
+    return data || [];
+  },
+
+  async saveWeeklyFee(statement) {
+    const row = {
+      court_owner_user_id: statement.courtOwnerUserId,
+      court_owner_email: statement.courtOwnerEmail || null,
+      week_start: statement.weekStart,
+      week_end: statement.weekEnd,
+      bookings_count: statement.bookingsCount || 0,
+      fee_per_booking: statement.feePerBooking,
+      amount_due: statement.amountDue,
+      status: statement.status || 'sent',
+      generated_at: statement.generatedAt || new Date().toISOString(),
+      due_at: statement.dueAt || null,
+      sent_at: statement.sentAt || null,
+      paid_at: statement.paidAt || null,
+      paid_ref: statement.paidRef || null,
+      paid_note: statement.paidNote || null,
+      paid_by_user_id: statement.paidByUserId || null,
+    };
+
+    const { data, error } = await _sb
+      .from('weekly_fees')
+      .upsert(row, { onConflict: 'court_owner_user_id,week_start,week_end' })
+      .select('*')
+      .single();
+
+    if (error) { console.error('saveWeeklyFee:', error); throw error; }
+    return data;
+  },
+
+  async updateWeeklyFee(id, updates) {
+    const row = {};
+    if (updates.status !== undefined) row.status = updates.status;
+    if (updates.paidAt !== undefined) row.paid_at = updates.paidAt;
+    if (updates.paidRef !== undefined) row.paid_ref = updates.paidRef;
+    if (updates.paidNote !== undefined) row.paid_note = updates.paidNote;
+    if (updates.paidByUserId !== undefined) row.paid_by_user_id = updates.paidByUserId;
+    if (updates.sentAt !== undefined) row.sent_at = updates.sentAt;
+    if (updates.dueAt !== undefined) row.due_at = updates.dueAt;
+
+    const { error } = await _sb.from('weekly_fees').update(row).eq('id', id);
+    if (error) { console.error('updateWeeklyFee:', error); throw error; }
+  },
 };
 
 // =============================================

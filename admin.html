@@ -1122,6 +1122,57 @@ tr:hover td { background: var(--bg2); }
           <span id="paySettingsSummary" style="font-size:.78rem;color:var(--muted)"></span>
         </div>
       </div>
+
+      <!-- WEEKLY BILLING (owner only) -->
+      <div class="panel" data-perm="owner_only" style="max-width:980px;margin-bottom:20px;border:1.5px solid rgba(74,154,74,.35);background:rgba(74,154,74,.04)">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+          <h4 style="margin:0;color:var(--green)">🧾 Weekly Billing Statements</h4>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <label style="font-size:.78rem;color:var(--text3)">Statement Week:</label>
+            <select class="fi" id="billWeekMode" style="padding:5px 10px;font-size:.82rem;width:auto">
+              <option value="last" selected>Previous Week (Mon-Sun)</option>
+              <option value="current">Current Week (Mon-Sun)</option>
+            </select>
+            <button class="btn btn-p btn-sm" onclick="generateWeeklyStatement()">➕ Generate Statement</button>
+            <button class="btn btn-g btn-sm" onclick="renderWeeklyBilling()">🔄 Refresh</button>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:12px">
+          <div style="background:var(--input);border:1px solid var(--border);border-radius:9px;padding:10px 12px;text-align:center">
+            <div style="font-size:.7rem;color:var(--text3);text-transform:uppercase;letter-spacing:.6px">Open Statements</div>
+            <div id="billOpenCount" style="font-size:1.25rem;font-weight:800;color:var(--text);margin-top:4px">0</div>
+          </div>
+          <div style="background:var(--input);border:1px solid var(--border);border-radius:9px;padding:10px 12px;text-align:center">
+            <div style="font-size:.7rem;color:var(--text3);text-transform:uppercase;letter-spacing:.6px">Total Outstanding</div>
+            <div id="billOutstanding" style="font-size:1.25rem;font-weight:800;color:var(--yellow);margin-top:4px">₱0.00</div>
+          </div>
+          <div style="background:var(--input);border:1px solid var(--border);border-radius:9px;padding:10px 12px;text-align:center">
+            <div style="font-size:.7rem;color:var(--text3);text-transform:uppercase;letter-spacing:.6px">Last Generated</div>
+            <div id="billLastGen" style="font-size:.88rem;font-weight:700;color:var(--text);margin-top:4px">—</div>
+          </div>
+        </div>
+
+        <div class="tbl-scroll" style="max-height:360px;overflow:auto;border:1px solid var(--border);border-radius:9px;background:var(--card)">
+          <table>
+            <thead>
+              <tr>
+                <th>Week</th>
+                <th>Court Owner</th>
+                <th>Bookings</th>
+                <th>Rate</th>
+                <th>Amount Due</th>
+                <th>Status</th>
+                <th>Due Date</th>
+                <th>Paid Ref</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="billBody"><tr><td colspan="9" style="text-align:center;color:var(--muted);padding:22px">No statements yet.</td></tr></tbody>
+          </table>
+        </div>
+        <div style="margin-top:10px;font-size:.76rem;color:var(--text3)">Statements are generated weekly from <strong>confirmed</strong> and <strong>completed</strong> bookings only. Once generated, use <strong>Mark Paid</strong> after verifying GCash remittance proof.</div>
+      </div>
     </div>
 
     <!-- MAINTENANCE -->
@@ -3032,6 +3083,164 @@ async function renderPaymentSettings() {
 
   const summaryParts = [`Methods: ${(cashOn?'Cash ':'')}${(gcashOn?'GCash ':'')}${(gotymeOn?'GoTyme ':'')}${(pnbOn?'PNB':'')}`.trim() || 'none'];
   $('paySettingsSummary').textContent = summaryParts.join(' • ');
+
+  await renderWeeklyBilling();
+}
+
+function _weekBounds(mode = 'last') {
+  const now = new Date();
+  const dow = now.getDay();
+  const mondayOffset = (dow + 6) % 7;
+  const start = new Date(now);
+  start.setHours(0, 0, 0, 0);
+  start.setDate(now.getDate() - mondayOffset + (mode === 'last' ? -7 : 0));
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  end.setHours(23, 59, 59, 999);
+
+  const toDate = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  return { startDate: toDate(start), endDate: toDate(end), start, end };
+}
+
+function _dateLabel(ds) {
+  if (!ds) return '—';
+  return new Date(ds + 'T00:00:00').toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function _billStatusBadge(status) {
+  const s = (status || 'draft').toLowerCase();
+  if (s === 'paid') return '<span class="bdg bdg-c">Paid</span>';
+  if (s === 'overdue') return '<span class="bdg bdg-x">Overdue</span>';
+  if (s === 'sent') return '<span class="bdg bdg-p">Sent</span>';
+  return '<span class="bdg bdg-d">Draft</span>';
+}
+
+async function renderWeeklyBilling() {
+  const body = $('billBody');
+  if (!body || !Auth.can('owner_only', sess.role)) return;
+
+  const [rows, accounts] = await Promise.all([
+    DB.getWeeklyFees(),
+    DB.getAccounts(),
+  ]);
+
+  const ownerById = {};
+  accounts.forEach(a => { ownerById[a.id] = a; });
+
+  const openRows = rows.filter(r => (r.status || 'draft') !== 'paid');
+  const outstanding = openRows.reduce((sum, r) => sum + (Number(r.amount_due) || 0), 0);
+  $('billOpenCount').textContent = openRows.length;
+  $('billOutstanding').textContent = fmt(outstanding);
+  $('billLastGen').textContent = rows[0]?.generated_at ? new Date(rows[0].generated_at).toLocaleString('en-PH') : '—';
+
+  if (!rows.length) {
+    body.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:22px">No statements yet.</td></tr>';
+    return;
+  }
+
+  body.innerHTML = rows.map(r => {
+    const owner = ownerById[r.court_owner_user_id];
+    const ownerName = owner?.fullName || owner?.full_name || r.court_owner_email || 'Court Owner';
+    const dueLabel = r.due_at ? new Date(r.due_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+    const paidRef = r.paid_ref || '—';
+    const week = `${_dateLabel(r.week_start)} – ${_dateLabel(r.week_end)}`;
+    const canMarkPaid = (r.status || 'draft') !== 'paid';
+    const canMarkOverdue = ['draft', 'sent'].includes((r.status || 'draft').toLowerCase());
+
+    return `<tr>
+      <td data-label="Week">${week}</td>
+      <td data-label="Court Owner"><div style="font-weight:700">${ownerName}</div><div style="font-size:.72rem;color:var(--muted)">${r.court_owner_email || owner?.email || '—'}</div></td>
+      <td data-label="Bookings">${r.bookings_count}</td>
+      <td data-label="Rate">${fmt(r.fee_per_booking)}</td>
+      <td data-label="Amount Due"><strong style="color:var(--yellow)">${fmt(r.amount_due)}</strong></td>
+      <td data-label="Status">${_billStatusBadge(r.status)}</td>
+      <td data-label="Due Date">${dueLabel}</td>
+      <td data-label="Paid Ref"><code style="font-size:.74rem;color:var(--text)">${paidRef}</code></td>
+      <td data-label="Actions">
+        <div style="display:flex;gap:5px;flex-wrap:wrap">
+          ${canMarkPaid ? `<button class="btn btn-sm" style="background:rgba(74,154,74,.12);color:var(--green);border:1px solid rgba(74,154,74,.3)" onclick="markWeeklyFeePaid('${r.id}')">✅ Mark Paid</button>` : ''}
+          ${canMarkOverdue ? `<button class="btn btn-sm" style="background:rgba(229,57,53,.12);color:#e53935;border:1px solid rgba(229,57,53,.3)" onclick="markWeeklyFeeOverdue('${r.id}')">⚠️ Overdue</button>` : ''}
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function generateWeeklyStatement() {
+  if (!Auth.can('owner_only', sess.role)) { toast('Only system owner can generate statements.', 'err'); return; }
+
+  const mode = $('billWeekMode')?.value || 'last';
+  const { startDate, endDate, end } = _weekBounds(mode);
+  const [accounts, settings, bookings] = await Promise.all([
+    DB.getAccounts(),
+    DB.getSettings(),
+    DB.getBookings(),
+  ]);
+
+  const courtOwner = accounts.find(a => a.role === 'court_owner');
+  if (!courtOwner) { toast('No court owner account found.', 'err'); return; }
+
+  const feePerBooking = Math.max(0, Number(settings.maintenance_fee || 15));
+  const eligible = bookings.filter(b =>
+    (b.status === 'confirmed' || b.status === 'completed') &&
+    b.date >= startDate && b.date <= endDate
+  );
+  const bookingsCount = eligible.length;
+  const amountDue = bookingsCount * feePerBooking;
+
+  const due = new Date(end);
+  due.setDate(end.getDate() + 5); // Friday after Sunday cut-off
+  due.setHours(17, 0, 0, 0);
+
+  try {
+    await DB.saveWeeklyFee({
+      courtOwnerUserId: courtOwner.id,
+      courtOwnerEmail: courtOwner.email,
+      weekStart: startDate,
+      weekEnd: endDate,
+      bookingsCount,
+      feePerBooking,
+      amountDue,
+      status: 'sent',
+      generatedAt: new Date().toISOString(),
+      sentAt: new Date().toISOString(),
+      dueAt: due.toISOString(),
+    });
+    toast(`Statement generated: ${bookingsCount} bookings × ${fmt(feePerBooking)} = ${fmt(amountDue)}`);
+    await renderWeeklyBilling();
+  } catch (e) {
+    toast('Failed to generate weekly statement.', 'err');
+  }
+}
+
+async function markWeeklyFeePaid(id) {
+  const paidRef = (prompt('Enter remittance reference (GCash Txn ID):') || '').trim();
+  if (!paidRef) { toast('Reference is required to mark as paid.', 'err'); return; }
+  const paidNote = (prompt('Optional note (leave blank if none):') || '').trim();
+
+  try {
+    await DB.updateWeeklyFee(id, {
+      status: 'paid',
+      paidAt: new Date().toISOString(),
+      paidRef,
+      paidNote,
+      paidByUserId: sess.id,
+    });
+    toast('Statement marked as paid.');
+    await renderWeeklyBilling();
+  } catch (e) {
+    toast('Failed to mark statement as paid.', 'err');
+  }
+}
+
+async function markWeeklyFeeOverdue(id) {
+  try {
+    await DB.updateWeeklyFee(id, { status: 'overdue' });
+    toast('Statement marked as overdue.');
+    await renderWeeklyBilling();
+  } catch (e) {
+    toast('Failed to mark statement overdue.', 'err');
+  }
 }
 
 async function removeQr(type) {

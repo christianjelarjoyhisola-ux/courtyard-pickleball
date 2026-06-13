@@ -1190,8 +1190,8 @@ tr:hover td { background: var(--bg2); }
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
             <label style="font-size:.78rem;color:var(--text3)">Statement Week:</label>
             <select class="fi" id="billWeekMode" style="padding:5px 10px;font-size:.82rem;width:auto">
-              <option value="last" selected>Previous Week (Mon-Sun)</option>
-              <option value="current">Current Week (Mon-Sun)</option>
+              <option value="1" selected>Previous Week (Mon-Sun)</option>
+              <option value="0">Current Week (Mon-Sun)</option>
             </select>
             <button class="btn btn-p btn-sm" onclick="generateWeeklyStatement()">➕ Generate Statement</button>
             <button class="btn btn-g btn-sm" onclick="renderWeeklyBilling()">🔄 Refresh</button>
@@ -3209,23 +3209,44 @@ async function renderPaymentSettings() {
     $('platformRemSummary').textContent = pn ? `Receiving via GCash: ${pn}${pnm ? ' (' + pnm + ')' : ''}` : 'Not configured yet — court owners cannot pay until set.';
   }
 
+  populateBillWeekOptions();
   await renderWeeklyBilling();
   await renderMyBilling();
 }
-
-function _weekBounds(mode = 'last') {
+function _weekBounds(mode = 1) {
+  // mode = integer weeks ago (0 = current, 1 = previous, 2 = two weeks ago, ...).
+  // Legacy strings 'current'/'last' still supported.
+  let weeksAgo = mode === 'current' ? 0 : mode === 'last' ? 1 : Number(mode);
+  if (!Number.isFinite(weeksAgo) || weeksAgo < 0) weeksAgo = 1;
   const now = new Date();
   const dow = now.getDay();
   const mondayOffset = (dow + 6) % 7;
   const start = new Date(now);
   start.setHours(0, 0, 0, 0);
-  start.setDate(now.getDate() - mondayOffset + (mode === 'last' ? -7 : 0));
+  start.setDate(now.getDate() - mondayOffset - (weeksAgo * 7));
   const end = new Date(start);
   end.setDate(start.getDate() + 6);
   end.setHours(23, 59, 59, 999);
 
   const toDate = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   return { startDate: toDate(start), endDate: toDate(end), start, end };
+}
+
+// Populate the "Statement Week" dropdown with the last N weeks (Mon-Sun).
+function populateBillWeekOptions(weeksBack = 12) {
+  const sel = $('billWeekMode');
+  if (!sel) return;
+  const prev = sel.value;
+  const opts = [];
+  for (let w = 0; w <= weeksBack; w++) {
+    const { startDate, endDate } = _weekBounds(w);
+    const label = w === 0 ? `Current Week (${_dateLabel(startDate)} – ${_dateLabel(endDate)})`
+                : w === 1 ? `Previous Week (${_dateLabel(startDate)} – ${_dateLabel(endDate)})`
+                : `${w} Weeks Ago (${_dateLabel(startDate)} – ${_dateLabel(endDate)})`;
+    opts.push(`<option value="${w}"${String(w) === prev ? ' selected' : ''}>${label}</option>`);
+  }
+  sel.innerHTML = opts.join('');
+  if (!prev) sel.value = '1'; // default to Previous Week
 }
 
 function _dateLabel(ds) {

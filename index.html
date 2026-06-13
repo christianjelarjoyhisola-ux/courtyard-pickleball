@@ -248,7 +248,7 @@ body.light .nav { background:rgba(248,250,252,.92); }
     display:flex; flex-direction:column; align-items:flex-start; gap:6px;
     padding:10px 14px;
   }
-  .cc-photo-bg { display:none; }                 /* hide court diagram/photo on mobile */
+  .cc-photo-bg { display:none !important; }      /* hide court diagram/photo on mobile (beats inline style) */
   .cc-photo-avail { position:static; top:auto; left:auto; }
   .cc-photo-bar { position:static; background:none; padding:0; }
   .cc-photo-name { display:none; }               /* name already shown in mobile header */

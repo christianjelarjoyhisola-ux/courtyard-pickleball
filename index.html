@@ -2186,13 +2186,13 @@ function applyPaymentSettings(settings) {
   gcashSettings.checkoutUrl = (settings.gcash_checkout_url || '').trim();
   gcashSettings.merchantNumber = settings.gcash_merchant_number || '0935 935 5010';
   gcashSettings.merchantName = settings.gcash_merchant_name || 'CourtYard Pickleball';
-  gcashSettings.platformQrImage = settings.platform_gcash_qr || '';
+  gcashSettings.qrImage = settings.gcash_qr_image || ''; // QR for Open Play (from PAYMENT QR SETTINGS, not Platform Remittance)
   
   // Debug logging
   console.log('applyPaymentSettings:', {
-    hasPlatformQr: !!gcashSettings.platformQrImage,
-    length: gcashSettings.platformQrImage?.length || 0,
-    startsWithData: gcashSettings.platformQrImage?.startsWith('data:') || false,
+    hasQrImage: !!gcashSettings.qrImage,
+    length: gcashSettings.qrImage?.length || 0,
+    startsWithData: gcashSettings.qrImage?.startsWith('data:') || false,
     merchantNumber: gcashSettings.merchantNumber,
     merchantName: gcashSettings.merchantName
   });
@@ -4000,7 +4000,7 @@ function opPickPay(method) {
       <div style="font-size:.7rem;color:var(--muted);margin-top:4px">Enter the reference number shown after your payment</div>
     </div>`;
   if (method === 'gcash') {
-    const qrDisplay = gcashSettings.platformQrImage ? `<img src="${gcashSettings.platformQrImage}" alt="GCash QR" style="width:140px;height:140px;object-fit:contain;border-radius:6px;border:1px solid rgba(74,154,74,.3);background:#fff;padding:4px;margin:10px 0"/>` : `<div style="width:140px;height:140px;display:flex;align-items:center;justify-content:center;background:rgba(74,154,74,.05);border:1px dashed rgba(74,154,74,.25);border-radius:6px;margin:10px 0;color:var(--muted);font-size:.75rem;text-align:center">📸 No QR uploaded</div>`;
+    const qrDisplay = gcashSettings.qrImage ? `<img src="${gcashSettings.qrImage}" alt="GCash QR" style="width:140px;height:140px;object-fit:contain;border-radius:6px;border:1px solid rgba(74,154,74,.3);background:#fff;padding:4px;margin:10px 0"/>` : `<div style="width:140px;height:140px;display:flex;align-items:center;justify-content:center;background:rgba(74,154,74,.05);border:1px dashed rgba(74,154,74,.25);border-radius:6px;margin:10px 0;color:var(--muted);font-size:.75rem;text-align:center">📸 No QR uploaded</div>`;
     info.innerHTML = `<div style="background:rgba(74,154,74,.06);border:1px solid rgba(74,154,74,.25);border-radius:var(--r);padding:14px;text-align:center">
       <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--accent);margin-bottom:8px">📱 Send GCash Payment To</div>
       ${qrDisplay}

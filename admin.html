@@ -3773,8 +3773,9 @@ function handleQrUpload(type, e) {
   const file = e.target.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = ev => {
+  reader.onload = async ev => {
     const data = ev.target.result;
+    const key = type === 'gcash' ? 'gcash_qr_image' : type === 'gotyme' ? 'gotyme_qr_image' : 'pnb_qr_image';
     if (type === 'gcash') {
       $('gcashQrPreview').src = data;
       $('gcashQrPreviewWrap').style.display = '';
@@ -3784,6 +3785,14 @@ function handleQrUpload(type, e) {
     } else {
       $('pnbQrPreview').src = data;
       $('pnbQrPreviewWrap').style.display = '';
+    }
+    // Auto-save to DB
+    try {
+      await DB.saveSetting(key, data);
+      toast(`✅ ${type.toUpperCase()} QR saved! Customers will see it instantly.`, 'ok');
+    } catch (err) {
+      console.error('Failed to auto-save QR:', err);
+      toast('Failed to save QR code. Please try again.', 'err');
     }
   };
   reader.readAsDataURL(file);

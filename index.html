@@ -528,6 +528,10 @@ body.light .nav { background:rgba(248,250,252,.92); }
 .fi:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(0,200,83,.12); }
 .fi::placeholder { color:var(--muted); }
 select.fi option { background:var(--card); }
+/* Prevent iOS Safari auto-zoom on focus: touch devices need >=16px font on form controls */
+@media (pointer: coarse) {
+  .fi, .cc-date-pick, input, select, textarea { font-size:16px; }
+}
 .court-disp {
   padding:11px 14px; background:var(--input);
   border:1px dashed var(--border); border-radius:var(--r-sm);

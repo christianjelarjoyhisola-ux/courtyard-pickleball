@@ -568,7 +568,11 @@ Deno.serve(async (req) => {
 
     // ── reference reuse / replay guard ──────────────────────────────────────
     // Use the OCR-extracted ref when available, else the customer-typed ref.
-    const refForDedupe = extractedRef || booking.gcash_ref || null;
+    // Store a digits-only key so "8041 8559 17375" and "8041855917375"
+    // cannot bypass duplicate-reference protection.
+    const typedRef = String(booking.gcash_ref || "").replace(/\D/g, "");
+    const refForDedupe = extractedRef || typedRef || null;
+    let refAlreadyClaimedByThisBooking = false;
     if (refForDedupe) {
       const { data: existingRef } = await db
         .from("used_gcash_refs")
@@ -576,6 +580,7 @@ Deno.serve(async (req) => {
         .eq("gcash_ref", refForDedupe)
         .maybeSingle();
       if (existingRef && existingRef.booking_ref !== bookingRef) flags.push("DUPLICATE_REF");
+      else if (existingRef && existingRef.booking_ref === bookingRef) refAlreadyClaimedByThisBooking = true;
     }
 
     // ── decision routing ────────────────────────────────────────────────────
@@ -585,6 +590,20 @@ Deno.serve(async (req) => {
     if (hasHard) result = "rejected";
     else if (hasSoftOrUnreadable) result = "manual_review";
     else result = "auto_approved";
+
+    // Race-safe claim of the payment reference. The table's primary key on
+    // gcash_ref is the source of truth: if another request claims the same ref
+    // between our earlier read and this insert, this receipt becomes duplicate.
+    if (result === "auto_approved" && refForDedupe && !refAlreadyClaimedByThisBooking) {
+      const { error: claimErr } = await db
+        .from("used_gcash_refs")
+        .insert({ gcash_ref: refForDedupe, booking_ref: bookingRef, provider });
+      if (claimErr) {
+        console.error("payment reference claim failed:", errMsg(claimErr));
+        if (!flags.includes("DUPLICATE_REF")) flags.push("DUPLICATE_REF");
+        result = "rejected";
+      }
+    }
 
     const confidence = result === "auto_approved" ? Math.max(0.9, ocrConfidence)
       : result === "manual_review" ? 0.5 : 0.1;
@@ -615,10 +634,6 @@ Deno.serve(async (req) => {
       statusUpdate.payment_status = fullyPaid ? "paid" : "downpayment_paid";
       if (booking.status !== "completed" && booking.status !== "cancelled") {
         statusUpdate.status = "confirmed";
-      }
-      if (refForDedupe) {
-        await db.from("used_gcash_refs")
-          .upsert({ gcash_ref: refForDedupe, booking_ref: bookingRef, provider }, { onConflict: "gcash_ref" });
       }
     } else if (result === "manual_review") {
       statusUpdate.payment_status = "for_verification";

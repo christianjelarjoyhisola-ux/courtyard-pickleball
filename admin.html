@@ -1746,12 +1746,14 @@ async function renderDash(){
 
   const bks=await DB.getBookings();
   const today=new Date().toISOString().split('T')[0];
-  const active=bks.filter(b=>b.status!=='cancelled');
+  // Exclude placeholder slot-holds ("Reserving…") — they are temporary locks, not real bookings.
+  const realBks=bks.filter(b=>b.email!=='reserve@hold.internal');
+  const active=realBks.filter(b=>b.status!=='cancelled');
   const rev=active.reduce((s,b)=>s+b.total,0);
-  const todayBks=bks.filter(b=>b.date===today);
+  const todayBks=realBks.filter(b=>b.date===today);
   const cc={};active.forEach(b=>{cc[b.courtName]=(cc[b.courtName]||0)+1;});
   const most=Object.entries(cc).sort((a,b)=>b[1]-a[1])[0];
-  $('dTotal').textContent=bks.length;
+  $('dTotal').textContent=realBks.length;
   $('dToday').textContent=todayBks.length;
   $('dRev').textContent=fmt(rev);
   $('dMost').textContent=most?most[0]:'—';
@@ -1761,7 +1763,7 @@ async function renderDash(){
   const tot=gc+ca;
   $('gBar').style.width=(tot>0?Math.round(gc/tot*100):0)+'%';
   $('cBar').style.width=(tot>0?Math.round(ca/tot*100):0)+'%';
-  const recent=[...bks].slice(0,5);
+  const recent=[...realBks].slice(0,5);
   $('recentBody').innerHTML=recent.length===0?'<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">No bookings yet.</td></tr>':
     recent.map(b=>`<tr><td data-label="Ref"><code style="color:var(--green);font-size:.78rem">${b.ref}</code></td><td data-label="Name">${b.fullName}</td><td data-label="Court">${b.courtName}</td><td data-label="Date">${fmtD(b.date)}</td><td data-label="Status">${statusBdg(b.status)}</td></tr>`).join('');
 
@@ -1959,6 +1961,11 @@ async function renderBookings(){
   let bks=await DB.getBookings();
   await autoCompleteBookings(bks);
   bks=await DB.getBookings(); // reload after auto-complete
+  // Hide placeholder slot-holds ("Reserving…"): these are temporary locks created
+  // when a customer clicks Book Now but hasn't submitted yet. A completed booking
+  // carries the real customer email, so any row still on reserve@hold.internal is
+  // just an in-progress or abandoned hold and adds no value to the admin list.
+  bks=bks.filter(b=>b.email!=='reserve@hold.internal');
   const q=($('srch')||{}).value?.toLowerCase()||'';
   const fd=($('fDate')||{}).value||'';
   const fs=($('fStatus')||{}).value||'';
@@ -4382,7 +4389,26 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   const gated = await checkAgreementGate(sess);
   if (!gated) await goto(firstAllowed);
   startAdminRealtime();
+  // Housekeeping: purge old abandoned slot-holds so the table stays tidy.
+  // Runs in the background (admin is authenticated, so DELETE is permitted by RLS).
+  cleanupAbandonedHolds();
 });
+
+/* Delete leftover "Reserving…" holds that were abandoned (cancelled) more than
+   1 day ago. Active/recent holds are left untouched. Best-effort, non-blocking. */
+async function cleanupAbandonedHolds() {
+  try {
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+    const all = await DB.getBookings();
+    const stale = all.filter(b =>
+      b.email === 'reserve@hold.internal' &&
+      b.status === 'cancelled' &&
+      b.createdAt && new Date(b.createdAt).getTime() < cutoff
+    );
+    if (stale.length === 0) return;
+    await Promise.all(stale.map(b => DB.deleteBooking(b.ref).catch(() => {})));
+  } catch (e) { /* non-critical */ }
+}
 
 /* ==============================================
    ROLE-BASED VISIBILITY

@@ -2122,6 +2122,21 @@ function toast(msg, type='ok') {
   setTimeout(() => el.remove(), 3800);
 }
 
+function copyToClipboard(text) {
+  navigator.clipboard.writeText(text).then(() => {
+    toast('✅ Copied to clipboard!', 'ok');
+  }).catch(() => {
+    // Fallback for older browsers
+    const el = document.createElement('textarea');
+    el.value = text;
+    document.body.appendChild(el);
+    el.select();
+    document.execCommand('copy');
+    document.body.removeChild(el);
+    toast('✅ Copied to clipboard!', 'ok');
+  });
+}
+
 /* =============================================
    DARK MODE
    ============================================= */
@@ -2172,6 +2187,7 @@ function applyPaymentSettings(settings) {
   gcashSettings.merchantNumber = settings.gcash_merchant_number || '0935 935 5010';
   gcashSettings.merchantName = settings.gcash_merchant_name || 'CourtYard Pickleball';
   gcashSettings.platformQrImage = settings.platform_gcash_qr || '';
+  console.log('DEBUG: platformQrImage loaded:', !!gcashSettings.platformQrImage, 'length:', gcashSettings.platformQrImage?.length || 0);
   paymentMethods.cash = settings.payment_method_cash !== '0';
   paymentMethods.gcash = settings.payment_method_gcash !== '0';
   paymentMethods.gotyme = settings.payment_method_gotyme !== '0';
@@ -3636,7 +3652,10 @@ function startRealtime() {
   const onChange = () => {
     // Debounce: a single booking can emit several row events in quick succession.
     clearTimeout(_rtDebounce);
-    _rtDebounce = setTimeout(() => { refreshLiveViews().catch(() => {}); }, 250);
+    _rtDebounce = setTimeout(() => { 
+      loadSettings(); // Reload settings on any change (QR, payment methods, etc.)
+      refreshLiveViews().catch(() => {}); 
+    }, 250);
   };
   _supabase.channel('public-rt')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, onChange)
@@ -3976,7 +3995,10 @@ function opPickPay(method) {
     info.innerHTML = `<div style="background:rgba(74,154,74,.06);border:1px solid rgba(74,154,74,.25);border-radius:var(--r);padding:14px;text-align:center">
       <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--accent);margin-bottom:8px">📱 Send GCash Payment To</div>
       ${qrDisplay}
-      <div style="font-size:1.05rem;font-weight:700;margin-top:8px">${gcashSettings.merchantNumber}</div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px">
+        <div style="font-size:1.05rem;font-weight:700">${gcashSettings.merchantNumber}</div>
+        <button type="button" onclick="copyToClipboard('${gcashSettings.merchantNumber}')" style="background:rgba(74,154,220,.15);color:#5a9ad4;border:1px solid rgba(74,154,220,.3);padding:4px 8px;border-radius:4px;cursor:pointer;font-size:.75rem;font-weight:600;transition:all .2s">📋 Copy</button>
+      </div>
       <div style="font-size:.82rem;color:var(--muted);margin-top:2px">${gcashSettings.merchantName}</div>
       ${refHtml}
     </div>`;

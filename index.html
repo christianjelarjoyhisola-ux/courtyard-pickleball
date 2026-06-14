@@ -2710,7 +2710,7 @@ async function renderCourts() {
     bookings.filter(b => b.courtId === c.id && b.date === today && bookingHoldsSlot(b))
             .forEach(b => b.slots.forEach(h => {
               slotNameMap[h] = b.fullName || '';
-              if (b.status === 'verifying') verifyingHoursSet.add(h);
+              if (b.status === 'verifying') verifyingHoursSet.add(Number(h));
             }));
     const bookedHours = new Set(Object.keys(slotNameMap).map(Number));
 

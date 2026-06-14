@@ -3918,10 +3918,20 @@ async function verifyUploadedReceipt(bookingRef, method, inlineData = null) {
       else if (status === 'rejected') { st.style.background = 'rgba(229,57,53,.1)'; st.style.color = '#e53935'; st.textContent = '⚠️ ' + msg; }
       else { st.style.background = 'rgba(184,126,0,.12)'; st.style.color = '#b87e00'; st.textContent = '🕓 ' + msg; }
     }
-    return { status, message: msg, flags: res?.flags || [] };
+    return {
+      status,
+      message: msg,
+      flags: res?.flags || [],
+      extracted: res?.extracted || null,
+      confidence: res?.confidence ?? null,
+      receiptImageUrl: res?.receiptImageUrl || null,
+      receiptImageHash: res?.receiptImageHash || null,
+      receiptPhash: res?.receiptPhash || null,
+      receiptVerifiedAt: res?.receiptVerifiedAt || new Date().toISOString(),
+    };
   } catch (err) {
     if (st) { st.style.background = 'rgba(184,126,0,.12)'; st.style.color = '#b87e00'; st.textContent = '🕓 Receipt uploaded — the owner will verify it manually.'; }
-    return { status: 'manual_review', message: 'Receipt uploaded — pending manual verification.', flags: [] };
+    return { status: 'manual_review', message: 'Receipt uploaded — pending manual verification.', flags: [], extracted: null, confidence: null, receiptImageUrl: null, receiptImageHash: null, receiptPhash: null, receiptVerifiedAt: new Date().toISOString() };
   }
 }
 
@@ -4614,10 +4624,20 @@ async function verifyOpReceipt(ref, method, inlineData) {
       else if (status === 'rejected') { st.style.background = 'rgba(229,57,53,.1)'; st.style.color = '#e53935'; st.textContent = '⚠️ ' + msg; }
       else { st.style.background = 'rgba(184,126,0,.12)'; st.style.color = '#b87e00'; st.textContent = '🕓 ' + msg; }
     }
-    return { status, message: msg, flags: res?.flags || [] };
+    return {
+      status,
+      message: msg,
+      flags: res?.flags || [],
+      extracted: res?.extracted || null,
+      confidence: res?.confidence ?? null,
+      receiptImageUrl: res?.receiptImageUrl || null,
+      receiptImageHash: res?.receiptImageHash || null,
+      receiptPhash: res?.receiptPhash || null,
+      receiptVerifiedAt: res?.receiptVerifiedAt || new Date().toISOString(),
+    };
   } catch (err) {
     if (st) { st.style.background = 'rgba(184,126,0,.12)'; st.style.color = '#b87e00'; st.textContent = '🕓 Receipt uploaded — the owner will verify it manually.'; }
-    return { status: 'manual_review', message: 'Receipt uploaded — pending manual verification.', flags: [] };
+    return { status: 'manual_review', message: 'Receipt uploaded — pending manual verification.', flags: [], extracted: null, confidence: null, receiptImageUrl: null, receiptImageHash: null, receiptPhash: null, receiptVerifiedAt: new Date().toISOString() };
   }
 }
 
@@ -4678,9 +4698,10 @@ async function submitOpenPlay() {
     // Auto-verify the uploaded receipt BEFORE saving (digital payments only).
     // Inline bookingData makes the edge function verify-only (no bookings write).
     let regPayStatus = 'pending';
+    let receiptResult = null;
     if (needsRef && _opReceiptFile) {
       const opRef = 'OP-' + Date.now().toString(36).toUpperCase();
-      const receiptResult = await verifyOpReceipt(opRef, payMethod, {
+      receiptResult = await verifyOpReceipt(opRef, payMethod, {
         ref: opRef,
         total: opTotal,
         downpayment: amt,
@@ -4690,6 +4711,28 @@ async function submitOpenPlay() {
         created_at: _opSignupData.startedAt,
       });
       if (receiptResult.status === 'rejected') {
+        const timeLabel = _opSignupData.sessionLabel || `${fmtT(_opSignupData.hour)} – ${fmtT(_opSignupData.hour + 1)}`;
+        await DB.addOpenPlayRegistration({
+          fullName: name,
+          courtId: _opSignupData.courtId,
+          courtName: _opSignupData.courtName,
+          date: _opSignupData.date,
+          hour: _opSignupData.hour,
+          timeLabel,
+          paymentType: payType,
+          paymentMethod: _opSignupData.payMethod,
+          gcashRef: _opSignupData.gcashRef || null,
+          paymentStatus: 'rejected',
+          amount: amt,
+          receiptImageUrl: receiptResult.receiptImageUrl,
+          receiptImageHash: receiptResult.receiptImageHash,
+          receiptPhash: receiptResult.receiptPhash,
+          receiptStatus: 'rejected',
+          receiptFlags: receiptResult.flags || [],
+          receiptExtracted: receiptResult.extracted || null,
+          receiptConfidence: receiptResult.confidence,
+          receiptVerifiedAt: receiptResult.receiptVerifiedAt,
+        });
         toast('Receipt could not be verified: ' + receiptResult.message, 'err');
         if (btn) { btn.disabled = false; btn.textContent = '🏓 Join Open Play'; }
         return;
@@ -4709,6 +4752,14 @@ async function submitOpenPlay() {
       gcashRef: _opSignupData.gcashRef || null,
       paymentStatus: regPayStatus,
       amount: amt,
+      receiptImageUrl: receiptResult?.receiptImageUrl || null,
+      receiptImageHash: receiptResult?.receiptImageHash || null,
+      receiptPhash: receiptResult?.receiptPhash || null,
+      receiptStatus: receiptResult?.status || 'none',
+      receiptFlags: receiptResult?.flags || [],
+      receiptExtracted: receiptResult?.extracted || null,
+      receiptConfidence: receiptResult?.confidence ?? null,
+      receiptVerifiedAt: receiptResult?.receiptVerifiedAt || null,
     });
 
     // Fire-and-forget Telegram notification

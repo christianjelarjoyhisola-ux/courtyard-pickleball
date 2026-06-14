@@ -300,6 +300,14 @@ window.DB = {
       gcash_ref: reg.gcashRef || null,
       payment_status: reg.paymentStatus || 'pending',
       amount: reg.amount,
+      receipt_image_url: reg.receiptImageUrl || null,
+      receipt_image_hash: reg.receiptImageHash || null,
+      receipt_phash: reg.receiptPhash || null,
+      receipt_status: reg.receiptStatus || 'none',
+      receipt_flags: reg.receiptFlags || [],
+      receipt_extracted: reg.receiptExtracted || null,
+      receipt_confidence: reg.receiptConfidence ?? null,
+      receipt_verified_at: reg.receiptVerifiedAt || null,
       created_at: new Date().toISOString(),
     });
     if (error) { console.error('addOpenPlayRegistration:', error); throw error; }
@@ -309,6 +317,14 @@ window.DB = {
     const row = {};
     if (updates.paymentStatus !== undefined) row.payment_status = updates.paymentStatus;
     if (updates.gcashRef      !== undefined) row.gcash_ref      = updates.gcashRef;
+    if (updates.receiptImageUrl !== undefined) row.receipt_image_url = updates.receiptImageUrl;
+    if (updates.receiptImageHash !== undefined) row.receipt_image_hash = updates.receiptImageHash;
+    if (updates.receiptPhash !== undefined) row.receipt_phash = updates.receiptPhash;
+    if (updates.receiptStatus !== undefined) row.receipt_status = updates.receiptStatus;
+    if (updates.receiptFlags !== undefined) row.receipt_flags = updates.receiptFlags;
+    if (updates.receiptExtracted !== undefined) row.receipt_extracted = updates.receiptExtracted;
+    if (updates.receiptConfidence !== undefined) row.receipt_confidence = updates.receiptConfidence;
+    if (updates.receiptVerifiedAt !== undefined) row.receipt_verified_at = updates.receiptVerifiedAt;
     const { error } = await _sb.from('open_play_registrations').update(row).eq('id', id);
     if (error) { console.error('updateOpenPlayRegistration:', error); throw error; }
   },
@@ -316,7 +332,8 @@ window.DB = {
   async getOpenPlayCountForDate(date) {
     const { count, error } = await _sb.from('open_play_registrations')
       .select('*', { count: 'exact', head: true })
-      .eq('date', date);
+      .eq('date', date)
+      .or('payment_status.is.null,payment_status.neq.rejected');
     if (error) { console.error('getOpenPlayCountForDate:', error); return 0; }
     return count || 0;
   },
@@ -421,6 +438,15 @@ window.DB = {
   async getReceiptSignedUrl(bookingRef) {
     const { data, error } = await _sb.functions.invoke('verify-gcash-receipt', {
       body: { action: 'sign', bookingRef },
+    });
+    if (error) throw new Error(_extractFnError(error, 'Could not load receipt'));
+    if (!data?.url) throw new Error(data?.error || 'No receipt available');
+    return data.url;
+  },
+
+  async getOpenPlayReceiptSignedUrl(registrationId) {
+    const { data, error } = await _sb.functions.invoke('verify-gcash-receipt', {
+      body: { action: 'sign', openPlayRegistrationId: registrationId },
     });
     if (error) throw new Error(_extractFnError(error, 'Could not load receipt'));
     if (!data?.url) throw new Error(data?.error || 'No receipt available');

@@ -1517,6 +1517,15 @@ tr:hover td { background: var(--bg2); }
         <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>Payment Type</span><span id="ovPayType">—</span></div>
         <div style="display:flex;justify-content:space-between;padding:6px 0"><span>Amount</span><strong style="color:#38bdf8" id="ovAmount">—</strong></div>
       </div>
+      <div id="ovReceiptWrap" style="display:none;margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
+        <div style="font-size:.66rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px">Auto-Verification</div>
+        <div id="ovReceiptStatus" style="font-size:.82rem;font-weight:700;border-radius:8px;padding:8px 10px;margin-bottom:8px"></div>
+        <div id="ovReceiptFlags" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px"></div>
+        <a id="ovReceiptLink" href="#" target="_blank" rel="noopener" style="display:none">
+          <img id="ovReceiptImg" alt="Receipt" style="width:100%;max-height:320px;object-fit:contain;border-radius:8px;border:1px solid var(--border);background:#fff"/>
+        </a>
+        <div id="ovReceiptNoImg" style="display:none;font-size:.76rem;color:var(--muted)">No receipt image was uploaded for this Open Play registration.</div>
+      </div>
       <p style="font-size:.78rem;color:var(--muted);text-align:center;margin-top:12px;line-height:1.6">
         Check the reference number in your app, then mark as received to confirm this Open Play registration.
       </p>
@@ -2172,6 +2181,14 @@ function bookingReviewStatus(b) {
   return b.paymentStatus || 'unpaid';
 }
 
+function openPlayReviewStatus(r) {
+  if (r.receipt_status === 'manual_review') return 'manual_review';
+  if (r.receipt_status === 'rejected' || r.payment_status === 'rejected') return 'rejected';
+  if (r.receipt_status === 'auto_approved') return 'auto_approved';
+  if (r.payment_status === 'paid') return 'paid';
+  return 'pending';
+}
+
 function statusPill(status) {
   const map = {
     manual_review: ['#b87e00', 'rgba(184,126,0,.15)', 'Manual review'],
@@ -2240,9 +2257,9 @@ async function renderPaymentReview() {
       timeLabel: r.time_label || '--',
       method: r.payment_method,
       amount: r.amount || 0,
-      status: r.payment_status === 'paid' ? 'paid' : r.payment_status === 'rejected' ? 'rejected' : 'pending',
-      flags: [],
-      createdAt: r.created_at,
+      status: openPlayReviewStatus(r),
+      flags: r.receipt_flags || [],
+      createdAt: r.receipt_verified_at || r.created_at,
     }));
   const items = [...bookingItems, ...opItems].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
   const counts = {
@@ -4324,8 +4341,40 @@ async function openOpVerifyModal(id) {
   $('ovDate').textContent    = `${fmtD(r.date)} · ${r.time_label || '—'}`;
   $('ovPayType').textContent = r.payment_type || '—';
   $('ovAmount').textContent  = '₱' + Number(r.amount).toLocaleString('en-PH', { minimumFractionDigits: 2 });
+  await ovPopulateReceipt(r);
   $('opVerifyModal').dataset.regId = id;
   $('opVerifyModal').classList.add('show');
+}
+
+async function ovPopulateReceipt(r) {
+  const wrap = $('ovReceiptWrap');
+  const s = r.receipt_status || 'none';
+  if (s === 'none' && !r.receipt_image_url) { if (wrap) wrap.style.display = 'none'; return; }
+  if (wrap) wrap.style.display = '';
+  const st = $('ovReceiptStatus');
+  const map = {
+    auto_approved: ['#2a8a4a','rgba(74,154,74,.12)','Auto-verified - all checks passed'],
+    manual_review: ['#b87e00','rgba(184,126,0,.12)','Needs review - see flags below'],
+    rejected:      ['#e53935','rgba(229,57,53,.1)','Flagged - review carefully before confirming'],
+    none:          ['#888','var(--input)','No automated result'],
+  };
+  const [c,bg,lbl] = map[s] || map.none;
+  if (st) { st.style.color = c; st.style.background = bg; st.textContent = lbl; }
+  if ($('ovReceiptFlags')) $('ovReceiptFlags').innerHTML = receiptFlagChips(r.receipt_flags);
+  const link = $('ovReceiptLink'), img = $('ovReceiptImg'), noImg = $('ovReceiptNoImg');
+  if (link) link.style.display = 'none';
+  if (noImg) noImg.style.display = 'none';
+  if (r.receipt_image_url) {
+    try {
+      const url = await DB.getOpenPlayReceiptSignedUrl(r.id);
+      if (img) img.src = url;
+      if (link) { link.href = url; link.style.display = ''; }
+    } catch(e) {
+      if (noImg) { noImg.style.display = ''; noImg.textContent = 'Could not load receipt image.'; }
+    }
+  } else if (noImg) {
+    noImg.style.display = '';
+  }
 }
 
 async function confirmOpPayment() {

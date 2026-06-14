@@ -396,7 +396,10 @@ Deno.serve(async (req) => {
   // ── admin-only: mint a signed URL to view a stored receipt ────────────────
   if (action === "sign") {
     const bookingRef = String(body.bookingRef || "");
-    if (!bookingRef) return json({ error: "bookingRef required" }, 400);
+    const openPlayRegistrationId = String(body.openPlayRegistrationId || "");
+    if (!bookingRef && !openPlayRegistrationId) {
+      return json({ error: "bookingRef or openPlayRegistrationId required" }, 400);
+    }
 
     // Require a real signed-in user (anon key alone is rejected).
     const authHeader = req.headers.get("Authorization") || "";
@@ -408,8 +411,18 @@ Deno.serve(async (req) => {
     const { data: userData } = await userClient.auth.getUser();
     if (!userData?.user) return json({ error: "Unauthorized" }, 401);
 
-    const { data: bk } = await db.from("bookings").select("receipt_image_url").eq("ref", bookingRef).single();
-    const path = bk?.receipt_image_url;
+    let path: string | null = null;
+    if (openPlayRegistrationId) {
+      const { data: reg } = await db
+        .from("open_play_registrations")
+        .select("receipt_image_url")
+        .eq("id", openPlayRegistrationId)
+        .single();
+      path = reg?.receipt_image_url || null;
+    } else {
+      const { data: bk } = await db.from("bookings").select("receipt_image_url").eq("ref", bookingRef).single();
+      path = bk?.receipt_image_url || null;
+    }
     if (!path) return json({ error: "No receipt on file" }, 404);
     const { data: signed, error: signErr } = await db.storage.from("receipts").createSignedUrl(path, 300);
     if (signErr || !signed) return json({ error: errMsg(signErr || "sign failed") }, 500);
@@ -735,6 +748,10 @@ Deno.serve(async (req) => {
       flags,
       extracted,
       confidence,
+      receiptImageUrl: objectPath,
+      receiptImageHash: imageHash,
+      receiptPhash: phash,
+      receiptVerifiedAt: metadataUpdate.receipt_verified_at,
       ...(statusUpdateError ? { warning: `status update failed: ${statusUpdateError}` } : {}),
       ...(metadataUpdateError ? { metadataWarning: metadataUpdateError } : {}),
       message:

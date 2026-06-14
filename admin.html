@@ -3725,9 +3725,18 @@ function handlePlatformQrUpload(e) {
   if (!file) return;
   if (file.size > 4 * 1024 * 1024) { toast('Image too large (max 4MB).', 'err'); e.target.value = ''; return; }
   const reader = new FileReader();
-  reader.onload = ev => {
-    $('platformGcashQrPreview').src = ev.target.result;
+  reader.onload = async ev => {
+    const dataUrl = ev.target.result;
+    $('platformGcashQrPreview').src = dataUrl;
     $('platformGcashQrPreviewWrap').style.display = '';
+    // Auto-save to DB immediately
+    try {
+      await DB.saveSetting('platform_gcash_qr', dataUrl);
+      toast('✅ Platform QR saved! Customers will see it instantly.', 'ok');
+    } catch (err) {
+      console.error('Failed to auto-save QR:', err);
+      toast('Failed to save QR code. Please try again.', 'err');
+    }
   };
   reader.readAsDataURL(file);
 }

@@ -710,6 +710,25 @@ window.Auth = {
     catch(e) { return { ok: false }; }
   },
 
+  // Self-service password change for the currently signed-in user.
+  // Verifies the current password first, then updates Supabase Auth (the source
+  // of truth for login). Any signed-in role (owner / court_owner / staff) can use it.
+  async changePassword(currentPassword, newPassword) {
+    const sess = this.getSession();
+    if (!sess || !sess.email) return { ok: false, msg: 'No active session. Please sign in again.' };
+    if (!newPassword || newPassword.length < 6) return { ok: false, msg: 'New password must be at least 6 characters.' };
+
+    // Re-authenticate to confirm the current password is correct.
+    const { error: authErr } = await _sb.auth.signInWithPassword({ email: sess.email, password: currentPassword });
+    if (authErr) return { ok: false, msg: 'Current password is incorrect.' };
+
+    // Update the password in Supabase Auth.
+    const { error: updErr } = await _sb.auth.updateUser({ password: newPassword });
+    if (updErr) return { ok: false, msg: updErr.message || 'Could not update password.' };
+
+    return { ok: true };
+  },
+
   async del(id) {
     await DB.deleteAccount(id);
     return { ok: true };

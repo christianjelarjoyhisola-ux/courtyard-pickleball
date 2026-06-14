@@ -612,6 +612,7 @@ tr:hover td { background: var(--bg2); }
     </div>
     <button class="btn-icon burger" onclick="toggleSidebar()">&#9776;</button>
     <button class="btn-icon" onclick="toggleTheme()" id="themeBtn" title="Toggle Theme"></button>
+    <button class="btn-icon" onclick="openChangePwModal()" id="changePwBtn" title="Change Password">&#128273;</button>
     <button class="btn btn-d" onclick="logout()" style="font-size:13px"><span class="sign-out-text">Sign Out</span><span class="sign-out-icon" aria-hidden="true">&#x23FB;</span></button>
   </div>
 </nav>
@@ -1342,6 +1343,22 @@ tr:hover td { background: var(--bg2); }
     <div class="m-foot">
       <button class="btn btn-g" onclick="closeModal('accModal')">Cancel</button>
       <button class="btn btn-p" onclick="saveAcc()">💾 Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- CHANGE PASSWORD MODAL (any signed-in user) -->
+<div class="overlay" id="pwModal">
+  <div class="modal">
+    <div class="m-hd"><h2>CHANGE PASSWORD</h2><button class="m-x" onclick="closeModal('pwModal')">✕</button></div>
+    <div class="m-body">
+      <div class="fg"><label class="fl">Current Password</label><input type="password" class="fi" id="pwCurrent" placeholder="Current password" autocomplete="current-password"/></div>
+      <div class="fg" style="margin-top:12px"><label class="fl">New Password</label><input type="password" class="fi" id="pwNew" placeholder="At least 6 characters" autocomplete="new-password"/></div>
+      <div class="fg" style="margin-top:12px"><label class="fl">Confirm New Password</label><input type="password" class="fi" id="pwConfirm" placeholder="Re-enter new password" autocomplete="new-password"/></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-g" onclick="closeModal('pwModal')">Cancel</button>
+      <button class="btn btn-p" id="pwSaveBtn" onclick="saveNewPassword()">🔑 Update Password</button>
     </div>
   </div>
 </div>
@@ -3850,6 +3867,27 @@ async function delAcc(id){
   await Auth.del(id);
   await renderAccounts();
   toast('Account deleted.','inf');
+}
+
+/* ── SELF-SERVICE CHANGE PASSWORD (any signed-in user) ── */
+function openChangePwModal(){
+  $('pwCurrent').value=''; $('pwNew').value=''; $('pwConfirm').value='';
+  $('pwModal').classList.add('show');
+  setTimeout(()=>$('pwCurrent').focus(),50);
+}
+
+async function saveNewPassword(){
+  const cur=$('pwCurrent').value, nw=$('pwNew').value, cf=$('pwConfirm').value;
+  if(!cur||!nw||!cf){toast('Please fill in all fields.','err');return;}
+  if(nw.length<6){toast('New password must be at least 6 characters.','err');return;}
+  if(nw!==cf){toast('New passwords do not match.','err');return;}
+  if(nw===cur){toast('New password must be different from the current one.','err');return;}
+  const btn=$('pwSaveBtn'); btn.disabled=true;
+  const r=await Auth.changePassword(cur,nw);
+  btn.disabled=false;
+  if(!r.ok){toast(r.msg||'Could not change password.','err');return;}
+  closeModal('pwModal');
+  toast('Password updated! Use your new password next time you sign in.');
 }
 
 /* ==============================================

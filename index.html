@@ -243,7 +243,7 @@ body.light .nav { background:rgba(248,250,252,.92); }
 @media(max-width:700px){
   .cc { flex-direction:column; display:none; }
   .cc.active-mobile { display:flex; }
-  .cc-photo { display:none; }
+  .cc-photo { width:100%; min-height:140px; max-height:140px; }
   .cc-photo-feats { display:none; }
   .cc-times { padding:10px 12px 12px; }
   .cc-times-sub { display:none; }
@@ -309,14 +309,6 @@ body.light .nav { background:rgba(248,250,252,.92); }
     font-size:.84rem; font-weight:700; color:var(--accent);
     gap:8px;
   }
-  .cc-mob-hd-right { display:flex; align-items:center; gap:8px; flex-shrink:0; }
-  .cc-mob-avail {
-    font-size:.7rem; font-weight:800; padding:3px 9px; border-radius:var(--pill);
-    letter-spacing:.2px; white-space:nowrap;
-  }
-  .cc-mob-avail.av  { background:var(--accent); color:#fff; }
-  .cc-mob-avail.full{ background:var(--red); color:#fff; }
-  .cc-mob-avail.mnt { background:rgba(140,140,140,.85); color:#fff; }
   .cc-mobile-hd-date {
     font-size:.72rem; color:var(--muted); font-weight:500;
     background:var(--input); border:1px solid var(--border);
@@ -2631,11 +2623,6 @@ async function onCardDate(courtId, date) {
       : ['full', '⛔ Fully booked'];
     availBadgeEl.className = `cc-photo-avail ${cls}`;
     availBadgeEl.textContent = txt;
-    const mobAvailEl = $('cMobAvail_' + courtId);
-    if (mobAvailEl) {
-      mobAvailEl.className = `cc-mob-avail ${cls}`;
-      mobAvailEl.textContent = txt;
-    }
   }
 
   // Reset card selection when date changes
@@ -2730,10 +2717,7 @@ async function renderCourts() {
       <!-- MOBILE-ONLY HEADER -->
       <div class="cc-mobile-hd">
         <span>📍 ${c.name}</span>
-        <span class="cc-mob-hd-right">
-          <span class="cc-mob-avail ${availBadgeCls}" id="cMobAvail_${c.id}">${availBadgeTxt}</span>
-          <span class="cc-mobile-hd-date" id="cMobDate_${c.id}">Today</span>
-        </span>
+        <span class="cc-mobile-hd-date" id="cMobDate_${c.id}">Today</span>
       </div>
 
       <!-- LEFT: Photo -->

@@ -2886,13 +2886,13 @@ function _rpDateRange(){
 async function renderReport(){
   const allBks=await DB.getBookings();
   const{from,to}=_rpDateRange();
-  // Active bookings = confirmed + verifying + completed (exclude pending & cancelled)
-  let bks=allBks.filter(b=>['confirmed','verifying','completed'].includes(b.status));
+  // Active bookings = confirmed + completed only (exclude pending, verifying, & cancelled)
+  let bks=allBks.filter(b=>['confirmed','completed'].includes(b.status));
   if(from) bks=bks.filter(b=>b.date>=from);
   if(to)   bks=bks.filter(b=>b.date<=to);
   _rpBks=bks;
 
-  // Gross revenue = only from active (confirmed/verifying/completed) bookings
+  // Gross revenue = only from confirmed/completed bookings
   const gross=bks.reduce((s,b)=>s+(b.total||0),0);
   const collected=bks.filter(b=>b.paymentStatus==='paid').reduce((s,b)=>s+(b.total||0),0);
   const pending=bks.filter(b=>!b.paymentStatus||b.paymentStatus==='unpaid'||b.paymentStatus==='downpayment_paid').reduce((s,b)=>s+(b.total||0),0);
@@ -2925,7 +2925,7 @@ async function renderReport(){
       <div class="rp-bar-val">${fmt(rev)}</div>
     </div>`).join('');
 
-  // Monthly trend — last 6 months (only active bookings: confirmed/verifying/completed)
+  // Monthly trend — last 6 months (only confirmed/completed bookings)
   const now2=new Date();
   const months=[];
   for(let i=5;i>=0;i--){
@@ -2933,7 +2933,7 @@ async function renderReport(){
     months.push({label:d.toLocaleDateString('en-PH',{month:'short',year:'2-digit'}),key:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`});
   }
   const monthMap={};
-  allBks.filter(b=>['confirmed','verifying','completed'].includes(b.status)).forEach(b=>{
+  allBks.filter(b=>['confirmed','completed'].includes(b.status)).forEach(b=>{
     const mk=(b.date||'').substring(0,7);
     if(months.find(m=>m.key===mk)) monthMap[mk]=(monthMap[mk]||0)+(b.total||0);
   });

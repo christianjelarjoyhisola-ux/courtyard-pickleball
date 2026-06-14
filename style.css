@@ -1,5 +1,5 @@
 /* ============================================================
-   HRSN - THE PADDLE DISTRICT BOOKING SYSTEM — style.css
+   PICKLEBALL COURT BOOKING SYSTEM — style.css
    Shared styles for user-facing pages
    ============================================================ */
 
@@ -8,9 +8,9 @@
 
 /* ---------- CSS Variables ---------- */
 :root {
-  --green-primary: #6b7280;
-  --green-light: #a8b0bb;
-  --green-dark: #4b5563;
+  --green-primary: #00c853;
+  --green-light: #69f0ae;
+  --green-dark: #00701a;
   --dark-bg: #0d1117;
   --dark-card: #161b22;
   --dark-border: #30363d;

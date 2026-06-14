@@ -10,9 +10,9 @@ const sb = createClient(SUPABASE_URL, SERVICE_KEY, {
 });
 
 const ACCOUNTS = [
-  { email: 'owner@hrsn.com',      password: 'HRSN2026!', username: 'sysowner',   full_name: 'System Owner', role: 'owner' },
-  { email: 'courtowner@hrsn.com', password: 'HRSN2026!', username: 'courtowner', full_name: 'Court Owner',  role: 'court_owner' },
-  { email: 'staff@hrsn.com',      password: 'HRSN2026!', username: 'courtstaff', full_name: 'Court Staff',  role: 'staff' },
+  { email: 'owner@courtyardpickleball.com',      password: 'CourtYard2026!', username: 'sysowner',   full_name: 'System Owner', role: 'owner' },
+  { email: 'courtowner@courtyardpickleball.com', password: 'CourtYard2026!', username: 'courtowner', full_name: 'Court Owner',  role: 'court_owner' },
+  { email: 'staff@courtyardpickleball.com',      password: 'CourtYard2026!', username: 'courtstaff', full_name: 'Court Staff',  role: 'staff' },
 ];
 
 async function run() {

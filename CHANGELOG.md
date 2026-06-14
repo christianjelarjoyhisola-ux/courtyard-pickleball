@@ -1,4 +1,4 @@
-# Changelog — HRSN - The Paddle District
+# Changelog — CourtYard Pickleball (Sibagat, Agusan del Sur)
 
 All notable changes to this project are documented here.
 Format: `[YYYY-MM-DD] — Type: Description (files affected)`
@@ -63,7 +63,7 @@ Types: **Added**, **Changed**, **Fixed**, **Removed**, **Security**, **DB**
 ## [2026-06-12] — Splash Screen Bottom Label Fix
 
 ### Fixed
-- `.sp-bottom` ("HRSN - THE PADDLE DISTRICT") was positioned at bottom-left instead of bottom-center
+- `.sp-bottom` ("COURTYARD PICKLEBALL · SIBAGAT, AGUSAN DEL SUR") was positioned at bottom-left instead of bottom-center
 - Added `left: 50%; transform: translateX(-50%); white-space: nowrap` to center it horizontally
 
 **Files affected:** `index.html`
@@ -92,7 +92,7 @@ Types: **Added**, **Changed**, **Fixed**, **Removed**, **Security**, **DB**
 - **`isHeldVerifying()` / `bookingHoldsSlot()` helpers** — centralise the reservation-window check so both the card grid and date-picker grid always agree on which slots are held vs free.
 - **`expireStaleVerifyingBookings()`** called on DOMContentLoaded — cancels any `verifying` bookings older than 15 minutes in the DB on page load.
 - **Receipt upload made mandatory** for GCash / GoTyme / PNB payments — the upload zone flashes red and scrolls into view if the user tries to submit without a file.
-- **Cloudflare Pages deployment** — project connected to `jelarpickleball/hrsn-paddle-district` GitHub repo; auto-deploys to `hrsn-paddle-district.pages.dev` on every push to `main`.
+- **Cloudflare Pages deployment** — project connected to `jelarpickleball/courtyard-pickleball` GitHub repo; auto-deploys to `courtyardpickleball.pages.dev` on every push to `main`.
 
 ### Fixed
 - **Ghost bookings / stuck "Processing…" slots** — root cause was a DB constraint: `bookings_payment_status_check` did not allow `'rejected'`, so every rejection UPDATE rolled back and the booking stayed `status='verifying'` forever. Fixed by adding `'rejected'` to the allowed values.
@@ -186,8 +186,8 @@ Types: **Added**, **Changed**, **Fixed**, **Removed**, **Security**, **DB**
 ## [2026-06-12] — Rebrand + Color Theme Update
 
 ### Changed
-- Renamed all instances of "Smash Grove" → "HRSN - The Paddle District" across all pages
-- Updated color theme to match HRSN - The Paddle District logo: dark navy background + vivid blue accent
+- Renamed all instances of "Smash Grove" → "CourtYard Pickleball" across all pages
+- Updated color theme to match CourtYard Pickleball logo: dark navy background + vivid blue accent
   - Primary: `#2563eb`, Dark: `#1848c8`, Glow: `rgba(37,99,235,.25)`
   - Background: `#0c1220`, Card: `#111b2d`, Border: `#1e3252`, Input: `#0e1828`
   - Admin light mode green → blue: `#2563eb / #1848c8`, bg `#dbeafe`

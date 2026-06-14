@@ -3,23 +3,23 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>HRSN - The Paddle District</title>
-<link rel="icon" type="image/jpeg" href="hrsn.jpg">
+<title>CourtYard Pickleball — Sibagat, Agusan del Sur</title>
+<link rel="icon" type="image/jpeg" href="courtyard-logo.jpg">
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6965664743687392" crossorigin="anonymous"></script>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; }
 :root {
-  --accent: #6b7280; --accent-dark: #4b5563; --glow: rgba(107,114,128,.25);
-  --ac: 107, 114, 128;
-  --bg: #080b0f; --card: #12151c; --border: #232934;
-  --text: #edf2f7; --muted: #a8b0bb; --input: #0d1117;
-  --dark-text: #edf2f7; --dark-muted: #a8b0bb;
+  --accent: #2563eb; --accent-dark: #1848c8; --glow: rgba(37,99,235,.25);
+  --ac: 37, 99, 235;
+  --bg: #0c1220; --card: #111b2d; --border: #1e3252;
+  --text: #e2e8f0; --muted: #64748b; --input: #0e1828;
+  --dark-text: #e2e8f0; --dark-muted: #94a3b8;
   --red: #e05a4e; --yellow: #c8a060;
   --r-sm: 8px; --r: 12px; --r-lg: 18px; --pill: 999px;
 }
-body.light { --bg:#f3f5f7; --card:#ffffff; --border:#d7dce3; --text:#111827; --muted:#4b5563; --input:#edf2f6; }
+body.light { --bg:#f0f4f8; --card:#ffffff; --border:#cbd5e1; --text:#0f172a; --muted:#475569; --input:#e8eef4; }
 body { font-family:'Outfit',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; transition:background .3s,color .3s; }
 h1,h2,h3 { font-family:'Bebas Neue',sans-serif; letter-spacing:1px; }
 a { color:var(--accent); text-decoration:none; }
@@ -338,10 +338,10 @@ body.light .nav { background:rgba(248,250,252,.92); }
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
-/* ── AVAILABLE ── neutral slate card, soft steel border, neutral price (selected state carries the emphasis) */
+/* ── AVAILABLE ── dark card, blue tint border, neutral price (selected state carries the emphasis) */
 .cc-slot-btn:not(.taken):not(.past-slot):not(.open-play):not(.maintenance) {
-  background: #121821;
-  border: 1.5px solid rgba(var(--ac),.35);
+  background: #0d1b2e;
+  border: 1.5px solid rgba(37,99,235,.4);
   color: var(--dark-text);
 }
 .cc-slot-btn:not(.taken):not(.past-slot):not(.open-play):not(.maintenance) .csl-price {
@@ -351,18 +351,18 @@ body.light .nav { background:rgba(248,250,252,.92); }
 /* desktop hover only */
 @media (hover: hover) {
   .cc-slot-btn:not(.taken):not(.past-slot):not(.open-play):not(.maintenance):hover {
-    background: #18202b;
-    border-color: rgba(var(--ac),.55);
-    box-shadow: 0 0 0 3px rgba(var(--ac),.14);
+    background: #0f2040;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59,130,246,.15);
   }
 }
-/* ── SELECTED ── use the steel accent and soft glow instead of saturated blue */
+/* ── SELECTED ── solid blue, very obvious (guards match the available rule's specificity so it wins) */
 .cc-slot-btn.selected:not(.taken):not(.past-slot):not(.open-play):not(.maintenance) {
-  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
-  border: 2px solid rgba(var(--ac),.65);
+  background: #1d4ed8;
+  border: 2px solid #3b82f6;
   color: #fff;
   transform: translateY(-1px);
-  box-shadow: 0 0 0 3px rgba(var(--ac),.22), 0 8px 18px rgba(var(--ac),.35);
+  box-shadow: 0 0 0 3px rgba(59,130,246,.35), 0 4px 16px rgba(29,78,216,.55);
 }
 .cc-slot-btn.selected:not(.taken):not(.past-slot):not(.open-play):not(.maintenance) .csl-price { color: #fff; font-weight: 800; }
 /* ── PROCESSING/VERIFYING ── yellow, slot reserved while OCR runs */
@@ -1038,7 +1038,7 @@ footer { background:var(--card); border-top:1px solid var(--border); padding:40p
 
 /* States */
 .slot.free:hover  { border-color: var(--accent); background: rgba(var(--ac),.08); color: var(--accent); }
-.slot.sel  { background: linear-gradient(135deg, var(--accent), var(--accent-dark)); border-color: rgba(var(--ac),.65); color: #fff; font-weight:700; transform:translateY(-2px); box-shadow:0 0 0 2px var(--card),0 0 0 4px rgba(var(--ac),.18),0 6px 18px rgba(var(--ac),.35); position:relative; z-index:2; }
+.slot.sel  { background: var(--accent); border-color: var(--accent); color: #fff; font-weight:700; transform:translateY(-2px); box-shadow:0 0 0 2px var(--card),0 0 0 4px var(--accent),0 6px 18px rgba(var(--ac),.45); position:relative; z-index:2; }
 .slot.sel .slot-time { color: #fff; }
 .slot.sel .slot-end { color: rgba(255,255,255,.72); }
 .slot.sel::after {
@@ -1352,9 +1352,9 @@ body.light #splashScreen { background: var(--bg); }
   <div class="sp-ring"></div>
 
   <div class="sp-content">
-    <img class="sp-logo-img" src="hrsn.jpg" alt="HRSN - The Paddle District Logo" />
-    <div class="sp-brand">HRSN - THE PADDLE DISTRICT</div>
-    <div class="sp-sub">MANGNAO-CANAL, DUMAGUETE CITY</div>
+    <img class="sp-logo-img" src="courtyard-logo.jpg" alt="CourtYard Pickleball Logo" />
+    <div class="sp-brand">COURTYARD PICKLEBALL</div>
+    <div class="sp-sub">SIBAGAT, AGUSAN DEL SUR</div>
     <div class="sp-line"></div>
     <div class="sp-tap-ring-wrap">
       <svg class="sp-tap-icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
@@ -1387,7 +1387,7 @@ body.light #splashScreen { background: var(--bg); }
     <div class="sp-tap-sub">Select your court and reserve your slot</div>
   </div>
 
-  <div class="sp-bottom">HRSN - The Paddle District</div>
+  <div class="sp-bottom">CourtYard Pickleball &nbsp;·&nbsp; Sibagat, Agusan del Sur</div>
 </div>
 
 <!-- NAVBAR -->
@@ -1410,7 +1410,7 @@ body.light #splashScreen { background: var(--bg); }
     </p>
     <div style="background:rgba(74,154,74,.1);border:1.5px solid rgba(74,154,74,.35);border-radius:14px;padding:14px 20px;margin-bottom:24px;animation:gsPulse 2s 1s ease-in-out infinite">
       <div style="font-size:1.2rem;margin-bottom:4px">📍</div>
-      <div style="font-weight:800;font-size:.95rem;color:#2563eb;letter-spacing:.5px">HRSN - THE PADDLE DISTRICT</div>
+      <div style="font-weight:800;font-size:.95rem;color:#2563eb;letter-spacing:.5px">COURTYARD PICKLEBALL</div>
       <div style="font-size:.82rem;color:#7a9a8a;margin-top:3px">Tap below to register your slot now</div>
     </div>
     <button onclick="closeOpAnnounceSplash()" style="background:linear-gradient(135deg,#f4a825,#c87a00);color:#000;border:none;border-radius:10px;padding:14px 36px;font-family:'Outfit',sans-serif;font-size:1rem;font-weight:800;cursor:pointer;box-shadow:0 6px 28px rgba(244,168,37,.4);transition:transform .2s,box-shadow .2s;letter-spacing:.3px" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
@@ -1432,7 +1432,7 @@ body.light #splashScreen { background: var(--bg); }
     <p style="color:#b0c4b0;font-size:clamp(1rem,2.8vw,1.15rem);line-height:1.75;margin-bottom:28px">
       <em style="color:#d4e8d4">"He is risen — and so are your smashes."</em><br/><br/>
       Celebrate Easter the best way — on the court! 🏓<br/>
-      <strong style="color:#e6edf3">HRSN - The Paddle District</strong> is open today.<br/>
+      <strong style="color:#e6edf3">CourtYard Pickleball</strong> is open today.<br/>
       Bring the family, grab a paddle, and let's play!
     </p>
     <button onclick="closeEasterSplash()" style="background:linear-gradient(135deg,#4a9a4a,#1d5a1d);color:#fff;border:none;border-radius:10px;padding:14px 36px;font-family:'Outfit',sans-serif;font-size:1rem;font-weight:700;cursor:pointer;box-shadow:0 6px 24px rgba(74,154,74,.35);transition:transform .2s,box-shadow .2s" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
@@ -1454,7 +1454,7 @@ body.light #splashScreen { background: var(--bg); }
       GRAND<br/><span style="color:var(--accent);text-shadow:0 0 40px rgba(0,200,83,.5)">OPENING</span>
     </h1>
     <p style="color:#b0c4b0;font-size:clamp(1rem,2.8vw,1.2rem);line-height:1.7;margin-bottom:28px">
-      <strong style="color:#e6edf3">HRSN - The Paddle District</strong> is opening its doors!<br/>
+      <strong style="color:#e6edf3">CourtYard Pickleball</strong> is opening its doors!<br/>
       Starting at 4PM — March 29. See you on the court! 🎉
     </p>
     <div style="background:rgba(244,168,37,.1);border:1.5px solid rgba(244,168,37,.4);border-radius:14px;padding:16px 20px;margin-bottom:28px;animation:gsPulse 2s 1s ease-in-out infinite">
@@ -1478,10 +1478,10 @@ body.light #splashScreen { background: var(--bg); }
 
 <nav class="nav">
   <div class="logo">
-    <img class="logo-img" src="hrsn.jpg" alt="HRSN - The Paddle District Logo" />
+    <img class="logo-img" src="courtyard-logo.jpg" alt="CourtYard Pickleball Logo" />
     <span class="logo-tx">
-      <span class="logo-name">HRSN - The Paddle District</span>
-      <span class="logo-sub">The Paddle District</span>
+      <span class="logo-name">CourtYard Pickleball</span>
+      <span class="logo-sub">Sibagat, Agusan del Sur</span>
     </span>
   </div>
   <div class="nav-headline">
@@ -1647,7 +1647,7 @@ body.light #splashScreen { background: var(--bg); }
                 <div class="gc-num" id="gcMerchantNumber">0935 935 5010</div>
                 <button type="button" class="gc-copy-btn" onclick="copyMerchantNum()">📋 Copy</button>
               </div>
-              <div class="gc-name" id="gcMerchantName">HRSN - The Paddle District</div>
+              <div class="gc-name" id="gcMerchantName">CourtYard Pickleball</div>
             </div>
             <div class="gc-or"><span>or scan QR code</span></div>
             <div class="qr-steps">
@@ -1693,7 +1693,7 @@ body.light #splashScreen { background: var(--bg); }
             </div>
             <div class="gc-send-card">
               <div class="gc-send-lbl">Send to</div>
-              <div class="gc-name" id="gtMerchantName" style="font-size:1rem;font-weight:700;color:var(--text);margin:4px 0 0">HRSN - The Paddle District</div>
+              <div class="gc-name" id="gtMerchantName" style="font-size:1rem;font-weight:700;color:var(--text);margin:4px 0 0">CourtYard Pickleball</div>
             </div>
             <div class="gc-or"><span>scan QR code to pay</span></div>
             <div class="qr-steps">
@@ -1739,7 +1739,7 @@ body.light #splashScreen { background: var(--bg); }
             </div>
             <div class="gc-send-card">
               <div class="gc-send-lbl">Send to</div>
-              <div class="gc-name" id="pnMerchantName" style="font-size:1rem;font-weight:700;color:var(--text);margin:4px 0 0">HRSN - The Paddle District</div>
+              <div class="gc-name" id="pnMerchantName" style="font-size:1rem;font-weight:700;color:var(--text);margin:4px 0 0">CourtYard Pickleball</div>
             </div>
             <div class="gc-or"><span>scan QR code to pay</span></div>
             <div class="qr-steps">
@@ -1849,10 +1849,10 @@ body.light #splashScreen { background: var(--bg); }
   <div class="ft-g">
     <div>
       <div class="logo">
-        <img class="logo-img" src="hrsn.jpg" alt="HRSN - The Paddle District Logo" />
+        <img class="logo-img" src="courtyard-logo.jpg" alt="CourtYard Pickleball Logo" />
         <span class="logo-tx">
-          <span class="logo-name">HRSN - The Paddle District</span>
-          <span class="logo-sub">The Paddle District</span>
+          <span class="logo-name">CourtYard Pickleball</span>
+          <span class="logo-sub">Sibagat, Agusan del Sur</span>
         </span>
       </div>
       <p class="ft-d">Your go-to platform for pickleball court reservations. Fast, simple, and reliable for all skill levels.</p>
@@ -1875,7 +1875,7 @@ body.light #splashScreen { background: var(--bg); }
     </div>
   </div>
   <div class="ft-bot">
-    <span>© 2026 HRSN - The Paddle District. All rights reserved.</span>
+    <span>© 2026 CourtYard Pickleball. All rights reserved.</span>
     <span>Built for pickleball lovers</span>
     <br>
     <span> Dev: <a href="https://www.facebook.com/jelarjoychristian" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">Jelar</a></span>
@@ -2001,7 +2001,7 @@ let gcashSettings = {
   checkoutEnabled: false,
   checkoutUrl: '',
   merchantNumber: '0935 935 5010',
-  merchantName: 'HRSN - The Paddle District',
+  merchantName: 'CourtYard Pickleball',
   checkoutVisited: false,
 };
 let paymentMethods = { cash: true, gcash: true, gotyme: true, pnb: true };
@@ -2137,7 +2137,7 @@ function applyPaymentSettings(settings) {
   gcashSettings.checkoutEnabled = settings.gcash_checkout_enabled === '1';
   gcashSettings.checkoutUrl = (settings.gcash_checkout_url || '').trim();
   gcashSettings.merchantNumber = settings.gcash_merchant_number || '0935 935 5010';
-  gcashSettings.merchantName = settings.gcash_merchant_name || 'HRSN - The Paddle District';
+  gcashSettings.merchantName = settings.gcash_merchant_name || 'CourtYard Pickleball';
   paymentMethods.cash = settings.payment_method_cash !== '0';
   paymentMethods.gcash = settings.payment_method_gcash !== '0';
   paymentMethods.gotyme = settings.payment_method_gotyme !== '0';
@@ -2145,8 +2145,8 @@ function applyPaymentSettings(settings) {
 
   if ($('gcMerchantNumber')) $('gcMerchantNumber').textContent = gcashSettings.merchantNumber;
   if ($('gcMerchantName')) $('gcMerchantName').textContent = gcashSettings.merchantName;
-  if ($('gtMerchantName')) $('gtMerchantName').textContent = settings.gotyme_merchant_name || 'HRSN - The Paddle District';
-  if ($('pnMerchantName')) $('pnMerchantName').textContent = settings.pnb_merchant_name || 'HRSN - The Paddle District';
+  if ($('gtMerchantName')) $('gtMerchantName').textContent = settings.gotyme_merchant_name || 'CourtYard Pickleball';
+  if ($('pnMerchantName')) $('pnMerchantName').textContent = settings.pnb_merchant_name || 'CourtYard Pickleball';
 
   // Load QR images from DB — show img and hide placeholder only when image exists
   if (settings.gcash_qr_image) {

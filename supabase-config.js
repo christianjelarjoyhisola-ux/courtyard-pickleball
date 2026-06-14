@@ -428,7 +428,7 @@ window.DB = {
       await _sb.from('accounts').insert([{
         id: 'dev_001', username: 'developer', password: 'dev123',
         role: 'developer', full_name: 'Super Admin',
-        email: 'dev@hrsn.com', created_at: new Date().toISOString(),
+        email: 'dev@pickleballhub.com', created_at: new Date().toISOString(),
       }]);
     }
   },

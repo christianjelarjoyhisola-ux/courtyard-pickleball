@@ -2313,16 +2313,36 @@ function getOpenPlaySessionForDate(date) {
   return { start, end, label: `${fmtT(start)} – ${fmtT(end)}` };
 }
 
+function getOpenPlaySessionState(date, session, spotsLeft = 1) {
+  if (!session || !date) return 'unavailable';
+  if (date < todayStr()) return 'ended';
+  if (isToday(date)) {
+    const end = Number(session.end);
+    const hour = nowHour();
+    if (Number.isFinite(end) && hour >= end) return 'ended';
+  }
+  if (spotsLeft <= 0) return 'full';
+  return 'joinable';
+}
+
 function openPlaySessionHtml({ courtId, courtName, date, session, spotsLeft, maxPlayers, compact = false }) {
   if (!session) return '';
-  const full = spotsLeft <= 0;
+  const state = getOpenPlaySessionState(date, session, spotsLeft);
+  const full = state === 'full';
+  const ended = state === 'ended';
+  const disabled = full || ended;
   const cid = String(courtId || '').replace(/'/g, "\\'");
   const cnm = String(courtName || 'Court').replace(/'/g, "\\'");
   const safeDate = String(date || '').replace(/'/g, "\\'");
-  const click = full ? '' : `onclick="event.stopPropagation(); openPlaySignup('${cid}', '${safeDate}', ${session.start}, '${cnm}')"`;
-  const title = full ? 'Open Play is full' : 'Tap to join Open Play';
+  const click = disabled ? '' : `onclick="event.stopPropagation(); openPlaySignup('${cid}', '${safeDate}', ${session.start}, '${cnm}')"`;
+  const title = ended ? 'Open Play session ended' : full ? 'Open Play is full' : 'Tap to join Open Play';
+  const cta = ended ? 'SESSION ENDED' : full ? 'FULL' : 'JOIN OPEN PLAY →';
+  const icon = ended ? '⌛' : full ? '⛔' : '🔥';
+  const statusText = ended
+    ? `Session ended · Max ${maxPlayers}`
+    : `<span><span class="opb-spots-count">${Math.max(0, spotsLeft)}</span> spot${Math.max(0, spotsLeft) !== 1 ? 's' : ''} left · Max ${maxPlayers}</span>`;
   return `
-    <div class="open-play-block ${compact ? 'cc-open-play-card' : ''} ${full ? 'full' : ''}" ${click} title="${title}">
+    <div class="open-play-block ${compact ? 'cc-open-play-card' : ''} ${disabled ? 'full' : ''} ${ended ? 'ended' : ''}" ${click} title="${title}">
       <div class="opb-header">
         <div class="opb-icon">🏓</div>
         <div>
@@ -2333,10 +2353,10 @@ function openPlaySessionHtml({ courtId, courtName, date, session, spotsLeft, max
       </div>
       <div class="opb-footer">
         <div class="opb-spots">
-          <span class="opb-spots-icon">${full ? '⛔' : '🔥'}</span>
-          <span><span class="opb-spots-count">${Math.max(0, spotsLeft)}</span> spot${Math.max(0, spotsLeft) !== 1 ? 's' : ''} left · Max ${maxPlayers}</span>
+          <span class="opb-spots-icon">${icon}</span>
+          <span>${statusText}</span>
         </div>
-        <div class="opb-cta">${full ? 'FULL' : 'JOIN OPEN PLAY →'}</div>
+        <div class="opb-cta">${cta}</div>
       </div>
     </div>`;
 }
@@ -4280,6 +4300,10 @@ function firstEnabledPaymentMethod() {
 async function openPlaySignup(courtId, date, h, courtName) {
   const defaultPayMethod = firstEnabledPaymentMethod();
   const session = getOpenPlaySessionForDate(date) || { start: h, end: h + 1, label: `${fmtT(h)} – ${fmtT(h + 1)}` };
+  if (getOpenPlaySessionState(date, session, 1) === 'ended') {
+    toast('Open Play session has ended for this date.', 'inf');
+    return;
+  }
   _opSignupData = { courtId, courtName, date, hour: session.start, sessionEnd: session.end, sessionLabel: session.label, fullPay: false, payMethod: defaultPayMethod, gcashRef: '', startedAt: new Date().toISOString() };
   _opReceiptFile = null;
   const sysFee = _serviceFeeRate;

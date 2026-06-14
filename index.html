@@ -667,6 +667,67 @@ select.fi option { background:var(--card); }
 }
 .gc-or::before,.gc-or::after { content:''; flex:1; height:1px; background:var(--border); }
 
+/* COMPACT BOOKING PAYMENT */
+.bpay-method-block { margin-bottom:12px; }
+.bpay-method-block .fl { margin-bottom:7px; }
+.bpay-methods { gap:8px; }
+.bpay-methods .pay-opt {
+  padding:9px 8px; border-radius:8px; min-height:58px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+}
+.bpay-methods .pay-ic { font-size:1.08rem; margin-bottom:3px; line-height:1; }
+.bpay-methods .pay-lb { font-size:.78rem; }
+.bpay-methods .pay-sub { display:none; }
+.bpay-summary {
+  background:var(--input); border:1px solid rgba(244,168,37,.34); border-radius:8px;
+  padding:11px 12px; margin-bottom:12px;
+}
+.bpay-summary-top { display:grid; grid-template-columns:1fr 1fr; gap:10px; text-align:center; margin-bottom:9px; }
+.bpay-summary-lbl { display:block; font-size:.62rem; color:var(--muted); text-transform:uppercase; letter-spacing:.7px; font-weight:800; margin-bottom:2px; }
+.bpay-summary-val { display:block; color:#f4a825; font-size:1.1rem; font-weight:900; line-height:1.1; }
+.bpay-fees { border-top:1px solid rgba(244,168,37,.2); padding-top:8px; display:grid; gap:4px; }
+.bpay-fees .pr { padding:0; font-size:.74rem; color:var(--muted); }
+.bpay-fees .pr span:last-child { color:var(--text); font-weight:800; }
+.bpay-fees .pr.tot span { color:#f4a825; font-weight:900; }
+.bpay-card {
+  padding:12px; margin-top:0; text-align:left; border-radius:8px;
+  background:rgba(var(--ac),.055); border:1px solid rgba(var(--ac),.24);
+}
+.bpay-card .gc-header { display:none; }
+.bpay-card-head { margin-bottom:10px; }
+.bpay-card-head .gc-amount-lbl { margin-bottom:7px; }
+.bpay-card .pay-amount-toggle { margin-bottom:0; }
+.bpay-card .pat-btn { padding:8px 7px; border-radius:8px; font-size:.76rem; }
+.bpay-recipient { display:grid; grid-template-columns:160px minmax(0,1fr); gap:14px; align-items:center; }
+.bpay-qr-wrap { display:flex; align-items:center; justify-content:center; }
+.bpay-qr {
+  width:150px !important; height:150px !important; object-fit:contain; border-radius:8px;
+  border:2px solid rgba(var(--ac),.32); background:#fff; padding:5px; margin:0 !important;
+  box-shadow:0 6px 18px rgba(0,0,0,.3);
+}
+.bpay-qr-placeholder {
+  width:150px; height:150px; border-radius:8px; background:var(--input); border:2px dashed var(--border);
+  display:flex; align-items:center; justify-content:center; flex-direction:column; gap:6px; color:var(--muted);
+}
+.bpay-send-title { font-size:.68rem; text-transform:uppercase; letter-spacing:.7px; color:var(--accent); font-weight:900; }
+.bpay-send-name { font-size:.8rem; color:var(--muted); line-height:1.35; margin-top:2px; }
+.bpay-ref-card {
+  margin-top:10px; background:rgba(var(--ac),.055); border:1px solid rgba(var(--ac),.24);
+  border-radius:8px; padding:11px 12px;
+}
+.bpay-ref-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:7px; }
+.bpay-ref-label { font-size:.68rem; text-transform:uppercase; letter-spacing:.7px; color:var(--accent); font-weight:900; }
+.bpay-ref-row { display:flex; gap:7px; align-items:center; }
+.bpay-ref-row .fi { margin:0; font-family:monospace; letter-spacing:1.2px; font-size:.88rem; padding:8px 10px; }
+.bpay-help { font-size:.66rem; color:var(--muted); margin-top:5px; line-height:1.45; }
+.bpay-receipt { border-top:1px solid rgba(var(--ac),.2); margin-top:10px; padding-top:9px; }
+.bpay-receipt-drop {
+  display:flex; align-items:center; gap:8px; padding:9px 10px; background:var(--card);
+  border:1.5px dashed var(--border); border-radius:8px; cursor:pointer; font-size:.8rem; color:var(--muted);
+}
+.bpay-receipt-preview { display:none; margin-top:7px; align-items:center; gap:9px; }
+.bpay-receipt-preview img { width:42px; height:42px; object-fit:cover; border-radius:7px; border:1px solid var(--border); }
+
 /* 3-column payment options */
 .pay-opts-3 { grid-template-columns:1fr 1fr 1fr; }
 @media(max-width:540px){ .pay-opts-3 { grid-template-columns:1fr; } }
@@ -675,6 +736,91 @@ select.fi option { background:var(--card); }
 @media(max-width:640px){ .pay-opts-4 { grid-template-columns:1fr 1fr; } }
 @media(max-width:320px){ .pay-opts-4 { grid-template-columns:1fr; } }
 .divider { height:1px; background:var(--border); margin:24px 0; }
+
+/* OPEN PLAY COMPACT PAYMENT MODAL */
+.op-modal { max-width:760px; }
+.op-modal .bk-modal-hd { padding:14px 18px; }
+.op-modal .bk-modal-body { padding:14px 18px; }
+.op-modal .bk-modal-ft { padding:12px 18px; }
+.op-form-grid { display:grid; grid-template-columns:minmax(0,1fr) 220px; gap:12px; align-items:stretch; margin-bottom:12px; }
+.op-form-grid .fg { margin:0; }
+.op-summary {
+  background:var(--input); border:1px solid rgba(244,168,37,.34); border-radius:8px;
+  padding:10px 12px; display:grid; grid-template-columns:1fr 1fr; gap:8px 10px; align-items:center;
+}
+.op-summary-cell { text-align:center; min-width:0; }
+.op-stat-label { display:block; font-size:.62rem; color:var(--muted); text-transform:uppercase; letter-spacing:.7px; font-weight:800; margin-bottom:2px; }
+.op-stat-value { display:block; color:#f4a825; font-size:1.04rem; font-weight:900; line-height:1.1; }
+.op-fee-breakdown {
+  grid-column:1 / -1; border-top:1px solid rgba(244,168,37,.2); padding-top:8px;
+  display:grid; gap:4px; font-size:.72rem; color:var(--muted);
+}
+.op-fee-line { display:flex; justify-content:space-between; gap:12px; line-height:1.25; }
+.op-fee-line strong { color:var(--text); font-weight:800; }
+.op-fee-line.total { color:#f4a825; font-weight:900; }
+.op-fee-line.total strong { color:#f4a825; }
+.op-dp-toggle { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:0 0 12px; }
+.op-dp-toggle .pat-btn { padding:8px 10px; min-height:54px; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.op-section-label { font-size:.7rem; text-transform:uppercase; letter-spacing:.8px; color:var(--muted); font-weight:800; margin:0 0 7px; }
+.op-pay-opts { grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin-bottom:12px; }
+.op-pay-opt { padding:9px 8px; border-radius:8px; min-height:58px; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.op-pay-opt .po-ico { font-size:1.05rem; line-height:1; }
+.op-pay-opt .po-lbl { font-size:.78rem; font-weight:800; margin-top:3px; }
+.op-pay-opt .po-sub { display:none; }
+.op-pay-card {
+  background:rgba(var(--ac),.055); border:1px solid rgba(var(--ac),.24); border-radius:8px; padding:12px;
+  display:grid; gap:10px;
+}
+.op-receiver-row { display:grid; grid-template-columns:152px minmax(0,1fr); gap:12px; align-items:center; }
+.op-qr-pane { text-align:center; display:flex; align-items:center; justify-content:center; }
+.op-qr-img {
+  width:144px; height:144px; object-fit:contain; border-radius:8px; border:2px solid rgba(var(--ac),.32);
+  background:#fff; padding:5px; margin:0 auto; box-shadow:0 6px 18px rgba(0,0,0,.32);
+}
+.op-qr-placeholder {
+  width:144px; height:144px; display:flex; align-items:center; justify-content:center;
+  background:rgba(74,154,74,.05); border:1px dashed rgba(74,154,74,.25); border-radius:8px;
+  margin:0 auto; color:var(--muted); font-size:.72rem; text-align:center;
+}
+.op-pay-fields { display:grid; gap:9px; }
+.op-send-title { font-size:.68rem; text-transform:uppercase; letter-spacing:.7px; color:var(--accent); font-weight:900; }
+.op-send-name { font-size:.8rem; color:var(--muted); line-height:1.35; margin-top:2px; }
+.op-number-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.op-number { font-size:1rem; font-weight:900; color:var(--text); letter-spacing:.35px; line-height:1.2; }
+.op-mini-btn {
+  background:rgba(74,154,220,.15); color:#5a9ad4; border:1px solid rgba(74,154,220,.3);
+  padding:4px 8px; border-radius:6px; cursor:pointer; font-size:.72rem; font-weight:800;
+}
+.op-ref-block { padding-top:8px; border-top:1px solid rgba(74,154,74,.18); }
+.op-ref-block label { font-size:.64rem; font-weight:800; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); margin-bottom:4px; display:block; }
+.op-ref-block .fi { padding:8px 10px; font-size:.88rem; }
+.op-receipt-wrap { border-top:1px solid rgba(74,154,74,.18); padding-top:8px; }
+.op-receipt-drop {
+  display:flex; align-items:center; gap:8px; padding:9px 10px; background:var(--card);
+  border:1.5px dashed var(--border); border-radius:8px; cursor:pointer; font-size:.8rem; color:var(--muted);
+}
+.op-receipt-preview { display:none; margin-top:7px; align-items:center; gap:9px; }
+.op-receipt-preview img { width:42px; height:42px; object-fit:cover; border-radius:7px; border:1px solid var(--border); }
+.op-cash-card { background:rgba(74,154,74,.06); border:1px solid rgba(74,154,74,.25); border-radius:8px; padding:12px; font-size:.84rem; color:var(--muted); }
+@media(max-width:520px) {
+  .op-modal { max-width:calc(100vw - 20px); }
+  .op-form-grid { grid-template-columns:1fr; }
+  .op-pay-opts { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .op-receiver-row { grid-template-columns:134px minmax(0,1fr); gap:10px; }
+  .op-qr-img, .op-qr-placeholder { width:126px; height:126px; margin:0; }
+}
+@media(max-width:420px) {
+  .op-modal .bk-modal-hd { padding:12px 14px; }
+  .op-modal .bk-modal-body { padding:12px 14px; }
+  .op-pay-card { padding:9px; gap:9px; }
+  .op-receiver-row { grid-template-columns:122px minmax(0,1fr); gap:9px; }
+  .op-qr-img, .op-qr-placeholder { width:116px; height:116px; }
+  .op-number { font-size:.92rem; }
+  .op-mini-btn { padding:3px 7px; font-size:.68rem; }
+  .op-summary { padding:9px; }
+  .op-pay-opts { gap:6px; }
+  .op-pay-opt { min-height:52px; padding:7px 6px; }
+}
 
 /* HOW IT WORKS */
 .how { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; }
@@ -927,12 +1073,12 @@ footer { background:var(--card); border-top:1px solid var(--border); padding:40p
 .down-note {
   background: rgba(200,160,96,.08);
   border: 1px solid rgba(200,160,96,.3);
-  border-radius: var(--r);
-  padding: 11px 14px;
-  font-size: .82rem;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: .74rem;
   color: var(--yellow);
-  margin-top: 10px;
-  line-height: 1.6;
+  margin-top: 8px;
+  line-height: 1.4;
 }
 .cash-note {
   background: rgba(200,160,96,.06);
@@ -985,6 +1131,16 @@ footer { background:var(--card); border-top:1px solid var(--border); padding:40p
   #gcashQrPlaceholder,#gotymeQrPlaceholder,#pnbQrPlaceholder { width:160px !important; height:160px !important; margin:6px auto !important; }
   .pay-amount-toggle { margin-bottom:10px; gap:6px; }
   .qr-scan-hint { padding:5px 10px; margin-top:6px; }
+  .bpay-method-block { margin-bottom:10px; }
+  .bpay-summary { padding:9px; margin-bottom:10px; }
+  .bpay-card { padding:9px; }
+  .bpay-recipient { grid-template-columns:122px minmax(0,1fr); gap:9px; }
+  .bpay-qr, .bpay-qr-placeholder { width:116px !important; height:116px !important; }
+  .bpay-ref-card { padding:9px; }
+  .bpay-ref-row .fi { padding:8px 9px; }
+  .bpay-send-title, .bpay-ref-label { font-size:.64rem; }
+  .bpay-methods { gap:6px; }
+  .bpay-methods .pay-opt { min-height:52px; padding:7px 6px; }
   /* Confirmation screen compact */
   .inv-hero { padding:16px 16px 12px; }
   .inv-check-wrap { width:46px; height:46px; margin:0 auto 8px; box-shadow:0 0 0 5px rgba(var(--ac),.15),0 0 0 10px rgba(var(--ac),.07); }
@@ -1102,31 +1258,31 @@ footer { background:var(--card); border-top:1px solid var(--border); padding:40p
 /* ── COMBINED OPEN PLAY BLOCK ── */
 .open-play-block {
   grid-column: 1 / -1;
-  margin-bottom: 8px;
-  padding: 18px 16px;
-  background: linear-gradient(135deg, rgba(244,168,37,.12) 0%, rgba(244,168,37,.06) 100%);
-  border: 2px solid rgba(244,168,37,.4);
-  border-radius: var(--r);
+  margin-bottom: 10px;
+  padding: 16px;
+  background: linear-gradient(135deg, rgba(244,168,37,.14), rgba(15,23,42,.82));
+  border: 1.5px solid rgba(244,168,37,.48);
+  border-radius: 8px;
   cursor: pointer;
   transition: all .2s ease;
-  animation: openPlayGlow 2.5s ease-in-out infinite, openPlayBorderPulse 2s ease-in-out infinite;
   position: relative;
   overflow: hidden;
+  min-height: 112px;
 }
 .open-play-block::before {
   content: '';
-  position: absolute; top: -50%; right: -50%; width: 200%; height: 200%;
-  background: radial-gradient(circle, rgba(244,168,37,.15) 0%, transparent 70%);
-  animation: openPlayFloatFire 4s ease-in-out infinite;
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg, rgba(244,168,37,.18), transparent 38%);
   pointer-events: none;
 }
+.open-play-block:hover { border-color:#f4a825; transform:translateY(-1px); box-shadow:0 12px 24px rgba(0,0,0,.22); }
 .open-play-block:active { transform: scale(.98); }
 .opb-header {
   display: flex; align-items: center; gap: 10px;
   margin-bottom: 10px;
   position: relative; z-index: 1;
 }
-.opb-icon { font-size: 1.8rem; animation: openPlayFloatFire 3s ease-in-out infinite; }
+.opb-icon { font-size: 1.6rem; }
 .opb-title {
   flex: 1;
   font-size: 1rem;
@@ -1136,10 +1292,16 @@ footer { background:var(--card); border-top:1px solid var(--border); padding:40p
   line-height: 1.3;
 }
 .opb-time {
-  font-size: .85rem;
-  font-weight: 700;
+  font-size: 1rem;
+  font-weight: 800;
   color: var(--text);
   line-height: 1.2;
+}
+.opb-sub {
+  font-size: .72rem;
+  color: var(--muted);
+  margin-top: 3px;
+  font-weight: 600;
 }
 .opb-footer {
   display: flex; align-items: center; gap: 10px; justify-content: space-between;
@@ -1151,7 +1313,7 @@ footer { background:var(--card); border-top:1px solid var(--border); padding:40p
   display: flex; align-items: center; gap: 6px;
   font-size: .85rem; font-weight: 700; color: var(--text);
 }
-.opb-spots-icon { font-size: 1.2rem; animation: openPlayFloatFire 2.5s ease-in-out infinite 0.3s; }
+.opb-spots-icon { font-size: 1.1rem; }
 .opb-spots-count {
   color: #f4a825; font-weight: 900; font-size: 1rem;
 }
@@ -1165,6 +1327,16 @@ footer { background:var(--card); border-top:1px solid var(--border); padding:40p
   transition: opacity .2s;
 }
 .open-play-block:hover .opb-cta { opacity: 1; }
+.open-play-block.full {
+  cursor: default;
+  opacity: .68;
+  border-color: rgba(148,163,184,.22);
+  background: rgba(15,23,42,.74);
+}
+.open-play-block.full:hover { transform:none; box-shadow:none; border-color:rgba(148,163,184,.22); }
+.cc-open-play-card {
+  margin-bottom: 0;
+}
 
 /* Live note banner */
 .slots-live-note {
@@ -1597,7 +1769,7 @@ body.light #splashScreen { background: var(--bg); }
 <div class="sec" id="courts" style="padding-top:24px">
   <div class="sec-hd">
     <h2>🏟️ SELECT A COURT</h2>
-    <p>Tap a time slot, choose consecutive hours, then press <strong>Book Now</strong>.</p>
+    <p>Tap an Open Play session or choose consecutive court hours, then continue.</p>
   </div>
   <div class="court-tabs-hint">👇 Tap a court to view available times 👇</div>
   <div id="courtTabs" class="court-tabs"></div>
@@ -1691,213 +1863,205 @@ body.light #splashScreen { background: var(--bg); }
           <div class="wiz-sec-title">💳 Payment</div>
 
           <!-- Payment Method -->
-          <div class="fg">
+          <div class="fg bpay-method-block" id="payMethodBlock">
             <label class="fl">Downpayment Method</label>
-            <div class="pay-opts pay-opts-4">
+            <div class="pay-opts pay-opts-4 bpay-methods">
               <div class="pay-opt" id="payOptGcash" data-m="gcash" onclick="pickPay('gcash')">
                 <div class="pay-ic">📲</div>
                 <div class="pay-lb">GCash</div>
-                <div style="font-size:.65rem;color:var(--muted);margin-top:3px">Secure checkout or QR</div>
+                <div class="pay-sub">Scan QR · enter ref #</div>
               </div>
               <div class="pay-opt" id="payOptGotyme" data-m="gotyme" onclick="pickPay('gotyme')">
                 <div class="pay-ic">🏦</div>
                 <div class="pay-lb">GoTyme</div>
-                <div style="font-size:.65rem;color:var(--muted);margin-top:3px">Scan QR · enter ref #</div>
+                <div class="pay-sub">Scan QR · enter ref #</div>
               </div>
               <div class="pay-opt" id="payOptPnb" data-m="pnb" onclick="pickPay('pnb')">
                 <div class="pay-ic">🏛️</div>
                 <div class="pay-lb">PNB</div>
-                <div style="font-size:.65rem;color:var(--muted);margin-top:3px">Scan QR · enter ref #</div>
+                <div class="pay-sub">Scan QR · enter ref #</div>
               </div>
               <div class="pay-opt" id="payOptCash" data-m="cash" onclick="pickPay('cash')">
                 <div class="pay-ic">💵</div>
                 <div class="pay-lb">Cash</div>
-                <div style="font-size:.65rem;color:var(--muted);margin-top:3px">Pay at front desk</div>
+                <div class="pay-sub">Pay at front desk</div>
               </div>
             </div>
             <div id="payMethodsHint" style="display:none;font-size:.74rem;color:var(--red);margin-top:8px"></div>
             <input type="hidden" id="bPay" />
           </div>
 
+          <!-- Compact payment summary -->
+          <div class="bpay-summary">
+            <div class="bpay-summary-top">
+              <div>
+                <span class="bpay-summary-lbl" id="pDownLabel">50% Downpayment</span>
+                <span class="bpay-summary-val" id="pDown">₱0.00</span>
+              </div>
+              <div>
+                <span class="bpay-summary-lbl">Total</span>
+                <span class="bpay-summary-val" id="pTot">₱0.00</span>
+              </div>
+            </div>
+            <div class="bpay-fees">
+              <div class="pr"><span>Duration</span><span id="pHrs">0 hrs</span></div>
+              <div class="pr"><span>Hourly Rate</span><span id="pRate">₱0/hr</span></div>
+              <div class="pr"><span>Court Fee</span><span id="pCourtFee">₱0.00</span></div>
+              <div class="pr" id="pSvcFeeRow" style="display:none"><span>System Usage Fee</span><span id="pSvcFee">₱0.00</span></div>
+            </div>
+          </div>
+
           <!-- GCash QR section -->
-          <div class="gcash" id="gcashBox">
+          <div class="gcash bpay-card" id="gcashBox">
             <div class="gc-header">
               <span class="gc-header-icon">📲</span>
               <span class="gc-header-lbl">GCash Payment</span>
             </div>
-            <div style="font-size:.75rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:700;margin-bottom:8px" id="gcPayLabel">How much do you want to pay?</div>
-            <div class="pay-amount-toggle" id="gcPayAmtToggle">
-              <div class="pat-btn on" id="gcPat50" onclick="setPayAmount('half')" style="display:none">
-                <div class="pat-icon">⚡</div>
-                <div>50% Downpayment</div>
-                <div class="pat-amt" id="gcPat50Amt"></div>
+            <div class="bpay-card-head">
+              <div class="gc-amount-lbl" id="gcPayLabel">Payment amount</div>
+              <div class="pay-amount-toggle" id="gcPayAmtToggle">
+                <div class="pat-btn on" id="gcPat50" onclick="setPayAmount('half')" style="display:none">
+                  <div>50%</div>
+                  <div class="pat-amt" id="gcPat50Amt"></div>
+                </div>
+                <div class="pat-btn" id="gcPat100" onclick="setPayAmount('full')" style="display:none">
+                  <div>100%</div>
+                  <div class="pat-amt" id="gcPat100Amt"></div>
+                </div>
               </div>
-              <div class="pat-btn" id="gcPat100" onclick="setPayAmount('full')" style="display:none">
-                <div class="pat-icon">✅</div>
-                <div>Full Payment</div>
-                <div class="pat-amt" id="gcPat100Amt"></div>
+            </div>
+            <div class="bpay-recipient">
+              <div class="bpay-qr-wrap">
+                <img id="gcashQrImg" class="qr-img bpay-qr" alt="GCash QR Code" style="display:none" />
+                <div id="gcashQrPlaceholder" class="bpay-qr-placeholder">
+                  <span style="font-size:1.7rem">📲</span>
+                  <span style="font-size:.74rem">QR not uploaded</span>
+                </div>
+              </div>
+              <div>
+                <div class="bpay-send-title">📲 Send GCash Payment To</div>
+                <div class="gc-num-row" style="justify-content:flex-start;margin:4px 0 3px">
+                  <div class="gc-num" id="gcMerchantNumber">0935 935 5010</div>
+                  <button type="button" class="gc-copy-btn" onclick="copyPaymentNumber('gcash')">📋 Copy</button>
+                </div>
+                <div class="bpay-send-name" id="gcMerchantName">CourtYard Pickleball</div>
               </div>
             </div>
-            <div class="gc-amount-card">
-              <div class="gc-amount-lbl">You will send</div>
-              <div class="gc-amount-val" id="gcDownAmt">—</div>
-            </div>
-            <div class="gc-send-card">
-              <div class="gc-send-lbl">Send to this GCash number</div>
-              <div class="gc-num-row">
-                <div class="gc-num" id="gcMerchantNumber">0935 935 5010</div>
-                <button type="button" class="gc-copy-btn" onclick="copyMerchantNum()">📋 Copy</button>
-              </div>
-              <div class="gc-name" id="gcMerchantName">CourtYard Pickleball</div>
-            </div>
-            <div class="gc-or"><span>or scan QR code</span></div>
-            <div class="qr-steps">
-              <span class="qr-step">1️⃣ Open GCash</span>
-              <span style="color:var(--muted)">→</span>
-              <span class="qr-step">2️⃣ Scan QR</span>
-              <span style="color:var(--muted)">→</span>
-              <span class="qr-step">3️⃣ Enter amount &amp; Pay</span>
-            </div>
-            <div class="qr-scan-wrap">
-              <img id="gcashQrImg" class="qr-img" alt="GCash QR Code" style="display:none" />
-              <div id="gcashQrPlaceholder" style="width:230px;height:230px;margin:12px auto;border-radius:14px;background:var(--input);border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px">
-                <span style="font-size:2rem">📲</span>
-                <span style="font-size:.78rem;color:var(--muted)">QR not uploaded yet</span>
-              </div>
-              <div class="qr-scan-hint">📸 Aim your phone camera at the QR code to pay</div>
-            </div>
-            <div class="gc-note">After paying, scroll down and enter your GCash reference number below.</div>
           </div>
 
           <!-- GoTyme QR section -->
-          <div class="gcash" id="gotymeBox">
+          <div class="gcash bpay-card" id="gotymeBox">
             <div class="gc-header">
               <span class="gc-header-icon">🏦</span>
               <span class="gc-header-lbl">GoTyme Payment</span>
             </div>
-            <div style="font-size:.75rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:700;margin-bottom:8px" id="gtPayLabel">How much do you want to pay?</div>
-            <div class="pay-amount-toggle" id="gtPayAmtToggle">
-              <div class="pat-btn on" id="gtPat50" onclick="setPayAmount('half')" style="display:none">
-                <div class="pat-icon">⚡</div>
-                <div>50% Downpayment</div>
-                <div class="pat-amt" id="gtPat50Amt"></div>
+            <div class="bpay-card-head">
+              <div class="gc-amount-lbl" id="gtPayLabel">Payment amount</div>
+              <div class="pay-amount-toggle" id="gtPayAmtToggle">
+                <div class="pat-btn on" id="gtPat50" onclick="setPayAmount('half')" style="display:none">
+                  <div>50%</div>
+                  <div class="pat-amt" id="gtPat50Amt"></div>
+                </div>
+                <div class="pat-btn" id="gtPat100" onclick="setPayAmount('full')" style="display:none">
+                  <div>100%</div>
+                  <div class="pat-amt" id="gtPat100Amt"></div>
+                </div>
               </div>
-              <div class="pat-btn" id="gtPat100" onclick="setPayAmount('full')" style="display:none">
-                <div class="pat-icon">✅</div>
-                <div>Full Payment</div>
-                <div class="pat-amt" id="gtPat100Amt"></div>
+            </div>
+            <div class="bpay-recipient">
+              <div class="bpay-qr-wrap">
+                <img id="gotymeQrImg" class="qr-img bpay-qr" alt="GoTyme QR Code" style="display:none" />
+                <div id="gotymeQrPlaceholder" class="bpay-qr-placeholder">
+                  <span style="font-size:1.7rem">🏦</span>
+                  <span style="font-size:.74rem">QR not uploaded</span>
+                </div>
+              </div>
+              <div>
+                <div class="bpay-send-title">🏦 Send GoTyme Payment To</div>
+                <div class="gc-num-row" style="justify-content:flex-start;margin:4px 0 3px">
+                  <div class="gc-num" id="gtMerchantNumber" style="font-size:1rem;font-weight:800;margin:0">—</div>
+                  <button type="button" class="gc-copy-btn" onclick="copyPaymentNumber('gotyme')">📋 Copy</button>
+                </div>
+                <div class="bpay-send-name" id="gtMerchantName">CourtYard Pickleball</div>
               </div>
             </div>
-            <div class="gc-amount-card">
-              <div class="gc-amount-lbl">You will send</div>
-              <div class="gc-amount-val" id="gtDownAmt">—</div>
-            </div>
-            <div class="gc-send-card">
-              <div class="gc-send-lbl">Send to</div>
-              <div class="gc-name" id="gtMerchantName" style="font-size:1rem;font-weight:700;color:var(--text);margin:4px 0 0">CourtYard Pickleball</div>
-            </div>
-            <div class="gc-or"><span>scan QR code to pay</span></div>
-            <div class="qr-steps">
-              <span class="qr-step">1️⃣ Open GoTyme</span>
-              <span style="color:var(--muted)">→</span>
-              <span class="qr-step">2️⃣ Scan QR</span>
-              <span style="color:var(--muted)">→</span>
-              <span class="qr-step">3️⃣ Enter amount &amp; Pay</span>
-            </div>
-            <div class="qr-scan-wrap">
-              <img id="gotymeQrImg" class="qr-img" alt="GoTyme QR Code" style="display:none" />
-              <div id="gotymeQrPlaceholder" style="width:230px;height:230px;margin:12px auto;border-radius:14px;background:var(--input);border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px">
-                <span style="font-size:2rem">🏦</span>
-                <span style="font-size:.78rem;color:var(--muted)">QR not uploaded yet</span>
-              </div>
-              <div class="qr-scan-hint">📸 Aim your phone camera at the QR code to pay</div>
-            </div>
-            <div class="gc-note">After paying, scroll down and enter your GoTyme reference number below.</div>
           </div>
 
           <!-- PNB section -->
-          <div class="gcash" id="pnbBox">
+          <div class="gcash bpay-card" id="pnbBox">
             <div class="gc-header">
               <span class="gc-header-icon">🏛️</span>
               <span class="gc-header-lbl">PNB Payment</span>
             </div>
-            <div style="font-size:.75rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:700;margin-bottom:8px" id="pnPayLabel">How much do you want to pay?</div>
-            <div class="pay-amount-toggle" id="pnPayAmtToggle">
-              <div class="pat-btn on" id="pnPat50" onclick="setPayAmount('half')" style="display:none">
-                <div class="pat-icon">⚡</div>
-                <div>50% Downpayment</div>
-                <div class="pat-amt" id="pnPat50Amt"></div>
+            <div class="bpay-card-head">
+              <div class="gc-amount-lbl" id="pnPayLabel">Payment amount</div>
+              <div class="pay-amount-toggle" id="pnPayAmtToggle">
+                <div class="pat-btn on" id="pnPat50" onclick="setPayAmount('half')" style="display:none">
+                  <div>50%</div>
+                  <div class="pat-amt" id="pnPat50Amt"></div>
+                </div>
+                <div class="pat-btn" id="pnPat100" onclick="setPayAmount('full')" style="display:none">
+                  <div>100%</div>
+                  <div class="pat-amt" id="pnPat100Amt"></div>
+                </div>
               </div>
-              <div class="pat-btn" id="pnPat100" onclick="setPayAmount('full')" style="display:none">
-                <div class="pat-icon">✅</div>
-                <div>Full Payment</div>
-                <div class="pat-amt" id="pnPat100Amt"></div>
+            </div>
+            <div class="bpay-recipient">
+              <div class="bpay-qr-wrap">
+                <img id="pnbQrImg" class="qr-img bpay-qr" alt="PNB QR Code" style="display:none" />
+                <div id="pnbQrPlaceholder" class="bpay-qr-placeholder">
+                  <span style="font-size:1.7rem">🏛️</span>
+                  <span style="font-size:.74rem">QR not uploaded</span>
+                </div>
+              </div>
+              <div>
+                <div class="bpay-send-title">🏛️ Send PNB Payment To</div>
+                <div class="gc-num-row" style="justify-content:flex-start;margin:4px 0 3px">
+                  <div class="gc-num" id="pnMerchantNumber" style="font-size:1rem;font-weight:800;margin:0">—</div>
+                  <button type="button" class="gc-copy-btn" onclick="copyPaymentNumber('pnb')">📋 Copy</button>
+                </div>
+                <div class="bpay-send-name" id="pnMerchantName">CourtYard Pickleball</div>
               </div>
             </div>
-            <div class="gc-amount-card">
-              <div class="gc-amount-lbl">You will send</div>
-              <div class="gc-amount-val" id="pnDownAmt">—</div>
-            </div>
-            <div class="gc-send-card">
-              <div class="gc-send-lbl">Send to</div>
-              <div class="gc-name" id="pnMerchantName" style="font-size:1rem;font-weight:700;color:var(--text);margin:4px 0 0">CourtYard Pickleball</div>
-            </div>
-            <div class="gc-or"><span>scan QR code to pay</span></div>
-            <div class="qr-steps">
-              <span class="qr-step">1️⃣ Open PNB Mobile</span>
-              <span style="color:var(--muted)">→</span>
-              <span class="qr-step">2️⃣ Scan QR</span>
-              <span style="color:var(--muted)">→</span>
-              <span class="qr-step">3️⃣ Enter amount &amp; Pay</span>
-            </div>
-            <div class="qr-scan-wrap">
-              <img id="pnbQrImg" class="qr-img" alt="PNB QR Code" style="display:none" />
-              <div id="pnbQrPlaceholder" style="width:230px;height:230px;margin:12px auto;border-radius:14px;background:var(--input);border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px">
-                <span style="font-size:2rem">🏛️</span>
-                <span style="font-size:.78rem;color:var(--muted)">QR not uploaded yet</span>
-              </div>
-              <div class="qr-scan-hint">📸 Aim your phone camera at the QR code to pay</div>
-            </div>
-            <div class="gc-note">After paying, scroll down and enter your PNB reference number below.</div>
           </div>
 
           <!-- GCash / GoTyme Reference Number -->
-          <div id="gcashRefWrap" style="display:none;margin-top:2px;">
-            <div style="background:rgba(74,154,74,.07);border:1.5px solid rgba(74,154,74,.3);border-radius:var(--r);padding:14px 16px;">
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-                <label style="font-size:.73rem;text-transform:uppercase;letter-spacing:1px;color:var(--accent);font-weight:700">
-                  🔖 Reference Number <span id="refMethodLabel" style="color:var(--muted);text-transform:none;font-size:.72rem;font-weight:400;letter-spacing:0"></span>
+          <div id="gcashRefWrap" style="display:none;">
+            <div class="bpay-ref-card">
+              <div class="bpay-ref-head">
+                <label class="bpay-ref-label">
+                  🔖 Reference # <span id="refMethodLabel" style="color:var(--muted);text-transform:none;font-size:.68rem;font-weight:500;letter-spacing:0"></span>
                 </label>
                 <span id="gcRefCount" style="font-size:.7rem;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap">0 digits</span>
               </div>
-              <div style="display:flex;gap:6px;align-items:center;">
+              <div class="bpay-ref-row">
                 <input type="text" class="fi" id="bGcashRef" placeholder="e.g. 1234567890123"
-                  style="font-family:monospace;letter-spacing:1.5px;font-size:.93rem;flex:1;" maxlength="30" autocomplete="off"
+                  style="flex:1;" maxlength="30" autocomplete="off"
                   oninput="updateRefCount()" inputmode="numeric" />
                 <button type="button" class="gc-copy-btn" onclick="pasteRef()" style="background:var(--input);color:var(--text);border:1px solid var(--border);flex-shrink:0;">📋 Paste</button>
               </div>
-              <div style="font-size:.7rem;color:var(--muted);margin-top:7px;line-height:1.6">
-                Open your GCash/GoTyme/PNB receipt and copy the reference number here. The owner will verify this before confirming your slot.
+              <div class="bpay-help">
+                Must match the reference number on the uploaded receipt.
               </div>
 
               <!-- Receipt screenshot upload (auto-verification) -->
-              <div style="margin-top:12px;border-top:1px dashed rgba(74,154,74,.3);padding-top:12px;">
-                <label style="font-size:.73rem;text-transform:uppercase;letter-spacing:1px;color:var(--accent);font-weight:700;display:block;margin-bottom:6px">
-                  📸 Upload Payment Receipt <span style="color:#e53935;font-size:.8rem">*</span> <span style="color:var(--muted);text-transform:none;font-size:.72rem;font-weight:400;letter-spacing:0">— required for GCash / GoTyme / PNB</span>
+              <div class="bpay-receipt">
+                <label class="bpay-ref-label" style="display:block;margin-bottom:6px">
+                  📸 Upload Receipt <span style="color:#e53935;font-size:.8rem">*</span>
                 </label>
-                <label id="bReceiptDrop" style="display:flex;align-items:center;gap:9px;padding:11px 13px;background:var(--card);border:1.5px dashed var(--border);border-radius:8px;cursor:pointer;font-size:.84rem;color:var(--muted);"
+                <label id="bReceiptDrop" class="bpay-receipt-drop"
                   onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
                   📷 Tap to attach your receipt screenshot
                   <input type="file" accept="image/*" id="bReceiptImg" style="display:none" onchange="onReceiptPicked(event)" />
                 </label>
-                <div id="bReceiptPreviewWrap" style="display:none;margin-top:8px;align-items:center;gap:10px">
-                  <img id="bReceiptPreview" alt="Receipt preview" style="width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--border)" />
+                <div id="bReceiptPreviewWrap" class="bpay-receipt-preview">
+                  <img id="bReceiptPreview" alt="Receipt preview" />
                   <span id="bReceiptName" style="font-size:.76rem;color:var(--text);flex:1;word-break:break-all"></span>
                   <button type="button" onclick="clearReceipt()" style="background:none;border:none;color:#e53935;font-size:.74rem;font-weight:700;cursor:pointer">✕ Remove</button>
                 </div>
                 <div id="bReceiptStatus" style="display:none;margin-top:8px;font-size:.78rem;font-weight:700;border-radius:8px;padding:8px 10px;line-height:1.5"></div>
-                <div id="bReceiptRequired" style="font-size:.68rem;color:var(--muted);margin-top:7px;line-height:1.6">
-                  Required for digital payments. We auto-check the amount, reference, date/time and receiver — confirming your slot instantly.
+                <div id="bReceiptRequired" class="bpay-help">
+                  We auto-check amount, reference, date/time, and receiver.
                 </div>
               </div>
             </div>
@@ -1908,15 +2072,6 @@ body.light #splashScreen { background: var(--bg); }
             💵 <strong>Cash payment</strong> is only available for pre-arranged bookings — you must have already contacted the manager and received approval before selecting this option. Payment is due at the front desk upon arrival.
           </div>
 
-          <!-- Price Breakdown -->
-          <div class="divider"></div>
-          <div class="price-bx">
-            <div class="pr"><span>Duration</span><span id="pHrs">0 hrs</span></div>
-            <div class="pr"><span>Hourly Rate</span><span id="pRate">₱0/hr</span></div>
-            <div class="pr" id="pSvcFeeRow" style="display:none"><span>� Booking Fee</span><span id="pSvcFee">₱0.00</span></div>
-            <div class="pr tot"><span>TOTAL</span><span id="pTot">₱0.00</span></div>
-            <div class="pr down-row"><span id="pDownLabel">⚡ 50% Downpayment Required</span><span id="pDown">₱0.00</span></div>
-          </div>
           <div class="down-note" id="downNote" style="margin-top:10px">
             ⚠️ A <strong>50% downpayment</strong> is required to confirm your booking. Send via GCash/GoTyme/PNB or pay cash at the front desk.
           </div>
@@ -2045,7 +2200,7 @@ body.light #splashScreen { background: var(--bg); }
 
 <!-- OPEN PLAY SIGN-UP MODAL -->
 <div class="bk-modal-overlay" id="opModal">
-  <div class="bk-modal" style="max-width:420px">
+  <div class="bk-modal op-modal">
     <div class="bk-modal-hd" style="background:linear-gradient(135deg,rgba(244,168,37,.1),transparent)">
       <div>
         <div class="bk-modal-court" style="color:#f4a825">🏓 Join Open Play</div>
@@ -2107,6 +2262,11 @@ let gcashSettings = {
   platformQrImage: '',
   checkoutVisited: false,
 };
+let paymentReceiverSettings = {
+  gcash: { number: '0935 935 5010', name: 'CourtYard Pickleball', qrImage: '' },
+  gotyme: { number: '', name: 'CourtYard Pickleball', qrImage: '' },
+  pnb: { number: '', name: 'CourtYard Pickleball', qrImage: '' },
+};
 let paymentMethods = { cash: true, gcash: true, gotyme: true, pnb: true };
 let paymentWatch = { ref: null, timer: null, tries: 0 };
 
@@ -2142,6 +2302,43 @@ function isOpenPlayHour(date, h) {
   const end = Number(openPlayConfig.end);
   if (!Number.isFinite(start) || !Number.isFinite(end) || start === end) return false;
   return start < end ? (h >= start && h < end) : (h >= start || h < end);
+}
+
+function getOpenPlaySessionForDate(date) {
+  if (!openPlayConfig || !openPlayConfig.enabled || !date) return null;
+  const start = Number(openPlayConfig.start);
+  const end = Number(openPlayConfig.end);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || start === end) return null;
+  if (!isOpenPlayHour(date, start)) return null;
+  return { start, end, label: `${fmtT(start)} – ${fmtT(end)}` };
+}
+
+function openPlaySessionHtml({ courtId, courtName, date, session, spotsLeft, maxPlayers, compact = false }) {
+  if (!session) return '';
+  const full = spotsLeft <= 0;
+  const cid = String(courtId || '').replace(/'/g, "\\'");
+  const cnm = String(courtName || 'Court').replace(/'/g, "\\'");
+  const safeDate = String(date || '').replace(/'/g, "\\'");
+  const click = full ? '' : `onclick="event.stopPropagation(); openPlaySignup('${cid}', '${safeDate}', ${session.start}, '${cnm}')"`;
+  const title = full ? 'Open Play is full' : 'Tap to join Open Play';
+  return `
+    <div class="open-play-block ${compact ? 'cc-open-play-card' : ''} ${full ? 'full' : ''}" ${click} title="${title}">
+      <div class="opb-header">
+        <div class="opb-icon">🏓</div>
+        <div>
+          <div class="opb-title">Open Play Session</div>
+          <div class="opb-time">${session.label}</div>
+          <div class="opb-sub">${fmtD(date)} · ${fmt(openPlayFee)} per player</div>
+        </div>
+      </div>
+      <div class="opb-footer">
+        <div class="opb-spots">
+          <span class="opb-spots-icon">${full ? '⛔' : '🔥'}</span>
+          <span><span class="opb-spots-count">${Math.max(0, spotsLeft)}</span> spot${Math.max(0, spotsLeft) !== 1 ? 's' : ''} left · Max ${maxPlayers}</span>
+        </div>
+        <div class="opb-cta">${full ? 'FULL' : 'JOIN OPEN PLAY →'}</div>
+      </div>
+    </div>`;
 }
 
 function _checkMaintenanceRule(rule, date, h, courtId) {
@@ -2253,11 +2450,28 @@ async function loadOperatingHours() {
 }
 
 function applyPaymentSettings(settings) {
+  paymentReceiverSettings = {
+    gcash: {
+      number: settings.gcash_merchant_number || '0935 935 5010',
+      name: settings.gcash_merchant_name || 'CourtYard Pickleball',
+      qrImage: settings.gcash_qr_image || '',
+    },
+    gotyme: {
+      number: settings.gotyme_merchant_number || '',
+      name: settings.gotyme_merchant_name || 'CourtYard Pickleball',
+      qrImage: settings.gotyme_qr_image || '',
+    },
+    pnb: {
+      number: settings.pnb_merchant_number || '',
+      name: settings.pnb_merchant_name || 'CourtYard Pickleball',
+      qrImage: settings.pnb_qr_image || '',
+    },
+  };
   gcashSettings.checkoutEnabled = settings.gcash_checkout_enabled === '1';
   gcashSettings.checkoutUrl = (settings.gcash_checkout_url || '').trim();
-  gcashSettings.merchantNumber = settings.gcash_merchant_number || '0935 935 5010';
-  gcashSettings.merchantName = settings.gcash_merchant_name || 'CourtYard Pickleball';
-  gcashSettings.qrImage = settings.gcash_qr_image || ''; // QR for Open Play (from PAYMENT QR SETTINGS, not Platform Remittance)
+  gcashSettings.merchantNumber = paymentReceiverSettings.gcash.number;
+  gcashSettings.merchantName = paymentReceiverSettings.gcash.name;
+  gcashSettings.qrImage = paymentReceiverSettings.gcash.qrImage; // QR for Open Play (from PAYMENT QR SETTINGS, not Platform Remittance)
   
   // Debug logging
   console.log('applyPaymentSettings:', {
@@ -2276,8 +2490,10 @@ function applyPaymentSettings(settings) {
 
   if ($('gcMerchantNumber')) $('gcMerchantNumber').textContent = gcashSettings.merchantNumber;
   if ($('gcMerchantName')) $('gcMerchantName').textContent = gcashSettings.merchantName;
-  if ($('gtMerchantName')) $('gtMerchantName').textContent = settings.gotyme_merchant_name || 'CourtYard Pickleball';
-  if ($('pnMerchantName')) $('pnMerchantName').textContent = settings.pnb_merchant_name || 'CourtYard Pickleball';
+  if ($('gtMerchantNumber')) $('gtMerchantNumber').textContent = paymentReceiverSettings.gotyme.number || 'Scan QR';
+  if ($('gtMerchantName')) $('gtMerchantName').textContent = paymentReceiverSettings.gotyme.name;
+  if ($('pnMerchantNumber')) $('pnMerchantNumber').textContent = paymentReceiverSettings.pnb.number || 'Scan QR';
+  if ($('pnMerchantName')) $('pnMerchantName').textContent = paymentReceiverSettings.pnb.name;
 
   // Load QR images from DB — show img and hide placeholder only when image exists
   if (settings.gcash_qr_image) {
@@ -2309,6 +2525,9 @@ function applyPaymentMethodVisibility() {
   if ($('payOptGotyme')) $('payOptGotyme').style.display = paymentMethods.gotyme ? '' : 'none';
   if ($('payOptPnb')) $('payOptPnb').style.display = paymentMethods.pnb ? '' : 'none';
 
+  const enabledMethods = ['gcash', 'gotyme', 'pnb', 'cash'].filter(m => paymentMethods[m]);
+  if ($('payMethodBlock')) $('payMethodBlock').style.display = enabledMethods.length > 1 ? '' : 'none';
+
   const hasAny = paymentMethods.cash || paymentMethods.gcash || paymentMethods.gotyme || paymentMethods.pnb;
   if ($('payMethodsHint')) {
     $('payMethodsHint').style.display = hasAny ? 'none' : '';
@@ -2325,6 +2544,9 @@ function applyPaymentMethodVisibility() {
     const refWrap = $('gcashRefWrap');
     if (refWrap) refWrap.style.display = 'none';
     $('cashNote').style.display = 'none';
+  }
+  if ((!$('bPay')?.value || !paymentMethods[$('bPay')?.value]) && enabledMethods.length) {
+    pickPay(enabledMethods[0]);
   }
 }
 
@@ -2749,6 +2971,21 @@ async function onCardDate(courtId, date) {
   const isToday_ = date === todayStr();
   const isPastDate_ = date < todayStr();
   const curHour  = nowHour();
+  const openPlaySession = getOpenPlaySessionForDate(date);
+  let openPlayCardHtml = '';
+  if (!isPastDate_ && openPlaySession) {
+    const opRegCount = await DB.getOpenPlayCountForDate(date);
+    const opSpotsLeft = Math.max(0, (openPlayMaxPlayers || 40) - opRegCount);
+    openPlayCardHtml = openPlaySessionHtml({
+      courtId,
+      courtName: c.name,
+      date,
+      session: openPlaySession,
+      spotsLeft: opSpotsLeft,
+      maxPlayers: openPlayMaxPlayers || 40,
+      compact: true,
+    });
+  }
 
   // Update availability badge for selected date
   const availBadgeEl = $('cAvail_' + courtId);
@@ -2771,7 +3008,7 @@ async function onCardDate(courtId, date) {
   const bar = $('cBar_' + courtId);
   if (bar) bar.style.display = 'none';
 
-  grid.innerHTML = allSlots.map(h => {
+  grid.innerHTML = openPlayCardHtml + allSlots.map(h => {
     const isPast_   = isPastDate_ || (isToday_ && h <= curHour);
     const isBooked_ = bookedHrs.has(h);
     const isOpenPlay_ = isOpenPlayHour(date, h);
@@ -2781,7 +3018,7 @@ async function onCardDate(courtId, date) {
     if (isBooked_ && verifyingHrs.has(h)) return `<div class="cc-slot-btn processing"><div class="csl-time">${timeRange}</div><div class="csl-tag">⏳ Processing…</div></div>`;
     if (isBooked_) return `<div class="cc-slot-btn taken"><div class="csl-time">${timeRange}</div><div class="csl-name">${maskName(slotNameMap[h])}</div></div>`;
     if (isMaint_)  { const _ml=getMaintenanceLabel(date,h,courtId); return `<div class="cc-slot-btn maintenance"><div class="csl-time">${timeRange}</div><div class="csl-tag">${_ml.icon} ${_ml.text}</div></div>`; }
-    if (isOpenPlay_) return `<div class="cc-slot-btn open-play" onclick="event.stopPropagation(); openPlaySignup('${courtId}','${date}',${h},'${(c.name||'').replace(/'/g,"\\'")}')" title="Tap to join Open Play"><div class="csl-time">${timeRange}</div><div class="csl-tag">🏓 Open Play<div style="font-size:.5rem;color:rgba(244,168,37,.75);font-weight:600;letter-spacing:.2px;margin-top:2px">Tap to register</div></div></div>`;
+    if (isOpenPlay_) return '';
     return `<div class="cc-slot-btn" data-h="${h}" onclick="event.stopPropagation(); toggleCardSlot('${courtId}','${date}',${h})"><div class="csl-time">${timeRange}</div><div class="csl-price">₱${getRateForHourFromTiers(h, cTiers, c.rate)}</div></div>`;
   }).join('');
 }
@@ -2803,6 +3040,9 @@ async function renderCourts() {
   const curHour = nowHour();
   const courtsGrid = $('courtsGrid');
   if (!courtsGrid) return;
+  const todayOpenPlaySession = getOpenPlaySessionForDate(today);
+  const todayOpenPlayCount = todayOpenPlaySession ? await DB.getOpenPlayCountForDate(today) : 0;
+  const todayOpenPlaySpotsLeft = Math.max(0, (openPlayMaxPlayers || 40) - todayOpenPlayCount);
 
   courtsGrid.innerHTML = courts.map(c => {
     const blk = c.blocked;
@@ -2836,9 +3076,21 @@ async function renderCourts() {
       ? `<img src="${c.photo}" alt="${c.name}" style="width:100%;height:100%;object-fit:cover;display:block;position:absolute;inset:0"/>`
       : `<div style="width:100%;height:100%;background:linear-gradient(135deg,#0c1c0c,#091409);display:flex;align-items:center;justify-content:center;position:absolute;inset:0"><svg width="80" height="54" viewBox="0 0 110 74" fill="none"><rect x="2" y="2" width="106" height="70" rx="3" stroke="rgba(74,154,74,.5)" stroke-width="1.8"/><line x1="55" y1="2" x2="55" y2="72" stroke="rgba(74,154,74,.4)" stroke-width="1.4"/><line x1="2" y1="37" x2="108" y2="37" stroke="rgba(74,154,74,.3)" stroke-width="1"/><circle cx="55" cy="37" r="6" stroke="rgba(74,154,74,.35)" stroke-width="1.5"/></svg></div>`;
 
+    const openPlayCardHtml = (!blk && todayOpenPlaySession)
+      ? openPlaySessionHtml({
+          courtId: c.id,
+          courtName: c.name,
+          date: today,
+          session: todayOpenPlaySession,
+          spotsLeft: todayOpenPlaySpotsLeft,
+          maxPlayers: openPlayMaxPlayers || 40,
+          compact: true,
+        })
+      : '';
+
     const slotsHtml = blk
       ? `<div class="cc-slots-empty">🔧 Court is under maintenance</div>`
-      : allSlots.map(h => {
+      : openPlayCardHtml + allSlots.map(h => {
           const isPast_   = h <= curHour;
           const isBooked_ = bookedHours.has(h);
           const isOpenPlay_ = isOpenPlayHour(today, h);
@@ -2848,7 +3100,7 @@ async function renderCourts() {
           if (isBooked_ && verifyingHoursSet.has(h)) return `<div class="cc-slot-btn processing"><div class="csl-time">${timeRange}</div><div class="csl-tag">⏳ Processing…</div></div>`;
           if (isBooked_) return `<div class="cc-slot-btn taken"><div class="csl-time">${timeRange}</div><div class="csl-name">${maskName(slotNameMap[h])}</div></div>`;
           if (isMaint_)  { const _ml=getMaintenanceLabel(today,h,c.id); return `<div class="cc-slot-btn maintenance"><div class="csl-time">${timeRange}</div><div class="csl-tag">${_ml.icon} ${_ml.text}</div></div>`; }
-          if (isOpenPlay_) return `<div class="cc-slot-btn open-play" onclick="event.stopPropagation(); openPlaySignup('${c.id}','${today}',${h},'${(c.name||'').replace(/'/g,"\\'")}')" title="Tap to join Open Play"><div class="csl-time">${timeRange}</div><div class="csl-tag">🏓 Open Play<div style="font-size:.5rem;color:rgba(244,168,37,.75);font-weight:600;letter-spacing:.2px;margin-top:2px">Tap to register</div></div></div>`;
+          if (isOpenPlay_) return '';
           return `<div class="cc-slot-btn" data-h="${h}" onclick="event.stopPropagation(); toggleCardSlot('${c.id}','${today}',${h})"><div class="csl-time">${timeRange}</div><div class="csl-price">₱${_cRate(h)}</div></div>`;
         }).join('');
 
@@ -2877,7 +3129,7 @@ async function renderCourts() {
         <div class="cc-times-head">
           <div>
             <div class="cc-times-title">🕐 Available times</div>
-            <div class="cc-times-sub">Select consecutive slots then tap Book Now</div>
+            <div class="cc-times-sub">Join Open Play or select consecutive court slots</div>
           </div>
           <div class="cc-date-wrap">
             <span class="cc-date-lbl">Select Date</span>
@@ -3044,34 +3296,18 @@ async function renderSlots() {
 
   // Check if there's an Open Play session on this date and get registration count
   let openPlayBlock = '';
-  if (openPlayConfig?.enabled && isOpenPlayHour(date, openPlayConfig.start || 0)) {
-    const opStartHour = Number(openPlayConfig.start);
-    const opEndHour = Number(openPlayConfig.end);
-    if (Number.isFinite(opStartHour) && Number.isFinite(opEndHour) && opStartHour !== opEndHour) {
-      const opRegCount = await DB.getOpenPlayCountForDate(date);
-      const opSpotsLeft = Math.max(0, (openPlayMaxPlayers || 40) - opRegCount);
-      const startTime = fmtT(opStartHour);
-      const endTime = fmtT(opEndHour);
-      const cid = (court.id || '').replace(/'/g, "\\'");
-      const cnm = (court.name || '').replace(/'/g, "\\'");
-      openPlayBlock = `
-        <div class="open-play-block slots-grid" onclick="openPlaySignup('${cid}', '${date}', ${opStartHour}, '${cnm}')" style="display:grid;grid-template-columns:1fr">
-          <div class="opb-header">
-            <div class="opb-icon">🎉</div>
-            <div>
-              <div class="opb-title">Open Play</div>
-              <div class="opb-time">${startTime} – ${endTime}</div>
-            </div>
-          </div>
-          <div class="opb-footer">
-            <div class="opb-spots">
-              <span class="opb-spots-icon">🔥</span>
-              <span><span class="opb-spots-count">${opSpotsLeft}</span> Spot${opSpotsLeft !== 1 ? 's' : ''} Available</span>
-            </div>
-            <div class="opb-cta">TAP TO JOIN →</div>
-          </div>
-        </div>`;
-    }
+  const openPlaySession = getOpenPlaySessionForDate(date);
+  if (openPlaySession) {
+    const opRegCount = await DB.getOpenPlayCountForDate(date);
+    const opSpotsLeft = Math.max(0, (openPlayMaxPlayers || 40) - opRegCount);
+    openPlayBlock = openPlaySessionHtml({
+      courtId: court.id,
+      courtName: court.name,
+      date,
+      session: openPlaySession,
+      spotsLeft: opSpotsLeft,
+      maxPlayers: openPlayMaxPlayers || 40,
+    });
   }
 
   let availCount = 0;
@@ -3196,6 +3432,7 @@ function updatePrice() {
       : (court ? fmt(court.rate) + '/hr' : '—');
   $('pHrs').textContent  = `${hrs} hr${hrs !== 1 ? 's' : ''}`;
   $('pRate').textContent = rateLabel;
+  if ($('pCourtFee')) $('pCourtFee').textContent = fmt(courtTotal);
   if ($('pSvcFeeRow')) $('pSvcFeeRow').style.display = svcFee > 0 ? '' : 'none';
   if ($('pSvcFee'))    $('pSvcFee').textContent = fmt(svcFee);
   $('pTot').textContent  = fmt(total);
@@ -3215,7 +3452,7 @@ function updatePrice() {
   if ($('pnDownAmt'))   $('pnDownAmt').textContent   = fmt(payAmt);
 
   // Update price breakdown label and down note
-  if ($('pDownLabel')) $('pDownLabel').textContent = payFull ? '✅ Full Payment' : '⚡ 50% Downpayment Required';
+  if ($('pDownLabel')) $('pDownLabel').textContent = payFull ? 'Full Payment' : '50% Downpayment';
   if ($('downNote')) $('downNote').innerHTML = payFull
     ? '✅ You selected <strong>full payment</strong>. No balance due on arrival.'
     : '⚠️ A <strong>50% downpayment</strong> is required to confirm your booking. Send via GCash/GoTyme/PNB or pay cash at the front desk.';
@@ -3247,20 +3484,37 @@ function pickPay(m) {
   if ($('refMethodLabel')) $('refMethodLabel').textContent = m === 'gcash' ? '— GCash' : m === 'gotyme' ? '— GoTyme' : m === 'pnb' ? '— PNB' : '';
   if (m === 'gcash' || m === 'gotyme' || m === 'pnb') $('bGcashRef')?.setAttribute('required','');
   else $('bGcashRef')?.removeAttribute('required');
+  updatePaymentAmountUI();
 }
 
-function copyMerchantNum() {
-  const num = ($('gcMerchantNumber')?.textContent || '').replace(/\s/g,'');
+function copyPaymentNumber(method = 'gcash') {
+  const map = {
+    gcash: { id: 'gcMerchantNumber', label: 'GCash' },
+    gotyme: { id: 'gtMerchantNumber', label: 'GoTyme' },
+    pnb: { id: 'pnMerchantNumber', label: 'PNB' },
+  };
+  const meta = map[method] || map.gcash;
+  const raw = ($(meta.id)?.textContent || '').trim();
+  const num = raw.replace(/\s/g,'');
+  if (!num || /^scan qr$/i.test(raw)) {
+    toast(`${meta.label} number is not available. Please scan the QR.`, 'inf');
+    return;
+  }
+  const msg = `${meta.label} number copied!`;
   if (!num) return;
   const fallback = () => {
     const el = document.createElement('textarea');
     el.value = num; document.body.appendChild(el); el.select();
     document.execCommand('copy'); document.body.removeChild(el);
-    toast('GCash number copied!', 'ok');
+    toast(msg, 'ok');
   };
   if (navigator.clipboard) {
-    navigator.clipboard.writeText(num).then(() => toast('GCash number copied! 📋', 'ok')).catch(fallback);
+    navigator.clipboard.writeText(num).then(() => toast(msg + ' 📋', 'ok')).catch(fallback);
   } else { fallback(); }
+}
+
+function copyMerchantNum() {
+  copyPaymentNumber('gcash');
 }
 
 function pasteRef() {
@@ -4017,15 +4271,21 @@ function closeGrandSplash() {
 /* =============================================
    OPEN PLAY SIGN-UP
    ============================================= */
-let _opSignupData = { courtId: null, courtName: '', date: '', hour: 0, fullPay: false, payMethod: 'gcash', gcashRef: '' };
+let _opSignupData = { courtId: null, courtName: '', date: '', hour: 0, sessionEnd: 0, sessionLabel: '', fullPay: false, payMethod: 'gcash', gcashRef: '', startedAt: null };
+
+function firstEnabledPaymentMethod() {
+  return ['gcash', 'gotyme', 'pnb', 'cash'].find(m => paymentMethods[m]) || '';
+}
 
 async function openPlaySignup(courtId, date, h, courtName) {
-  _opSignupData = { courtId, courtName, date, hour: h, fullPay: false, payMethod: 'gcash', gcashRef: '' };
+  const defaultPayMethod = firstEnabledPaymentMethod();
+  const session = getOpenPlaySessionForDate(date) || { start: h, end: h + 1, label: `${fmtT(h)} – ${fmtT(h + 1)}` };
+  _opSignupData = { courtId, courtName, date, hour: session.start, sessionEnd: session.end, sessionLabel: session.label, fullPay: false, payMethod: defaultPayMethod, gcashRef: '', startedAt: new Date().toISOString() };
   _opReceiptFile = null;
   const sysFee = _serviceFeeRate;
   const opTotal = openPlayFee + sysFee;
   const half = opTotal / 2;
-  $('opModalMeta').textContent = `${courtName || 'Court'} · ${fmtD(date)} · ${fmtT(h)} – ${fmtT(h + 1)}`;
+  $('opModalMeta').textContent = `${courtName || 'Court'} · ${fmtD(date)} · ${session.label}`;
 
   // Show modal immediately with loading state
   $('opModalBody').innerHTML = `<div style="text-align:center;padding:32px 0;color:var(--muted)">Checking availability…</div>`;
@@ -4048,12 +4308,27 @@ async function openPlaySignup(courtId, date, h, courtName) {
   }
 
   const spotsLeft = openPlayMaxPlayers - count;
-  const payOpts = [
-    paymentMethods.gcash   ? `<div class="pay-opt on" data-m="gcash"   onclick="opPickPay('gcash')"><span class="po-ico">📱</span><span class="po-lbl">GCash</span><span class="po-sub">Scan QR · send ref #</span></div>` : '',
-    paymentMethods.gotyme  ? `<div class="pay-opt"    data-m="gotyme"  onclick="opPickPay('gotyme')"><span class="po-ico">🏦</span><span class="po-lbl">GoTyme</span><span class="po-sub">Scan QR · enter ref #</span></div>` : '',
-    paymentMethods.pnb     ? `<div class="pay-opt"    data-m="pnb"     onclick="opPickPay('pnb')"><span class="po-ico">🏛️</span><span class="po-lbl">PNB</span><span class="po-sub">Scan QR · enter ref #</span></div>` : '',
-    paymentMethods.cash    ? `<div class="pay-opt"    data-m="cash"    onclick="opPickPay('cash')"><span class="po-ico">💵</span><span class="po-lbl">Cash</span><span class="po-sub">Pay at front desk</span></div>` : '',
-  ].filter(Boolean).join('');
+  if (!defaultPayMethod) {
+    $('opModalBody').innerHTML = `
+      <div style="text-align:center;padding:28px 0">
+        <div style="font-size:1.1rem;font-weight:700;margin-bottom:8px">Payment Unavailable</div>
+        <div style="color:var(--muted);font-size:.88rem;line-height:1.65">No payment method is currently enabled. Please contact admin.</div>
+      </div>`;
+    $('opModalFt').innerHTML = `<button class="btn btn-g" style="width:100%;justify-content:center" onclick="closeOpModal()">Got it</button>`;
+    return;
+  }
+  const payOptList = [
+    paymentMethods.gcash   ? `<div class="pay-opt op-pay-opt ${defaultPayMethod === 'gcash' ? 'on' : ''}" data-m="gcash"   onclick="opPickPay('gcash')"><span class="po-ico">📱</span><span class="po-lbl">GCash</span><span class="po-sub">Scan QR · send ref #</span></div>` : '',
+    paymentMethods.gotyme  ? `<div class="pay-opt op-pay-opt ${defaultPayMethod === 'gotyme' ? 'on' : ''}" data-m="gotyme"  onclick="opPickPay('gotyme')"><span class="po-ico">🏦</span><span class="po-lbl">GoTyme</span><span class="po-sub">Scan QR · enter ref #</span></div>` : '',
+    paymentMethods.pnb     ? `<div class="pay-opt op-pay-opt ${defaultPayMethod === 'pnb' ? 'on' : ''}" data-m="pnb"     onclick="opPickPay('pnb')"><span class="po-ico">🏛️</span><span class="po-lbl">PNB</span><span class="po-sub">Scan QR · enter ref #</span></div>` : '',
+    paymentMethods.cash    ? `<div class="pay-opt op-pay-opt ${defaultPayMethod === 'cash' ? 'on' : ''}" data-m="cash"    onclick="opPickPay('cash')"><span class="po-ico">💵</span><span class="po-lbl">Cash</span><span class="po-sub">Pay at front desk</span></div>` : '',
+  ].filter(Boolean);
+  const payOpts = payOptList.join('');
+  const paymentPicker = payOptList.length > 1 ? `
+    <div>
+      <div class="op-section-label">Payment Method</div>
+      <div class="pay-opts op-pay-opts" id="opPayOpts">${payOpts}</div>
+    </div>` : `<div id="opPayOpts" style="display:none">${payOpts}</div>`;
 
   // Auto-set downpayment based on mode
   const dpOnly = paymentAcceptanceMode === 'downpayment_only';
@@ -4062,9 +4337,7 @@ async function openPlaySignup(courtId, date, h, courtName) {
   else if (fpOnly) _opSignupData.fullPay = true;
 
   const dpSection = (dpOnly || fpOnly) ? `<div style="display:none"></div>` : `
-    <div style="margin-bottom:18px">
-      <label class="fl" style="margin-bottom:10px">Downpayment</label>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <div class="op-dp-toggle">
         <div class="pat-btn on" id="opDp50" onclick="opSetDP(false)" style="cursor:pointer">
           <div class="pat-icon">⚡</div>
           <div style="font-size:.78rem;font-weight:700;margin:2px 0">50%</div>
@@ -4075,59 +4348,37 @@ async function openPlaySignup(courtId, date, h, courtName) {
           <div style="font-size:.78rem;font-weight:700;margin:2px 0">100%</div>
           <div class="pat-amt">${fmt(opTotal)}</div>
         </div>
-      </div>
     </div>`;
 
   $('opModalBody').innerHTML = `
-    <div style="background:rgba(244,168,37,.08);border:1px solid rgba(244,168,37,.3);border-radius:10px;padding:14px 16px;margin-bottom:16px;text-align:center">
-      <div style="font-size:2rem;font-weight:800;color:#f4a825;line-height:1">${spotsLeft}<span style="font-size:1rem;color:var(--muted);font-weight:600"> / ${openPlayMaxPlayers}</span></div>
-      <div style="font-size:.78rem;color:var(--muted);margin-top:4px;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Spots Remaining</div>
-    </div>
-    <div style="margin-bottom:18px">
-      <label class="fl">Full Name *</label>
-      <input type="text" class="fi" id="opFullName" placeholder="Enter your full name" autocomplete="name" oninput="this.style.borderColor=''"/>
-    </div>
-    <div style="margin-bottom:18px">
-      <label class="fl" style="margin-bottom:10px">Payment Method</label>
-      <div class="pay-opts" id="opPayOpts">${payOpts}</div>
+    <div class="op-form-grid">
+      <div class="fg">
+        <label class="fl">Full Name *</label>
+        <input type="text" class="fi" id="opFullName" placeholder="Enter your full name" autocomplete="name" oninput="this.style.borderColor=''"/>
+      </div>
+      <div class="op-summary">
+        <div class="op-summary-cell">
+          <span class="op-stat-label">Amount Due</span>
+          <span class="op-stat-value" id="opAmtDue">${fmt(half)}</span>
+        </div>
+        <div class="op-summary-cell">
+          <span class="op-stat-label">Spots</span>
+          <span class="op-stat-value">${spotsLeft}/${openPlayMaxPlayers}</span>
+        </div>
+        <div class="op-fee-breakdown">
+          <div class="op-fee-line"><span>Open Play Fee</span><strong>${fmt(openPlayFee)}</strong></div>
+          <div class="op-fee-line"><span>System Usage Fee</span><strong>${fmt(_serviceFeeRate)}</strong></div>
+          <div class="op-fee-line total"><span>Total</span><strong>${fmt(opTotal)}</strong></div>
+        </div>
+      </div>
     </div>
     ${dpSection}
-    <div id="opPayInfo" style="margin-bottom:14px"></div>\n    <div id="opReceiptWrap" style="display:none;margin-bottom:14px">
-      <div style="border:1px dashed rgba(74,154,74,.3);border-radius:var(--r);padding:12px;background:rgba(74,154,74,.04)">
-        <label style="font-size:.73rem;text-transform:uppercase;letter-spacing:1px;color:var(--accent);font-weight:700;display:block;margin-bottom:6px">
-          📸 Upload Payment Receipt <span style="color:#e53935">*</span>
-        </label>
-        <label id="opReceiptDrop" style="display:flex;align-items:center;gap:9px;padding:11px 13px;background:var(--card);border:1.5px dashed var(--border);border-radius:8px;cursor:pointer;font-size:.84rem;color:var(--muted)">
-          📷 Tap to attach your receipt screenshot
-          <input type="file" accept="image/*" id="opReceiptImg" style="display:none" onchange="onOpReceiptPicked(event)" />
-        </label>
-        <div id="opReceiptPreviewWrap" style="display:none;margin-top:8px;align-items:center;gap:10px">
-          <img id="opReceiptPreview" alt="Receipt preview" style="width:56px;height:56px;object-fit:cover;border-radius:8px;border:1px solid var(--border)" />
-          <span id="opReceiptName" style="font-size:.76rem;color:var(--text);flex:1;word-break:break-all"></span>
-          <button type="button" onclick="clearOpReceipt()" style="background:none;border:none;color:#e53935;font-size:.74rem;font-weight:700;cursor:pointer">✕ Remove</button>
-        </div>
-        <div id="opReceiptStatus" style="display:none;margin-top:8px;font-size:.78rem;font-weight:700;border-radius:8px;padding:8px 10px;line-height:1.5"></div>
-        <div style="font-size:.68rem;color:var(--muted);margin-top:7px;line-height:1.6">We auto-check the amount, reference, date/time and receiver — confirming your spot instantly.</div>
-      </div>
-    </div>
-    <div style="background:var(--input);border:1px solid var(--border);border-radius:var(--r);padding:14px">
-      <div style="display:flex;justify-content:space-between;font-size:.84rem">
-        <span style="color:var(--muted)">Open Play Fee</span>
-        <span>${fmt(openPlayFee)}</span>
-      </div>
-      ${sysFee > 0 ? `<div style="display:flex;justify-content:space-between;font-size:.84rem;margin-top:6px">
-        <span style="color:var(--muted)">💻 System Fee</span>
-        <span>${fmt(sysFee)}</span>
-      </div>` : ''}
-      <div style="display:flex;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
-        <span style="font-weight:700">Amount Due</span>
-        <span style="font-weight:700;color:var(--accent);font-size:1.05rem" id="opAmtDue">${fmt(half)}</span>
-      </div>
-    </div>`;
+    ${paymentPicker}
+    <div id="opPayInfo"></div>`;
   $('opModalFt').innerHTML = `
     <button class="btn" style="border:1.5px solid var(--border);color:var(--muted);background:transparent" onclick="closeOpModal()">Cancel</button>
     <button class="btn btn-g" id="opSubmitBtn" onclick="submitOpenPlay()">🏓 Join Open Play</button>`;
-  opPickPay('gcash');
+  opPickPay(defaultPayMethod);
   // Auto-set DP based on payment acceptance mode
   if (dpOnly || fpOnly) {
     opSetDP(_opSignupData.fullPay);
@@ -4139,56 +4390,69 @@ function opPickPay(method) {
   if (!paymentMethods[method]) return;
   _opSignupData.payMethod = method;
   document.querySelectorAll('#opPayOpts .pay-opt').forEach(el => el.classList.toggle('on', el.dataset.m === method));
-  const rw = $('opReceiptWrap');
-  if (rw) rw.style.display = (method === 'cash') ? 'none' : '';
   const info = $('opPayInfo');
   if (!info) return;
   const opTotal = openPlayFee + _serviceFeeRate;
   const amt = _opSignupData.fullPay ? opTotal : opTotal / 2;
   const refHtml = `
-    <div style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(74,154,74,.2)">
-      <label style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:4px;display:block">Reference # (after sending)</label>
+    <div class="op-ref-block">
+      <label>Reference # (after sending) *</label>
       <input type="text" class="fi" id="opGcashRef" placeholder="e.g. 1234567890123" inputmode="numeric"
-        style="margin:0;font-family:monospace;letter-spacing:1px;font-size:.9rem;padding:6px 8px"
+        style="margin:0;font-family:monospace;letter-spacing:1px"
         oninput="this.style.borderColor='';_opSignupData.gcashRef=this.value.trim()"
         value="${_opSignupData.gcashRef || ''}"/>
-      <div style="font-size:.65rem;color:var(--muted);margin-top:2px">Enter the reference number shown after your payment</div>
+      <div style="font-size:.65rem;color:var(--muted);margin-top:3px">Must match the reference number on the receipt.</div>
     </div>`;
-  if (method === 'gcash') {
-    const qrDisplay = gcashSettings.qrImage ? `<img src="${gcashSettings.qrImage}" alt="GCash QR" style="width:110px;height:110px;object-fit:contain;border-radius:6px;border:1px solid rgba(74,154,74,.3);background:#fff;padding:3px;margin:6px 0"/>` : `<div style="width:110px;height:110px;display:flex;align-items:center;justify-content:center;background:rgba(74,154,74,.05);border:1px dashed rgba(74,154,74,.25);border-radius:6px;margin:6px 0;color:var(--muted);font-size:.7rem;text-align:center">📸 No QR</div>`;
-    info.innerHTML = `<div style="background:rgba(74,154,74,.06);border:1px solid rgba(74,154,74,.25);border-radius:var(--r);padding:10px;text-align:center">
-      <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--accent);margin-bottom:6px">📱 Send GCash Payment To</div>
-      ${qrDisplay}
-      <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin:6px 0">
-        <div style="font-size:.95rem;font-weight:700">${gcashSettings.merchantNumber}</div>
-        <button type="button" onclick="copyToClipboard('${gcashSettings.merchantNumber}')" style="background:rgba(74,154,220,.15);color:#5a9ad4;border:1px solid rgba(74,154,220,.3);padding:3px 6px;border-radius:4px;cursor:pointer;font-size:.7rem;font-weight:600;transition:all .2s">📋 Copy</button>
-      </div>
-      <div style="font-size:.78rem;color:var(--muted);margin:2px 0">${gcashSettings.merchantName}</div>
-      <div style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(74,154,74,.2)">
-        <label style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:4px;display:block">Reference # (after sending)</label>
-        <input type="text" class="fi" id="opGcashRef" placeholder="e.g. 1234567890123" inputmode="numeric"
-          style="margin:0;font-family:monospace;letter-spacing:1px;font-size:.9rem;padding:6px 8px"
-          oninput="this.style.borderColor='';_opSignupData.gcashRef=this.value.trim()"
-          value="${_opSignupData.gcashRef || ''}"/>
-        <div style="font-size:.65rem;color:var(--muted);margin-top:2px">Enter the reference number shown after your payment</div>
-      </div>
-    </div>`;
-  } else if (method === 'gotyme') {
-    info.innerHTML = `<div style="background:rgba(74,154,74,.06);border:1px solid rgba(74,154,74,.25);border-radius:var(--r);padding:10px">
-      <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--accent);margin-bottom:6px">🏦 Send GoTyme Payment To</div>
-      <div style="font-size:.78rem;color:var(--muted)">${gcashSettings.merchantName}</div>
-      ${refHtml}
-    </div>`;
-  } else if (method === 'pnb') {
-    info.innerHTML = `<div style="background:rgba(74,154,74,.06);border:1px solid rgba(74,154,74,.25);border-radius:var(--r);padding:10px">
-      <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--accent);margin-bottom:6px">🏛️ Send PNB Payment To</div>
-      <div style="font-size:.78rem;color:var(--muted)">${gcashSettings.merchantName}</div>
-      ${refHtml}
-    </div>`;
+  if (method === 'gcash' || method === 'gotyme' || method === 'pnb') {
+    const meta = {
+      gcash: { icon: '📱', label: 'GCash', receiver: paymentReceiverSettings.gcash },
+      gotyme: { icon: '🏦', label: 'GoTyme', receiver: paymentReceiverSettings.gotyme },
+      pnb: { icon: '🏛️', label: 'PNB', receiver: paymentReceiverSettings.pnb },
+    }[method];
+    const receiver = meta.receiver;
+    const copyValue = (receiver.number || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const qrDisplay = receiver.qrImage
+      ? `<img class="op-qr-img" src="${receiver.qrImage}" alt="${meta.label} QR" />`
+      : `<div class="op-qr-placeholder">📸<br>No QR</div>`;
+    info.innerHTML = `
+      <div class="op-pay-card">
+        <div class="op-receiver-row">
+          <div class="op-qr-pane">
+            ${qrDisplay}
+          </div>
+          <div>
+            <div class="op-send-title">${meta.icon} Send ${meta.label} Payment To</div>
+            ${receiver.number ? `<div class="op-number-row">
+              <span class="op-number">${receiver.number}</span>
+              <button type="button" class="op-mini-btn" onclick="copyToClipboard('${copyValue}')">📋 Copy</button>
+            </div>` : ''}
+            <div class="op-send-name">${receiver.name || 'Court owner account'}</div>
+          </div>
+        </div>
+        <div class="op-pay-fields">
+          ${refHtml}
+          <div id="opReceiptWrap" class="op-receipt-wrap">
+            <label class="op-section-label" style="margin-bottom:6px">Upload Receipt *</label>
+            <label id="opReceiptDrop" class="op-receipt-drop">
+              <span>📷</span><span>Attach receipt screenshot</span>
+              <input type="file" id="opReceiptImg" accept="image/*" style="display:none" onchange="onOpReceiptPicked(event)"/>
+            </label>
+            <div id="opReceiptPreviewWrap" class="op-receipt-preview">
+              <img id="opReceiptPreview" alt="Receipt preview"/>
+              <div style="min-width:0;flex:1">
+                <div id="opReceiptName" style="font-size:.78rem;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+                <button type="button" onclick="clearOpReceipt()" style="background:transparent;border:0;color:var(--red);font-size:.72rem;font-weight:800;cursor:pointer;padding:2px 0">Remove</button>
+              </div>
+            </div>
+            <div id="opReceiptStatus" style="display:none;margin-top:7px;padding:7px 8px;border-radius:7px;font-size:.75rem;font-weight:700"></div>
+          </div>
+        </div>
+      </div>`;
+    syncOpReceiptPreview();
   } else if (method === 'cash') {
-    info.innerHTML = `<div style="background:rgba(74,154,74,.06);border:1px solid rgba(74,154,74,.25);border-radius:var(--r);padding:10px">
-      <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--accent);margin-bottom:6px">💵 Cash Payment</div>
-      <div style="font-size:.78rem;color:var(--muted)">Pay <strong>${fmt(amt)}</strong> at the front desk upon arrival.</div>
+    info.innerHTML = `<div class="op-cash-card">
+      <div class="op-send-title">💵 Cash Payment</div>
+      <div style="margin-top:4px">Pay <strong style="color:#f4a825">${fmt(amt)}</strong> at the front desk upon arrival.</div>
     </div>`;
   }
 }
@@ -4216,8 +4480,13 @@ function onOpReceiptPicked(e) {
   if (!f.type.startsWith('image/')) { toast('Please choose an image file.', 'err'); e.target.value = ''; return; }
   if (f.size > 5 * 1024 * 1024) { toast('Image too large (max 5 MB).', 'err'); e.target.value = ''; return; }
   _opReceiptFile = f;
-  const prev = $('opReceiptPreview'); if (prev) prev.src = URL.createObjectURL(f);
-  if ($('opReceiptName')) $('opReceiptName').textContent = f.name;
+  syncOpReceiptPreview();
+}
+
+function syncOpReceiptPreview() {
+  if (!_opReceiptFile) return;
+  const prev = $('opReceiptPreview'); if (prev) prev.src = URL.createObjectURL(_opReceiptFile);
+  if ($('opReceiptName')) $('opReceiptName').textContent = _opReceiptFile.name;
   if ($('opReceiptPreviewWrap')) $('opReceiptPreviewWrap').style.display = 'flex';
   const drop = $('opReceiptDrop'); if (drop) drop.style.display = 'none';
 }
@@ -4313,6 +4582,7 @@ async function submitOpenPlay() {
         gcash_ref: _opSignupData.gcashRef,
         date: _opSignupData.date,
         full_name: name,
+        created_at: _opSignupData.startedAt,
       });
       if (receiptResult.status === 'rejected') {
         toast('Receipt could not be verified: ' + receiptResult.message, 'err');
@@ -4321,7 +4591,7 @@ async function submitOpenPlay() {
       }
       regPayStatus = receiptResult.status === 'auto_approved' ? 'paid' : 'pending';
     }
-    const timeLabel = `${fmtT(_opSignupData.hour)} – ${fmtT(_opSignupData.hour + 1)}`;
+    const timeLabel = _opSignupData.sessionLabel || `${fmtT(_opSignupData.hour)} – ${fmtT(_opSignupData.hour + 1)}`;
     await DB.addOpenPlayRegistration({
       fullName: name,
       courtId: _opSignupData.courtId,

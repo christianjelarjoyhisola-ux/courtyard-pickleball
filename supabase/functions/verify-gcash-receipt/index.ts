@@ -27,10 +27,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Receipt-freshness tiers (minutes), measured at upload time in PH (UTC+8).
-const TIME_OK_MINUTES = 30;     // <= 30 min: fresh, passes
-const TIME_STALE_MINUTES = 120; // 30..120 min: soft flag -> manual review
-                                // > 120 min: hard flag -> reject
+// Payment must happen within this many minutes after the booking is started.
+// The booking form holds the slot for 15 minutes, so the receipt timestamp must
+// sit inside the same window.
+const PAYMENT_WINDOW_MINUTES = 15;
 
 const MAX_BYTES = 5 * 1024 * 1024;
 const PESO_TOLERANCE = 5; // allow ±₱5 rounding; underpay beyond this is a hard flag
@@ -42,6 +42,10 @@ const HARD_FLAGS = new Set([
   "IMAGE_UNREADABLE",   // OCR found NO text at all -> random/blank/non-receipt image
   "DUPLICATE_REF",
   "DUPLICATE_IMAGE",
+  "REF_MISMATCH",
+  "DATE_NOT_TODAY",
+  "TIME_EXPIRED",
+  "TIME_FUTURE",
   "WRONG_GCASH_NUMBER",
   "AMOUNT_MISMATCH",    // Only hard if significantly underpaid (>₱5)
 ]);
@@ -123,6 +127,13 @@ function phTodayStr(): string {
   return phManilaNow().toISOString().slice(0, 10); // YYYY-MM-DD in PH
 }
 
+function toPhWallClockDate(value: unknown): Date | null {
+  if (!value) return null;
+  const d = new Date(String(value));
+  if (Number.isNaN(d.getTime())) return null;
+  return new Date(d.getTime() + 8 * 60 * 60 * 1000);
+}
+
 const MONTHS: Record<string, number> = {
   jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
   jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
@@ -185,6 +196,34 @@ function normalizeMobile(d: string): string {
 
 type NumberCheck = "match" | "wrong" | "unreadable";
 
+function normalizedProvider(raw: string): "gcash" | "gotyme" | "pnb" {
+  const provider = raw.toLowerCase();
+  if (provider === "gotyme" || provider === "pnb") return provider;
+  return "gcash";
+}
+
+function expectedMerchantForProvider(
+  settings: Record<string, string>,
+  provider: "gcash" | "gotyme" | "pnb",
+): { number: string; name: string } {
+  if (provider === "gotyme") {
+    return {
+      number: settings.gotyme_merchant_number || "",
+      name: settings.gotyme_merchant_name || "",
+    };
+  }
+  if (provider === "pnb") {
+    return {
+      number: settings.pnb_merchant_number || "",
+      name: settings.pnb_merchant_name || "",
+    };
+  }
+  return {
+    number: settings.gcash_merchant_number || "",
+    name: settings.gcash_merchant_name || "",
+  };
+}
+
 function checkReceiverNumber(text: string, expectedRaw: string): NumberCheck {
   const expected = normalizeMobile(expectedRaw);
   if (expected.length < 10) return "unreadable"; // no configured number to compare
@@ -214,7 +253,9 @@ function checkReceiverName(text: string, expectedName: string): "match" | "misma
   const expected = (expectedName || "").toUpperCase().replace(/[^A-Z]/g, "");
   if (expected.length < 3) return "unreadable";
   const upper = text.toUpperCase();
-  // Compare on the alphabetic skeleton; masked chars are tolerated.
+  // Compare on the alphabetic skeleton. Masked or incomplete names are neutral:
+  // GCash commonly shows names like "AN*****A A.", which should not block a
+  // valid receipt when number/ref/amount/date/time are correct.
   const tokens = expected.match(/.{1,4}/g) || [];
   let hits = 0;
   for (const t of tokens) {
@@ -225,7 +266,7 @@ function checkReceiverName(text: string, expectedName: string): "match" | "misma
     if (upper.replace(/[^A-Z]/g, "").includes(expected.slice(0, 3))) return "match";
     return "unreadable";
   }
-  return hits >= Math.ceil(tokens.length / 2) ? "match" : "mismatch";
+  return hits >= Math.ceil(tokens.length / 2) ? "match" : "unreadable";
 }
 
 // Best-effort "looks like a real GCash receipt" heuristic (soft signal only).
@@ -378,7 +419,7 @@ Deno.serve(async (req) => {
   // ── verify a freshly-uploaded receipt ─────────────────────────────────────
   try {
     const bookingRef = String(body.bookingRef || "");
-    const provider = (String(body.provider || "gcash")).toLowerCase();
+    const provider = normalizedProvider(String(body.provider || "gcash"));
     const imageBase64 = String(body.imageBase64 || "");
     const contentType = String(body.contentType || "image/jpeg");
     // Optional: caller passes booking data so we can verify before saving to DB.
@@ -400,7 +441,7 @@ Deno.serve(async (req) => {
     } else {
       const { data: bk, error: bErr } = await db
         .from("bookings")
-        .select("ref, total, downpayment, gcash_ref, date, payment_status, status, full_name")
+        .select("ref, total, downpayment, gcash_ref, date, payment_status, status, full_name, created_at")
         .eq("ref", bookingRef)
         .single();
       if (bErr || !bk) return json({ error: "Booking not found" }, 404);
@@ -410,8 +451,9 @@ Deno.serve(async (req) => {
     const settingsRows = await db.from("settings").select("key,value");
     const settings: Record<string, string> = {};
     (settingsRows.data || []).forEach((r: { key: string; value: string }) => { settings[r.key] = r.value; });
-    const expectedNumber = settings.gcash_merchant_number || "";
-    const expectedName = settings.gcash_merchant_name || "";
+    const expectedMerchant = expectedMerchantForProvider(settings, provider);
+    const expectedNumber = expectedMerchant.number;
+    const expectedName = expectedMerchant.name;
     const expectedAmount = Number(booking.downpayment ?? (Number(booking.total) || 0) / 2);
 
     // Hashes (computed before OCR so duplicate images short-circuit cost).
@@ -477,6 +519,11 @@ Deno.serve(async (req) => {
     const extractedRef = extractRef(ocrText);
     const extractedAmount = extractAmount(ocrText);
     const { date: receiptDate, shifted: receiptDateTime } = parseReceiptDateTime(ocrText);
+    const bookingStartedAt = toPhWallClockDate(booking.created_at || booking.createdAt);
+    const bookingStartedDate = bookingStartedAt ? bookingStartedAt.toISOString().slice(0, 10) : null;
+    const receiptAgeMinutes = bookingStartedAt && receiptDateTime
+      ? (receiptDateTime.getTime() - bookingStartedAt.getTime()) / 60000
+      : null;
 
     // ── content checks (only when OCR text exists) ──────────────────────────
     if (ocrText) {
@@ -492,18 +539,15 @@ Deno.serve(async (req) => {
       if (extractedAmount == null) flags.push("AMOUNT_UNREADABLE");
       else if (extractedAmount < expectedAmount - PESO_TOLERANCE) flags.push("AMOUNT_MISMATCH");
 
-      // Date must be today (PH).
+      // Receipt date must match the date the booking was started/submitted (PH).
       if (!receiptDate) flags.push("DATE_UNREADABLE");
-      else if (receiptDate !== phTodayStr()) flags.push("DATE_NOT_TODAY");
+      else if (bookingStartedDate && receiptDate !== bookingStartedDate) flags.push("DATE_NOT_TODAY");
 
-      // Freshness tiers.
+      // Receipt timestamp must be inside the 15-minute slot-reservation window.
       if (!receiptDateTime) flags.push("TIME_UNREADABLE");
-      else {
-        const ageMin = (phManilaNow().getTime() - receiptDateTime.getTime()) / 60000;
-        if (ageMin > TIME_STALE_MINUTES) flags.push("TIME_EXPIRED");
-        else if (ageMin > TIME_OK_MINUTES) flags.push("TIME_STALE");
-        else if (ageMin < -TIME_OK_MINUTES) flags.push("TIME_FUTURE"); // soft: clock skew / fake
-      }
+      else if (!bookingStartedAt) flags.push("TIME_UNREADABLE");
+      else if ((receiptAgeMinutes as number) < 0) flags.push("TIME_FUTURE");
+      else if ((receiptAgeMinutes as number) > PAYMENT_WINDOW_MINUTES) flags.push("TIME_EXPIRED");
 
       // Receiver number.
       const numCheck = checkReceiverNumber(ocrText, expectedNumber);
@@ -550,8 +594,14 @@ Deno.serve(async (req) => {
       amount: extractedAmount,
       date: receiptDate,
       time: receiptDateTime ? receiptDateTime.toISOString() : null,
+      bookingStartedAt: bookingStartedAt ? bookingStartedAt.toISOString() : null,
+      bookingStartedDate,
+      receiptAgeMinutes,
+      allowedPaymentWindowMinutes: PAYMENT_WINDOW_MINUTES,
       expectedAmount,
       provider,
+      expectedReceiverNumber: expectedNumber || null,
+      expectedReceiverName: expectedName || null,
     };
 
     // ── persist outcome on the booking ──────────────────────────────────────

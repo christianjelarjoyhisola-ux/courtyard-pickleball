@@ -1174,9 +1174,15 @@ tr:hover td { background: var(--bg2); }
         <!-- GoTyme Section -->
         <div style="margin-top:12px;padding:14px;background:var(--input);border-radius:10px;border:1px solid var(--border);">
           <div style="font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--yellow);margin-bottom:10px;">🏦 GoTyme</div>
-          <div class="fg" style="margin-bottom:10px">
-            <label class="fl">Account Name</label>
-            <input type="text" class="fi" id="gotymeNameInput" placeholder="e.g. CourtYard Pickleball Sibagat" />
+          <div class="frow" style="gap:10px;margin-bottom:10px;">
+            <div class="fg" style="margin:0;flex:1">
+              <label class="fl">GoTyme Number / Account No.</label>
+              <input type="text" class="fi" id="gotymeNumInput" placeholder="e.g. 09XX XXX XXXX" />
+            </div>
+            <div class="fg" style="margin:0;flex:1">
+              <label class="fl">Account Name</label>
+              <input type="text" class="fi" id="gotymeNameInput" placeholder="e.g. CourtYard Pickleball Sibagat" />
+            </div>
           </div>
           <div class="fg" style="margin:0">
             <label class="fl">GoTyme QR Code Image</label>
@@ -1196,9 +1202,15 @@ tr:hover td { background: var(--bg2); }
         <!-- PNB Section -->
         <div style="margin-top:12px;padding:14px;background:var(--input);border-radius:10px;border:1px solid var(--border);">
           <div style="font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#4a90d9;margin-bottom:10px;">🏛️ PNB</div>
-          <div class="fg" style="margin-bottom:10px">
-            <label class="fl">Account Name</label>
-            <input type="text" class="fi" id="pnbNameInput" placeholder="e.g. CourtYard Pickleball Sibagat" />
+          <div class="frow" style="gap:10px;margin-bottom:10px;">
+            <div class="fg" style="margin:0;flex:1">
+              <label class="fl">PNB Number / Account No.</label>
+              <input type="text" class="fi" id="pnbNumInput" placeholder="e.g. account or mobile number" />
+            </div>
+            <div class="fg" style="margin:0;flex:1">
+              <label class="fl">Account Name</label>
+              <input type="text" class="fi" id="pnbNameInput" placeholder="e.g. CourtYard Pickleball Sibagat" />
+            </div>
           </div>
           <div class="fg" style="margin:0">
             <label class="fl">PNB QR Code Image</label>
@@ -1671,8 +1683,8 @@ function payStatusBdg(s){
 }
 const RECEIPT_FLAG_LABELS = {
   DUPLICATE_REF:'Duplicate ref', DUPLICATE_IMAGE:'Duplicate image', WRONG_GCASH_NUMBER:'Wrong number',
-  AMOUNT_MISMATCH:'Amount mismatch', DATE_NOT_TODAY:'Old date', TIME_EXPIRED:'Expired',
-  TIME_STALE:'Stale time', TIME_FUTURE:'Future time', RECEIVER_NAME_MISMATCH:'Name mismatch',
+  AMOUNT_MISMATCH:'Amount mismatch', DATE_NOT_TODAY:'Wrong payment date', TIME_EXPIRED:'Over 15 min',
+  TIME_STALE:'Stale time', TIME_FUTURE:'Before booking', RECEIVER_NAME_MISMATCH:'Name mismatch',
   EDITED_METADATA:'Edited image', SUSPECTED_FAKE:'Looks fake', REF_FORMAT_INVALID:'Bad ref format',
   LOW_OCR_CONFIDENCE:'Blurry', OCR_UNAVAILABLE:'No OCR', AMOUNT_UNREADABLE:'Amount unreadable',
   DATE_UNREADABLE:'Date unreadable', TIME_UNREADABLE:'Time unreadable', NUMBER_UNREADABLE:'Number unreadable',
@@ -3292,7 +3304,9 @@ async function renderPaymentSettings() {
 
   if ($('gcashNumInput')) $('gcashNumInput').value = settings.gcash_merchant_number || '';
   if ($('gcashNameInput')) $('gcashNameInput').value = settings.gcash_merchant_name || '';
+  if ($('gotymeNumInput')) $('gotymeNumInput').value = settings.gotyme_merchant_number || '';
   if ($('gotymeNameInput')) $('gotymeNameInput').value = settings.gotyme_merchant_name || '';
+  if ($('pnbNumInput')) $('pnbNumInput').value = settings.pnb_merchant_number || '';
   if ($('pnbNameInput')) $('pnbNameInput').value = settings.pnb_merchant_name || '';
   if ($('platformGcashNumInput')) $('platformGcashNumInput').value = settings.platform_gcash_number || '';
   if ($('platformGcashNameInput')) $('platformGcashNameInput').value = settings.platform_gcash_name || '';
@@ -3832,12 +3846,16 @@ async function savePaymentSettings() {
 
     const gcashNum = $('gcashNumInput')?.value.trim() || '';
     const gcashName = $('gcashNameInput')?.value.trim() || '';
+    const gotymeNum = $('gotymeNumInput')?.value.trim() || '';
     const gotymeName = $('gotymeNameInput')?.value.trim() || '';
+    const pnbNum = $('pnbNumInput')?.value.trim() || '';
     const pnbName = $('pnbNameInput')?.value.trim() || '';
-    if (gcashNum) await DB.saveSetting('gcash_merchant_number', gcashNum);
-    if (gcashName) await DB.saveSetting('gcash_merchant_name', gcashName);
-    if (gotymeName) await DB.saveSetting('gotyme_merchant_name', gotymeName);
-    if (pnbName) await DB.saveSetting('pnb_merchant_name', pnbName);
+    await DB.saveSetting('gcash_merchant_number', gcashNum);
+    await DB.saveSetting('gcash_merchant_name', gcashName);
+    await DB.saveSetting('gotyme_merchant_number', gotymeNum);
+    await DB.saveSetting('gotyme_merchant_name', gotymeName);
+    await DB.saveSetting('pnb_merchant_number', pnbNum);
+    await DB.saveSetting('pnb_merchant_name', pnbName);
 
     // Save QR images (base64 data URLs) — save empty string if removed
     const platformQrSrc = $('platformGcashQrPreview')?.src || '';

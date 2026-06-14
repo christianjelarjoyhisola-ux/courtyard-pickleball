@@ -627,6 +627,7 @@ tr:hover td { background: var(--bg2); }
       <div class="nav-grp">Overview</div>
       <div class="nav-item on" data-s="dash" data-perm="dashboard" onclick="goto('dash')"><span>&#128202;</span> Dashboard</div>
       <div class="nav-item" data-s="bookings" data-perm="bookings" onclick="goto('bookings')"><span>&#128203;</span> Bookings</div>
+      <div class="nav-item" data-s="payreview" data-perm="payments" onclick="goto('payreview')"><span>&#128269;</span> Payment Review</div>
       <div class="nav-item" data-s="reports" data-perm="reports" onclick="goto('reports')"><span>&#128200;</span> Reports</div>
     </div>
     <div class="sb-section">
@@ -792,6 +793,66 @@ tr:hover td { background: var(--bg2); }
               <tbody id="bookBody"><tr><td colspan="9" style="text-align:center;color:var(--muted);padding:24px">No bookings.</td></tr></tbody>
             </table>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAYMENT REVIEW -->
+    <div id="sec-payreview" class="adm-sec">
+      <div class="toolbar">
+        <h2>PAYMENT REVIEW</h2>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-g btn-sm" onclick="renderPaymentReview()">Refresh</button>
+          <button class="btn btn-p btn-sm" onclick="goto('payments')">QR Settings</button>
+        </div>
+      </div>
+
+      <div class="stat-cards">
+        <div class="sc"><div class="sc-lbl">Needs Review</div><div class="sc-val" id="prNeedsReview">0</div><div class="sc-ic">&#128269;</div></div>
+        <div class="sc"><div class="sc-lbl">Pending Digital</div><div class="sc-val" id="prPending">0</div><div class="sc-ic">&#9203;</div></div>
+        <div class="sc"><div class="sc-lbl">Auto-Verified</div><div class="sc-val" id="prAuto">0</div><div class="sc-ic">&#10003;</div></div>
+        <div class="sc"><div class="sc-lbl">Rejected</div><div class="sc-val" id="prRejected">0</div><div class="sc-ic">&#9888;</div></div>
+      </div>
+
+      <div class="tbl-wrap" style="margin-bottom:18px">
+        <div class="tbl-hd">
+          <h3>Manual Review Queue</h3>
+          <div class="filters">
+            <input type="text" id="prSearch" placeholder="Search name, ref, date..." oninput="renderPaymentReview()"/>
+            <select id="prType" onchange="renderPaymentReview()">
+              <option value="">All Types</option>
+              <option value="booking">Court Bookings</option>
+              <option value="open_play">Open Play</option>
+            </select>
+            <select id="prStatus" onchange="renderPaymentReview()">
+              <option value="attention">Needs Attention</option>
+              <option value="">All Status</option>
+              <option value="manual_review">Manual Review</option>
+              <option value="pending">Pending</option>
+              <option value="auto_approved">Auto-Verified</option>
+              <option value="rejected">Rejected</option>
+              <option value="paid">Paid</option>
+            </select>
+          </div>
+        </div>
+        <div class="tbl-scroll">
+          <table>
+            <thead><tr><th>Type</th><th>Customer</th><th>Schedule</th><th>Method</th><th>Amount</th><th>Status</th><th>Flags</th><th>Action</th></tr></thead>
+            <tbody id="prQueueBody"><tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">Loading payments...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="tbl-wrap">
+        <div class="tbl-hd">
+          <h3>Recent Payment Log</h3>
+          <span style="font-size:.78rem;color:var(--muted)">Latest booking and Open Play payment activity</span>
+        </div>
+        <div class="tbl-scroll">
+          <table>
+            <thead><tr><th>When</th><th>Type</th><th>Reference</th><th>Name</th><th>Payment</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody id="prLogBody"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">No payment activity yet.</td></tr></tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -1677,9 +1738,18 @@ const fmtD=s=>{if(!s)return'—';return new Date(s+'T00:00:00').toLocaleDateStri
 function statusBdg(s){const m={pending:'bdg-p',confirmed:'bdg-c',completed:'bdg-d',verifying:'bdg-v',cancelled:'bdg-x'};return`<span class="bdg ${m[s]||''}">${s}</span>`;}
 function payStatusBdg(s){
   const v = (s || 'unpaid').toLowerCase();
-  const label = v === 'paid' ? 'Fully Paid' : v === 'downpayment_paid' ? 'Downpayment Paid' : v === 'for_verification' ? 'For Verification' : v === 'pending' ? 'Pending' : v === 'failed' ? 'Failed' : 'Unpaid';
-  const cls = v === 'paid' ? 'bdg-c' : v === 'downpayment_paid' ? 'bdg-p' : v === 'for_verification' ? 'bdg-p' : v === 'failed' ? 'bdg-x' : 'bdg-d';
+  const label = v === 'paid' ? 'Fully Paid' : v === 'downpayment_paid' ? 'Downpayment Paid' : v === 'for_verification' ? 'For Verification' : v === 'pending' ? 'Pending' : v === 'rejected' ? 'Rejected' : v === 'failed' ? 'Failed' : 'Unpaid';
+  const cls = v === 'paid' ? 'bdg-c' : v === 'downpayment_paid' ? 'bdg-p' : v === 'for_verification' ? 'bdg-p' : (v === 'failed' || v === 'rejected') ? 'bdg-x' : 'bdg-d';
   return `<span class="bdg ${cls}">${label}</span>`;
+}
+function esc(v){
+  return String(v ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+function shortDateTime(v){
+  if (!v) return '<span style="color:var(--muted)">--</span>';
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return '<span style="color:var(--muted)">--</span>';
+  return `${d.toLocaleDateString('en-PH',{month:'short',day:'numeric'})}<div style="font-size:.72rem;color:var(--muted);font-weight:600">${d.toLocaleTimeString('en-PH',{hour:'numeric',minute:'2-digit',hour12:true})}</div>`;
 }
 const RECEIPT_FLAG_LABELS = {
   DUPLICATE_REF:'Duplicate ref', DUPLICATE_IMAGE:'Duplicate image', WRONG_GCASH_NUMBER:'Wrong number',
@@ -1712,9 +1782,9 @@ let sess;
 /* ==============================================
    NAVIGATION
    ============================================== */
-const titles={dash:'Dashboard',bookings:'Bookings',reports:'Reports',courts:'Courts',accounts:'Accounts',blocked:'Open Play',maintenance:'Maintenance',payments:'Payments'};
-const SECTION_PERM={dash:'dashboard',bookings:'bookings',reports:'reports',courts:'courts',accounts:'accounts',blocked:'open_play',maintenance:'maintenance',payments:'payments'};
-const SECTION_LOADERS={dash:renderDash,bookings:renderBookings,reports:renderReport,courts:renderCourts,accounts:renderAccounts,blocked:renderBlocked,maintenance:renderMaintenance,payments:renderPaymentSettings};
+const titles={dash:'Dashboard',bookings:'Bookings',payreview:'Payment Review',reports:'Reports',courts:'Courts',accounts:'Accounts',blocked:'Open Play',maintenance:'Maintenance',payments:'Payments'};
+const SECTION_PERM={dash:'dashboard',bookings:'bookings',payreview:'payments',reports:'reports',courts:'courts',accounts:'accounts',blocked:'open_play',maintenance:'maintenance',payments:'payments'};
+const SECTION_LOADERS={dash:renderDash,bookings:renderBookings,payreview:renderPaymentReview,reports:renderReport,courts:renderCourts,accounts:renderAccounts,blocked:renderBlocked,maintenance:renderMaintenance,payments:renderPaymentSettings};
 let _curSection=null;
 async function goto(s){
   // Block navigation to sections the current role can't access
@@ -2053,6 +2123,7 @@ async function renderBookings(){
           <option value="downpayment_paid" ${b.paymentStatus==='downpayment_paid'?'selected':''}>Downpayment Paid</option>
           <option value="paid" ${b.paymentStatus==='paid'?'selected':''}>Fully Paid</option>
           <option value="for_verification" ${b.paymentStatus==='for_verification'?'selected':''}>For Verification</option>
+          <option value="rejected" ${b.paymentStatus==='rejected'?'selected':''}>Rejected</option>
         </select>
         ${receiptBadge(b)}
       </td>
@@ -2083,6 +2154,132 @@ function clearFilters(){
 }
 
 /* ── CALENDAR VIEW ── */
+function paymentMethodLabel(m) {
+  return ({ gcash: 'GCash', gotyme: 'GoTyme', pnb: 'PNB', cash: 'Cash' }[m] || (m || 'Cash'));
+}
+
+function isDigitalPayment(m) {
+  return ['gcash', 'gotyme', 'pnb'].includes(String(m || '').toLowerCase());
+}
+
+function bookingReviewStatus(b) {
+  if (b.receiptStatus === 'manual_review') return 'manual_review';
+  if (b.receiptStatus === 'rejected' || b.paymentStatus === 'rejected') return 'rejected';
+  if (b.receiptStatus === 'auto_approved') return 'auto_approved';
+  if (b.paymentStatus === 'for_verification' || b.status === 'verifying') return 'pending';
+  if (b.paymentStatus === 'paid' || b.paymentStatus === 'downpayment_paid') return 'paid';
+  if (isDigitalPayment(b.paymentMethod) && b.gcashRef && b.status === 'pending') return 'pending';
+  return b.paymentStatus || 'unpaid';
+}
+
+function statusPill(status) {
+  const map = {
+    manual_review: ['#b87e00', 'rgba(184,126,0,.15)', 'Manual review'],
+    pending: ['#b87e00', 'rgba(184,126,0,.15)', 'Pending'],
+    auto_approved: ['#2a8a4a', 'rgba(74,154,74,.15)', 'Auto-verified'],
+    paid: ['#2a8a4a', 'rgba(74,154,74,.15)', 'Paid'],
+    rejected: ['#e53935', 'rgba(229,57,53,.12)', 'Rejected'],
+    unpaid: ['var(--muted)', 'var(--input)', 'Unpaid'],
+  };
+  const [c, bg, label] = map[status] || ['var(--muted)', 'var(--input)', status || 'Unknown'];
+  return `<span style="font-size:.72rem;font-weight:800;padding:2px 8px;border-radius:20px;background:${bg};color:${c};white-space:nowrap">${label}</span>`;
+}
+
+function paymentReviewAction(item) {
+  if (item.type === 'booking') {
+    return `<button class="btn btn-sm" style="background:rgba(200,160,96,.15);color:var(--yellow);border:1px solid rgba(200,160,96,.35);font-weight:700" onclick="openVerifyModal('${esc(item.id)}')">Review</button>`;
+  }
+  if (item.type === 'open_play' && item.status !== 'paid') {
+    return `<button class="btn btn-sm" style="background:rgba(56,189,248,.12);color:#38bdf8;border:1px solid rgba(56,189,248,.35);font-weight:700" onclick="openOpVerifyModal('${esc(item.id)}')">Review</button>`;
+  }
+  return '<span style="color:var(--muted);font-size:.78rem">No action</span>';
+}
+
+function paymentReviewRow(item) {
+  const typeLabel = item.type === 'booking' ? 'Booking' : 'Open Play';
+  const typeBg = item.type === 'booking' ? 'rgba(74,154,220,.12)' : 'rgba(56,189,248,.12)';
+  const typeColor = item.type === 'booking' ? '#5a9ad4' : '#38bdf8';
+  const flags = item.flags?.length ? receiptFlagChips(item.flags) : '<span style="color:var(--muted);font-size:.74rem">--</span>';
+  return `<tr>
+    <td data-label="Type"><span style="font-size:.72rem;font-weight:800;padding:2px 8px;border-radius:20px;background:${typeBg};color:${typeColor};white-space:nowrap">${typeLabel}</span></td>
+    <td data-label="Customer"><div style="font-weight:700">${esc(item.name)}</div><div style="font-size:.72rem;color:var(--muted)"><code>${esc(item.ref)}</code></div></td>
+    <td data-label="Schedule">${esc(item.dateLabel)}<div style="font-size:.72rem;color:var(--muted);font-weight:600">${esc(item.timeLabel)}</div></td>
+    <td data-label="Method">${paymentMethodLabel(item.method)}</td>
+    <td data-label="Amount"><strong style="color:var(--text)">${fmt(item.amount || 0)}</strong></td>
+    <td data-label="Status">${statusPill(item.status)}</td>
+    <td data-label="Flags">${flags}</td>
+    <td data-label="Action">${paymentReviewAction(item)}</td>
+  </tr>`;
+}
+
+async function renderPaymentReview() {
+  const [bookings, regs] = await Promise.all([DB.getBookings(), DB.getOpenPlayRegistrations()]);
+  const bookingItems = bookings
+    .filter(b => b.email !== 'reserve@hold.internal' && isDigitalPayment(b.paymentMethod))
+    .map(b => ({
+      type: 'booking',
+      id: b.ref,
+      ref: b.gcashRef || b.ref,
+      name: b.fullName || '--',
+      dateLabel: fmtD(b.date),
+      timeLabel: `${b.startTime || '--'}-${b.endTime || '--'}`,
+      method: b.paymentMethod,
+      amount: b.downpayment || b.total || 0,
+      status: bookingReviewStatus(b),
+      flags: b.receiptFlags || [],
+      createdAt: b.receiptVerifiedAt || b.createdAt,
+    }));
+  const opItems = regs
+    .filter(r => isDigitalPayment(r.payment_method))
+    .map(r => ({
+      type: 'open_play',
+      id: String(r.id),
+      ref: r.gcash_ref || String(r.id),
+      name: r.full_name || '--',
+      dateLabel: fmtD(r.date),
+      timeLabel: r.time_label || '--',
+      method: r.payment_method,
+      amount: r.amount || 0,
+      status: r.payment_status === 'paid' ? 'paid' : r.payment_status === 'rejected' ? 'rejected' : 'pending',
+      flags: [],
+      createdAt: r.created_at,
+    }));
+  const items = [...bookingItems, ...opItems].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+  const counts = {
+    needsReview: items.filter(i => i.status === 'manual_review').length,
+    pending: items.filter(i => i.status === 'pending').length,
+    auto: items.filter(i => i.status === 'auto_approved' || i.status === 'paid').length,
+    rejected: items.filter(i => i.status === 'rejected').length,
+  };
+  if ($('prNeedsReview')) $('prNeedsReview').textContent = counts.needsReview;
+  if ($('prPending')) $('prPending').textContent = counts.pending;
+  if ($('prAuto')) $('prAuto').textContent = counts.auto;
+  if ($('prRejected')) $('prRejected').textContent = counts.rejected;
+
+  const q = ($('prSearch')?.value || '').toLowerCase().trim();
+  const typ = $('prType')?.value || '';
+  const st = $('prStatus')?.value ?? 'attention';
+  let filtered = items;
+  if (q) filtered = filtered.filter(i => [i.name, i.ref, i.dateLabel, i.timeLabel, i.method].join(' ').toLowerCase().includes(q));
+  if (typ) filtered = filtered.filter(i => i.type === typ);
+  if (st === 'attention') filtered = filtered.filter(i => ['manual_review', 'pending', 'rejected'].includes(i.status));
+  else if (st) filtered = filtered.filter(i => i.status === st);
+  $('prQueueBody').innerHTML = filtered.length
+    ? filtered.map(paymentReviewRow).join('')
+    : '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">No payments match this view.</td></tr>';
+
+  const recent = items.slice(0, 30);
+  $('prLogBody').innerHTML = recent.length ? recent.map(i => `<tr>
+    <td data-label="When">${shortDateTime(i.createdAt)}</td>
+    <td data-label="Type">${i.type === 'booking' ? 'Booking' : 'Open Play'}</td>
+    <td data-label="Reference"><code style="color:var(--green)">${esc(i.ref)}</code></td>
+    <td data-label="Name">${esc(i.name)}</td>
+    <td data-label="Payment">${paymentMethodLabel(i.method)} <span style="color:var(--muted)">/</span> ${fmt(i.amount || 0)}</td>
+    <td data-label="Status">${statusPill(i.status)}</td>
+    <td data-label="Action">${paymentReviewAction(i)}</td>
+  </tr>`).join('') : '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">No payment activity yet.</td></tr>';
+}
+
 let calYear=new Date().getFullYear(), calMonth=new Date().getMonth();
 
 function switchBookingView(mode){
@@ -2296,6 +2493,7 @@ async function verifyAndConfirm() {
     closeModal('verifyModal');
     toast('✅ Payment verified & booking confirmed!');
     await renderBookings();
+    if (_curSection === 'payreview') await renderPaymentReview();
     renderDash();
 
     // Send confirmation email fire-and-forget
@@ -2350,10 +2548,11 @@ async function rejectPayment() {
   if (!ref) return;
   if (!confirm(`Cancel booking ${ref}? This cannot be undone.`)) return;
   try {
-    await DB.updateBooking(ref, { status: 'cancelled' });
+    await DB.updateBooking(ref, { status: 'cancelled', paymentStatus: 'rejected' });
     closeModal('verifyModal');
     toast('Booking cancelled — payment not verified.', 'err');
-    renderBookings();
+    await renderBookings();
+    if (_curSection === 'payreview') await renderPaymentReview();
     renderDash();
   } catch(e) {
     toast('Failed to cancel booking.', 'err');
@@ -4136,7 +4335,8 @@ async function confirmOpPayment() {
     await DB.updateOpenPlayRegistration(id, { paymentStatus: 'paid' });
     closeModal('opVerifyModal');
     toast('✅ Open Play payment confirmed!');
-    renderOpRegistrations();
+    await renderOpRegistrations();
+    if (_curSection === 'payreview') await renderPaymentReview();
   } catch(e) {
     toast('Failed to confirm payment.', 'err');
   }
@@ -4150,7 +4350,8 @@ async function rejectOpPayment() {
     await DB.updateOpenPlayRegistration(id, { paymentStatus: 'rejected' });
     closeModal('opVerifyModal');
     toast('Payment marked as not received.', 'err');
-    renderOpRegistrations();
+    await renderOpRegistrations();
+    if (_curSection === 'payreview') await renderPaymentReview();
   } catch(e) {
     toast('Failed to update payment.', 'err');
   }

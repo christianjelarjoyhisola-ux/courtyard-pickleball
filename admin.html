@@ -3349,6 +3349,10 @@ async function viewBillingProof(id) {
   $('billProofModal').classList.add('show');
 }
 
+// Fixed platform fee per confirmed booking. Permanent per the signed agreement —
+// it never changes, so it lives here as a constant, not an editable setting.
+const PLATFORM_FEE_PER_BOOKING = 15;
+
 async function renderWeeklyBilling() {
   const body = $('billBody');
   if (!body || !Auth.can('owner_only', sess.role)) return;
@@ -3411,12 +3415,12 @@ async function generateWeeklyStatement() {
 
   const mode = $('billWeekMode')?.value || 'last';
   const { startDate, endDate, end } = _weekBounds(mode);
-  
+
   try {
-    const [accounts, settings, bookings] = await Promise.all([
+    const [accounts, bookings, existingStatements] = await Promise.all([
       DB.getAccounts(),
-      DB.getSettings(),
       DB.getBookings(),
+      DB.getWeeklyFees(),
     ]);
 
     // Look for court_owner, or fallback to system owner (for testing)
@@ -3426,34 +3430,70 @@ async function generateWeeklyStatement() {
       if (!courtOwner) { toast('No accounts found.', 'err'); return; }
     }
 
-    const feePerBooking = Math.max(0, Number(settings.maintenance_fee || 15));
+    // Fixed, non-negotiable platform fee. Per the signed agreement the ₱15.00
+    // fee is permanent and never changes, so it is a constant — not a setting.
+    const feePerBooking = PLATFORM_FEE_PER_BOOKING;
+
+    // Billable event = a CONFIRMED booking (one that successfully reserved a
+    // slot). Cancelled / rejected / verifying holds are never billed.
     const eligible = bookings.filter(b =>
       (b.status === 'confirmed' || b.status === 'completed') &&
       b.date >= startDate && b.date <= endDate
     );
-    const bookingsCount = eligible.length;
+    const billedRefs = eligible.map(b => b.ref).filter(Boolean);
+    const bookingsCount = billedRefs.length;
     const amountDue = bookingsCount * feePerBooking;
 
     const due = new Date(end);
     due.setDate(end.getDate() + 5); // Friday after Sunday cut-off
     due.setHours(17, 0, 0, 0);
 
-    console.log('[billGenerate] mode=', mode, 'week=', startDate, 'to', endDate, 'owner=', courtOwner.email, 'eligible=', bookingsCount);
+    // One statement per (owner, week). Regenerating recomputes the same week
+    // rather than creating a duplicate. A booking's date maps it to exactly one
+    // week, so a booking can never be billed on two different statements.
+    const existing = (existingStatements || []).find(r =>
+      r.court_owner_user_id === courtOwner.id &&
+      r.week_start === startDate && r.week_end === endDate
+    );
 
-    await DB.saveWeeklyFee({
-      courtOwnerUserId: courtOwner.id,
-      courtOwnerEmail: courtOwner.email,
-      weekStart: startDate,
-      weekEnd: endDate,
-      bookingsCount,
-      feePerBooking,
-      amountDue,
-      status: 'sent',
-      generatedAt: new Date().toISOString(),
-      sentAt: new Date().toISOString(),
-      dueAt: due.toISOString(),
-    });
-    toast(`Statement generated: ${bookingsCount} bookings × ${fmt(feePerBooking)} = ${fmt(amountDue)}`);
+    console.log('[billGenerate] mode=', mode, 'week=', startDate, 'to', endDate, 'owner=', courtOwner.email, 'eligible=', bookingsCount, existing ? '(regenerate)' : '(new)');
+
+    let weeklyFeeId;
+    if (existing) {
+      if ((existing.status || '').toLowerCase() === 'paid') {
+        toast('This week is already marked paid and cannot be regenerated.', 'err');
+        return;
+      }
+      await DB.updateWeeklyFee(existing.id, {
+        bookingsCount,
+        amountDue,
+        feePerBooking,
+        billedRefs,
+        generatedAt: new Date().toISOString(),
+      });
+      weeklyFeeId = existing.id;
+    } else {
+      const saved = await DB.saveWeeklyFee({
+        courtOwnerUserId: courtOwner.id,
+        courtOwnerEmail: courtOwner.email,
+        weekStart: startDate,
+        weekEnd: endDate,
+        bookingsCount,
+        feePerBooking,
+        amountDue,
+        billedRefs,
+        status: 'sent',
+        generatedAt: new Date().toISOString(),
+        sentAt: new Date().toISOString(),
+        dueAt: due.toISOString(),
+      });
+      weeklyFeeId = saved?.id;
+    }
+
+    // Stamp each billed booking so it is auditable and never billed twice.
+    if (weeklyFeeId) await DB.markBookingsBilled(billedRefs, weeklyFeeId);
+
+    toast(`Statement ${existing ? 'updated' : 'generated'}: ${bookingsCount} bookings × ${fmt(feePerBooking)} = ${fmt(amountDue)}`);
     await renderWeeklyBilling();
   } catch (e) {
     console.error('[billGenerate] error:', e);
@@ -4330,7 +4370,7 @@ function applyRoleVisibility(role) {
         <div style="font-size:1.7rem">📋</div>
         <div>
           <div style="font-size:1.05rem;font-weight:800;letter-spacing:.5px;color:var(--text,#e8eaf0)">PLATFORM ACCESS & BOOKING FEE AUTHORIZATION AGREEMENT</div>
-          <div style="font-size:.73rem;color:var(--muted,#7a8a9a);margin-top:2px">CourtYard Pickleball Booking System — Version 1 · Fixed Terms</div>
+          <div style="font-size:.73rem;color:var(--muted,#7a8a9a);margin-top:2px">CourtYard Pickleball Booking System — Version 2 · Fixed Terms</div>
         </div>
       </div>
     </div>
@@ -4354,8 +4394,13 @@ function applyRoleVisibility(role) {
         <li>Platform hosting, security, and technical maintenance</li>
       </ul>
 
-      <h4 style="margin:0 0 8px;color:var(--green,#4a9a4a);font-size:.85rem;letter-spacing:.6px;text-transform:uppercase">3. Platform Booking Fee — Charged to Customers</h4>
-      <p style="margin:0 0 14px">In exchange for free access to the platform, the Court Owner <strong>authorizes</strong> the Platform Provider to add a <strong>non-refundable platform booking fee of ₱15.00 (fifteen pesos, fixed)</strong> to each customer transaction processed through the system. This fee is charged to and paid by the <strong>customer/player</strong>, not the Court Owner — similar to how Airbnb, Grab, or Booking.com charge a service fee to the end user.<br><br>The ₱15.00 platform fee is <strong>fixed and permanent</strong>. It will not increase, and no other fees will be charged to the Court Owner or customers beyond those the Court Owner sets for their own court rates.</p>
+      <h4 style="margin:0 0 8px;color:var(--green,#4a9a4a);font-size:.85rem;letter-spacing:.6px;text-transform:uppercase">3. Platform Booking Fee &amp; Weekly Remittance</h4>
+      <p style="margin:0 0 14px">In exchange for free access to the platform, the Court Owner <strong>authorizes</strong> the Platform Provider to add a <strong>non-refundable platform booking fee of ₱15.00 (fifteen pesos, fixed)</strong> to each customer transaction processed through the system. This fee is charged to and paid by the <strong>customer/player</strong>, not the Court Owner — similar to how Airbnb, Grab, or Booking.com charge a service fee to the end user.<br><br>The ₱15.00 platform fee is <strong>fixed and permanent</strong>. It will not increase, decrease, or change for any reason, and no other fees will be charged to the Court Owner or customers beyond those the Court Owner sets for their own court rates.</p>
+      <p style="margin:0 0 14px"><strong>Billable event.</strong> The ₱15.00 fee applies to each <strong>confirmed booking</strong> made through the platform (a booking that successfully reserved a court slot). Bookings that are cancelled before confirmation, rejected during payment verification, or that never held a slot are <strong>not billed</strong>.</p>
+      <p style="margin:0 0 14px"><strong>Collection.</strong> The Court Owner collects the ₱15.00 platform fee from the customer together with the court rate at the time of booking, and holds it on behalf of the Platform Provider until remittance.</p>
+      <p style="margin:0 0 14px"><strong>Weekly remittance.</strong> Billing is settled <strong>weekly</strong>. Each week the Platform Provider issues a statement covering every confirmed booking from the previous <strong>Monday–Sunday</strong> period. The amount due equals the number of confirmed bookings in that week × ₱15.00. Each statement itemises the exact bookings included, and each booking is billed <strong>only once</strong>.</p>
+      <p style="margin:0 0 14px"><strong>Due date &amp; method.</strong> Payment is due within <strong>five (5) days</strong> of the statement date. The Court Owner remits the amount due via <strong>GCash</strong> to the platform remittance account shown in the dashboard, then submits the GCash transaction reference and a screenshot of the receipt as proof of payment through the "Pay Now" function.</p>
+      <p style="margin:0 0 14px"><strong>Non-payment.</strong> Statements unpaid past the due date are marked <strong>overdue</strong>. The Platform Provider may suspend the Court Owner's access to the booking system until all outstanding statements are settled. Suspension does not waive any amounts already due.</p>
 
       <h4 style="margin:0 0 8px;color:var(--green,#4a9a4a);font-size:.85rem;letter-spacing:.6px;text-transform:uppercase">4. Court Owner's Revenue</h4>
       <p style="margin:0 0 14px">All court booking fees set by the Court Owner (e.g. ₱200/hr, ₱250/hr) belong <strong>exclusively to the Court Owner</strong>. The Platform Provider does not take any share of the court rental revenue. The Court Owner receives 100% of the court rate from every confirmed booking. Only the separate ₱15.00 platform fee (paid by the customer) goes to the Platform Provider.</p>
@@ -4399,6 +4444,7 @@ function applyRoleVisibility(role) {
         <li>You have read and fully understood all terms of this Agreement.</li>
         <li>You are the authorized Court Owner or duly authorized representative.</li>
         <li>You authorize the platform to collect ₱15.00 from customers per confirmed booking.</li>
+        <li>You agree to remit the collected ₱15.00 platform fees to the Platform Provider <strong>weekly</strong>, due within five (5) days of each statement.</li>
         <li>You agree to honor all platform bookings and not circumvent the platform fee.</li>
         <li>You understand the Platform Provider is the software provider only and does not operate the court.</li>
         <li>This electronic signature has the same legal force as a handwritten signature under RA 8792.</li>
@@ -4444,7 +4490,7 @@ function applyRoleVisibility(role) {
 
 <script>
 /* ── AGREEMENT MODAL ── */
-const AGREEMENT_VERSION = 1;
+const AGREEMENT_VERSION = 2;
 let _agreeDrawing = false, _agreeHasSig = false;
 let _agreePrevX = 0, _agreePrevY = 0;
 

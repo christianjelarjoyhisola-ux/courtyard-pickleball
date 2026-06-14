@@ -97,6 +97,8 @@ function rowToBooking(r) {
     receiptConfidence: r.receipt_confidence != null ? Number(r.receipt_confidence) : null,
     receiptImageUrl:   r.receipt_image_url || null,
     receiptVerifiedAt: r.receipt_verified_at || null,
+    billedAt:      r.billed_at || null,
+    weeklyFeeId:   r.weekly_fee_id || null,
     status:        r.status,
     createdAt:     r.created_at,
   };
@@ -257,8 +259,20 @@ window.DB = {
     if (updates.endTime !== undefined) row.end_time = updates.endTime;
     if (updates.duration !== undefined) row.duration = updates.duration;
     if (updates.slots !== undefined) row.slots = updates.slots;
+    if (updates.billedAt !== undefined) row.billed_at = updates.billedAt;
+    if (updates.weeklyFeeId !== undefined) row.weekly_fee_id = updates.weeklyFeeId;
     const { error } = await _sb.from('bookings').update(row).eq('ref', ref);
     if (error) { console.error('updateBooking:', error); throw error; }
+  },
+
+  // Stamp a set of bookings as billed on a given weekly statement (idempotent
+  // audit trail; a booking is only ever billed once).
+  async markBookingsBilled(refs, weeklyFeeId) {
+    if (!Array.isArray(refs) || refs.length === 0) return;
+    const { error } = await _sb.from('bookings')
+      .update({ billed_at: new Date().toISOString(), weekly_fee_id: weeklyFeeId })
+      .in('ref', refs);
+    if (error) { console.error('markBookingsBilled:', error); throw error; }
   },
 
   async deleteBooking(ref) {
@@ -485,6 +499,7 @@ window.DB = {
       bookings_count: statement.bookingsCount || 0,
       fee_per_booking: statement.feePerBooking,
       amount_due: statement.amountDue,
+      billed_refs: statement.billedRefs || [],
       status: statement.status || 'sent',
       generated_at: statement.generatedAt || new Date().toISOString(),
       due_at: statement.dueAt || null,
@@ -529,6 +544,11 @@ window.DB = {
     if (updates.paidByUserId !== undefined) row.paid_by_user_id = updates.paidByUserId;
     if (updates.sentAt !== undefined) row.sent_at = updates.sentAt;
     if (updates.dueAt !== undefined) row.due_at = updates.dueAt;
+    if (updates.bookingsCount !== undefined) row.bookings_count = updates.bookingsCount;
+    if (updates.amountDue !== undefined) row.amount_due = updates.amountDue;
+    if (updates.feePerBooking !== undefined) row.fee_per_booking = updates.feePerBooking;
+    if (updates.billedRefs !== undefined) row.billed_refs = updates.billedRefs;
+    if (updates.generatedAt !== undefined) row.generated_at = updates.generatedAt;
 
     try {
       // Use REST API directly to bypass schema cache

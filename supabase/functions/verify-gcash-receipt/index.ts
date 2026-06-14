@@ -28,25 +28,22 @@ const corsHeaders = {
 };
 
 // Receipt-freshness tiers (minutes), measured at upload time in PH (UTC+8).
-const TIME_OK_MINUTES = 15;     // <= 15 min: fresh, passes
-const TIME_STALE_MINUTES = 60;  // 15..60 min: soft flag -> manual review
-                                // > 60 min: hard flag -> reject
+const TIME_OK_MINUTES = 30;     // <= 30 min: fresh, passes
+const TIME_STALE_MINUTES = 120; // 30..120 min: soft flag -> manual review
+                                // > 120 min: hard flag -> reject
 
 const MAX_BYTES = 5 * 1024 * 1024;
-const PESO_TOLERANCE = 1; // allow ±₱1 rounding; underpay beyond this is a hard flag
+const PESO_TOLERANCE = 5; // allow ±₱5 rounding; underpay beyond this is a hard flag
 
 // Hard flags force a rejection; soft flags force manual review.
 const HARD_FLAGS = new Set([
   "REF_FORMAT_INVALID",
-  "REF_MISMATCH",        // OCR-read ref ≠ customer-typed ref
   "SUSPECTED_FAKE",     // OCR ran and image has zero receipt-like content
   "IMAGE_UNREADABLE",   // OCR found NO text at all -> random/blank/non-receipt image
   "DUPLICATE_REF",
   "DUPLICATE_IMAGE",
   "WRONG_GCASH_NUMBER",
-  "AMOUNT_MISMATCH",
-  "DATE_NOT_TODAY",
-  "TIME_EXPIRED",
+  "AMOUNT_MISMATCH",    // Only hard if significantly underpaid (>₱5)
 ]);
 
 function json(body: unknown, status = 200) {

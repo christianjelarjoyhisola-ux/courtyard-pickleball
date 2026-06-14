@@ -3601,12 +3601,37 @@ function closeModal() {
 /* =============================================
    REAL-TIME — Supabase live updates
    ============================================= */
+let _rtDebounce = null;
+async function refreshLiveViews() {
+  // Capture any date-pickers the user navigated away from "today" so a live
+  // re-render doesn't snap their view back to today.
+  const openDates = {};
+  document.querySelectorAll('[id^="cDate_"]').forEach(inp => {
+    const id = inp.id.slice('cDate_'.length);
+    if (inp.value) openDates[id] = inp.value;
+  });
+
+  await loadOperatingHours();
+  await renderCourts();
+
+  // Restore each court's selected date and re-render its slot grid with fresh data.
+  await Promise.all(Object.entries(openDates).map(([courtId, date]) => {
+    if (date === todayStr()) return null; // renderCourts already shows today
+    const inp = $('cDate_' + courtId);
+    if (inp) inp.value = date;
+    return onCardDate(courtId, date).catch(() => {});
+  }));
+
+  // Keep the legacy wizard slot grid live too.
+  if (court && $('bDate').value) renderSlots();
+}
+
 function startRealtime() {
   _supabase.channel('bookings-rt')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, async () => {
-      await loadOperatingHours();
-      renderCourts();
-      if (court && $('bDate').value) renderSlots();
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => {
+      // Debounce: a single booking can emit several row events in quick succession.
+      clearTimeout(_rtDebounce);
+      _rtDebounce = setTimeout(() => { refreshLiveViews().catch(() => {}); }, 250);
     })
     .subscribe();
 }

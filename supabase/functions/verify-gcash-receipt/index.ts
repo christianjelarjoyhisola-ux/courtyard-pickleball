@@ -524,13 +524,17 @@ Deno.serve(async (req) => {
     const receiptAgeMinutes = bookingStartedAt && receiptDateTime
       ? (receiptDateTime.getTime() - bookingStartedAt.getTime()) / 60000
       : null;
+    const typedRef = String(booking.gcash_ref || "").replace(/\D/g, "");
+    if (provider === "gcash" && typedRef.length !== 13) {
+      flags.push("REF_FORMAT_INVALID");
+    }
 
     // ── content checks (only when OCR text exists) ──────────────────────────
     if (ocrText) {
       // Reference format
       if (!extractedRef) {
-        flags.push("REF_FORMAT_INVALID");
-      } else if (booking.gcash_ref && extractedRef !== String(booking.gcash_ref).replace(/\D/g, "")) {
+        if (!flags.includes("REF_FORMAT_INVALID")) flags.push("REF_FORMAT_INVALID");
+      } else if (typedRef && extractedRef !== typedRef) {
         // The ref on the receipt doesn't match what the customer typed — possible fraud.
         flags.push("REF_MISMATCH");
       }
@@ -570,7 +574,6 @@ Deno.serve(async (req) => {
     // Use the OCR-extracted ref when available, else the customer-typed ref.
     // Store a digits-only key so "8041 8559 17375" and "8041855917375"
     // cannot bypass duplicate-reference protection.
-    const typedRef = String(booking.gcash_ref || "").replace(/\D/g, "");
     const refForDedupe = extractedRef || typedRef || null;
     let refAlreadyClaimedByThisBooking = false;
     if (refForDedupe) {

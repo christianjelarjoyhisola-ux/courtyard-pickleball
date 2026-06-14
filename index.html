@@ -2187,7 +2187,16 @@ function applyPaymentSettings(settings) {
   gcashSettings.merchantNumber = settings.gcash_merchant_number || '0935 935 5010';
   gcashSettings.merchantName = settings.gcash_merchant_name || 'CourtYard Pickleball';
   gcashSettings.platformQrImage = settings.platform_gcash_qr || '';
-  console.log('DEBUG: platformQrImage loaded:', !!gcashSettings.platformQrImage, 'length:', gcashSettings.platformQrImage?.length || 0);
+  
+  // Debug logging
+  console.log('applyPaymentSettings:', {
+    hasPlatformQr: !!gcashSettings.platformQrImage,
+    length: gcashSettings.platformQrImage?.length || 0,
+    startsWithData: gcashSettings.platformQrImage?.startsWith('data:') || false,
+    merchantNumber: gcashSettings.merchantNumber,
+    merchantName: gcashSettings.merchantName
+  });
+  
   paymentMethods.cash = settings.payment_method_cash !== '0';
   paymentMethods.gcash = settings.payment_method_gcash !== '0';
   paymentMethods.gotyme = settings.payment_method_gotyme !== '0';
@@ -3653,7 +3662,7 @@ function startRealtime() {
     // Debounce: a single booking can emit several row events in quick succession.
     clearTimeout(_rtDebounce);
     _rtDebounce = setTimeout(() => { 
-      loadSettings(); // Reload settings on any change (QR, payment methods, etc.)
+      loadOperatingHours(); // Reload ALL settings on any change (QR, payment methods, operating hours, etc.)
       refreshLiveViews().catch(() => {}); 
     }, 250);
   };

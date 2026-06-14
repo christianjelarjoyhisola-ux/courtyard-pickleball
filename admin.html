@@ -816,13 +816,13 @@ tr:hover td { background: var(--bg2); }
 
       <div class="tbl-wrap" style="margin-bottom:18px">
         <div class="tbl-hd">
-          <h3>Manual Review Queue</h3>
+          <h3>Manual Payment Review Queue</h3>
           <div class="filters">
-            <input type="text" id="prSearch" placeholder="Search name, ref, date..." oninput="renderPaymentReview()"/>
+            <input type="text" id="prSearch" placeholder="Search name, ref, court, date..." oninput="renderPaymentReview()"/>
             <select id="prType" onchange="renderPaymentReview()">
               <option value="">All Types</option>
               <option value="booking">Court Bookings</option>
-              <option value="open_play">Open Play</option>
+              <option value="open_play">Open Play Reservations</option>
             </select>
             <select id="prStatus" onchange="renderPaymentReview()">
               <option value="attention">Needs Attention</option>
@@ -837,7 +837,7 @@ tr:hover td { background: var(--bg2); }
         </div>
         <div class="tbl-scroll">
           <table>
-            <thead><tr><th>Type</th><th>Customer</th><th>Schedule</th><th>Method</th><th>Amount</th><th>Status</th><th>Flags</th><th>Action</th></tr></thead>
+            <thead><tr><th>Type</th><th>Customer / Player</th><th>Court / Schedule</th><th>Method</th><th>Amount</th><th>Status</th><th>Flags</th><th>Action</th></tr></thead>
             <tbody id="prQueueBody"><tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">Loading payments...</td></tr></tbody>
           </table>
         </div>
@@ -846,7 +846,7 @@ tr:hover td { background: var(--bg2); }
       <div class="tbl-wrap">
         <div class="tbl-hd">
           <h3>Recent Payment Log</h3>
-          <span style="font-size:.78rem;color:var(--muted)">Latest booking and Open Play payment activity</span>
+          <span style="font-size:.78rem;color:var(--muted)">Latest court booking and Open Play reservation payment activity</span>
         </div>
         <div class="tbl-scroll">
           <table>
@@ -1043,10 +1043,10 @@ tr:hover td { background: var(--bg2); }
         <button class="btn btn-p" onclick="saveOpenPlay()">💾 Save Open Play Schedule</button>
       </div>
 
-      <!-- OPEN PLAY REGISTRATIONS -->
-      <div class="panel" style="max-width:760px;margin-bottom:20px">
+      <!-- OPEN PLAY RESERVATIONS -->
+      <div class="panel" style="max-width:980px;margin-bottom:20px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
-          <h4 style="margin:0">📋 Open Play Registrations</h4>
+          <h4 style="margin:0">📋 Open Play Reservations</h4>
           <div style="display:flex;gap:8px;align-items:center">
             <input type="date" class="fi" id="opRegDate" style="max-width:160px" onchange="renderOpRegistrations()"/>
             <button class="btn btn-sm" style="border:1px solid var(--border);color:var(--muted);background:transparent;font-size:.78rem" onclick="$('opRegDate').value='';renderOpRegistrations()">Clear</button>
@@ -2213,14 +2213,14 @@ function paymentReviewAction(item) {
 }
 
 function paymentReviewRow(item) {
-  const typeLabel = item.type === 'booking' ? 'Booking' : 'Open Play';
+  const typeLabel = item.type === 'booking' ? 'Court Booking' : 'Open Play Reservation';
   const typeBg = item.type === 'booking' ? 'rgba(74,154,220,.12)' : 'rgba(56,189,248,.12)';
   const typeColor = item.type === 'booking' ? '#5a9ad4' : '#38bdf8';
   const flags = item.flags?.length ? receiptFlagChips(item.flags) : '<span style="color:var(--muted);font-size:.74rem">--</span>';
   return `<tr>
     <td data-label="Type"><span style="font-size:.72rem;font-weight:800;padding:2px 8px;border-radius:20px;background:${typeBg};color:${typeColor};white-space:nowrap">${typeLabel}</span></td>
     <td data-label="Customer"><div style="font-weight:700">${esc(item.name)}</div><div style="font-size:.72rem;color:var(--muted)"><code>${esc(item.ref)}</code></div></td>
-    <td data-label="Schedule">${esc(item.dateLabel)}<div style="font-size:.72rem;color:var(--muted);font-weight:600">${esc(item.timeLabel)}</div></td>
+    <td data-label="Court / Schedule"><div style="font-weight:700">${esc(item.courtName || '--')}</div><div style="font-size:.76rem;color:var(--muted)">${esc(item.dateLabel)}</div><div style="font-size:.72rem;color:var(--muted);font-weight:600">${esc(item.timeLabel)}</div></td>
     <td data-label="Method">${paymentMethodLabel(item.method)}</td>
     <td data-label="Amount"><strong style="color:var(--text)">${fmt(item.amount || 0)}</strong></td>
     <td data-label="Status">${statusPill(item.status)}</td>
@@ -2238,6 +2238,7 @@ async function renderPaymentReview() {
       id: b.ref,
       ref: b.gcashRef || b.ref,
       name: b.fullName || '--',
+      courtName: b.courtName || '--',
       dateLabel: fmtD(b.date),
       timeLabel: `${b.startTime || '--'}-${b.endTime || '--'}`,
       method: b.paymentMethod,
@@ -2253,6 +2254,7 @@ async function renderPaymentReview() {
       id: String(r.id),
       ref: r.gcash_ref || String(r.id),
       name: r.full_name || '--',
+      courtName: r.court_name || '--',
       dateLabel: fmtD(r.date),
       timeLabel: r.time_label || '--',
       method: r.payment_method,
@@ -2277,7 +2279,7 @@ async function renderPaymentReview() {
   const typ = $('prType')?.value || '';
   const st = $('prStatus')?.value ?? 'attention';
   let filtered = items;
-  if (q) filtered = filtered.filter(i => [i.name, i.ref, i.dateLabel, i.timeLabel, i.method].join(' ').toLowerCase().includes(q));
+  if (q) filtered = filtered.filter(i => [i.name, i.ref, i.courtName, i.dateLabel, i.timeLabel, i.method].join(' ').toLowerCase().includes(q));
   if (typ) filtered = filtered.filter(i => i.type === typ);
   if (st === 'attention') filtered = filtered.filter(i => ['manual_review', 'pending', 'rejected'].includes(i.status));
   else if (st) filtered = filtered.filter(i => i.status === st);
@@ -2288,7 +2290,7 @@ async function renderPaymentReview() {
   const recent = items.slice(0, 30);
   $('prLogBody').innerHTML = recent.length ? recent.map(i => `<tr>
     <td data-label="When">${shortDateTime(i.createdAt)}</td>
-    <td data-label="Type">${i.type === 'booking' ? 'Booking' : 'Open Play'}</td>
+    <td data-label="Type">${i.type === 'booking' ? 'Court Booking' : 'Open Play Reservation'}</td>
     <td data-label="Reference"><code style="color:var(--green)">${esc(i.ref)}</code></td>
     <td data-label="Name">${esc(i.name)}</td>
     <td data-label="Payment">${paymentMethodLabel(i.method)} <span style="color:var(--muted)">/</span> ${fmt(i.amount || 0)}</td>
@@ -4240,7 +4242,7 @@ async function renderBlocked(){
   $('blkList').innerHTML=dates.length===0?'<p style="color:var(--muted);font-style:italic">No blocked dates.</p>':
     dates.map(d=>`<div class="blk-item"><span>📅 ${fmtD(d)}</span><button class="btn btn-d btn-sm" onclick="removeBlocked('${d}')">Remove</button></div>`).join('');
 
-  // Load Open Play registrations
+  // Load Open Play Reservations
   renderOpRegistrations();
 }
 
@@ -4267,7 +4269,7 @@ async function renderOpRegistrations() {
   const filterDate = $('opRegDate')?.value;
   if (filterDate) regs = regs.filter(r => r.date === filterDate);
   if (regs.length === 0) {
-    el.innerHTML = '<p style="color:var(--muted);font-style:italic">No registrations found.</p>';
+    el.innerHTML = '<p style="color:var(--muted);font-style:italic">No Open Play reservations found.</p>';
     return;
   }
   const fmt = n => '₱' + Number(n).toLocaleString('en-PH', { minimumFractionDigits: 2 });
@@ -4277,13 +4279,13 @@ async function renderOpRegistrations() {
       <table style="width:100%;border-collapse:collapse;font-size:.82rem">
         <thead>
           <tr style="border-bottom:1px solid var(--border);color:var(--muted)">
-            <th style="text-align:left;padding:8px 10px;font-weight:600">Name</th>
+            <th style="text-align:left;padding:8px 10px;font-weight:600">Player</th>
             <th style="text-align:left;padding:8px 10px;font-weight:600">Court</th>
             <th style="text-align:left;padding:8px 10px;font-weight:600">Date</th>
             <th style="text-align:left;padding:8px 10px;font-weight:600">Time</th>
             <th style="text-align:left;padding:8px 10px;font-weight:600">Method</th>
-            <th style="text-align:left;padding:8px 10px;font-weight:600">DP</th>
-            <th style="text-align:right;padding:8px 10px;font-weight:600">Amount</th>
+            <th style="text-align:left;padding:8px 10px;font-weight:600">Payment Type</th>
+            <th style="text-align:right;padding:8px 10px;font-weight:600">Amount Due</th>
             <th style="text-align:left;padding:8px 10px;font-weight:600">Status</th>
             <th style="padding:8px 10px"></th>
           </tr>

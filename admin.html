@@ -1983,7 +1983,7 @@ async function renderBookings(){
     const rules = _nbMaintenanceCfg ? (Array.isArray(_nbMaintenanceCfg.rules) ? _nbMaintenanceCfg.rules : [_nbMaintenanceCfg]) : [];
     const allCourts = await DB.getCourts();
     const dt = new Date(fd + 'T00:00:00'), dow = dt.getDay(), dom = dt.getDate();
-    const mtLabelMap = {maintenance:'🔧 Maintenance',reserved:'🔒 Reserved',blocked:'⛔ Blocked',private:'👥 Private Event',group:'🏓 Group Session'};
+    const mtLabelMap = {closed:'🚫 Closed',maintenance:'🔧 Maintenance',reserved:'🔒 Reserved',blocked:'⛔ Blocked',private:'👥 Private Event',group:'🏓 Group Session'};
     const fmtHr = h => { const h12 = h % 12 || 12; return `${h12}:00 ${h < 12 ? 'AM' : 'PM'}`; };
     const matched = rules.filter(r => {
       if (!r || !r.enabled) return false;
@@ -4167,6 +4167,7 @@ function mtRuleHtml(rule, n) {
   <div style="margin-bottom:14px">
     <label class="fl" style="margin-bottom:8px">Block Type</label>
     <select class="fi" id="mtLabel_${id}">
+      <option value="closed"${rule.label==='closed'?' selected':''}>🚫 Closed</option>
       <option value="maintenance"${(rule.label||'maintenance')==='maintenance'?' selected':''}>🔧 Maintenance</option>
       <option value="reserved"${rule.label==='reserved'?' selected':''}>🔒 Reserved</option>
       <option value="blocked"${rule.label==='blocked'?' selected':''}>⛔ Blocked</option>

@@ -2100,6 +2100,7 @@ function getMaintenanceRule(date, h, courtId = null) {
   return _checkMaintenanceRule(maintenanceConfig, date, h, courtId) ? maintenanceConfig : null;
 }
 const _mtLabels = {
+  closed:      { icon: '🚫', text: 'Closed' },
   maintenance: { icon: '🔧', text: 'Maintenance' },
   reserved:    { icon: '🔒', text: 'Reserved' },
   blocked:     { icon: '⛔', text: 'Blocked' },

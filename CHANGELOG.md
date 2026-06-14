@@ -6,6 +6,31 @@ Types: **Added**, **Changed**, **Fixed**, **Removed**, **Security**, **DB**
 
 ---
 
+## [2026-06-14] — Google AdSense, Full-App Realtime & Weekly Billing Audit
+
+### Added
+- **Google AdSense** — site `courtyardpickleball.club` connected, verified, and approved ("Ready"). AdSense code snippet added to the `<head>` of `index.html`, `login.html`, and `admin.html` (publisher `ca-pub-6965664743687392`)
+- **Full-app realtime** — live updates with no manual refresh across the public site and admin dashboard:
+  - Public (`index.html`): realtime channel `public-rt` now subscribes to `bookings`, `courts`, `settings`, `blocked_dates`, and `open_play_registrations` — maintenance, blocked dates, open play, and rate changes all appear live (debounced via `refreshLiveViews()`)
+  - Admin (`admin.html`): new `startAdminRealtime()` channel `admin-rt` subscribes to all 7 tables and re-renders the **current** section on change. `goto()` now tracks `_curSection`; guards skip re-render while a form field is focused or a modal is open
+- **Billing audit trail** — each weekly statement now records the exact booking refs it billed (`weekly_fees.billed_refs`), and each booking is stamped with `billed_at` + `weekly_fee_id` so a booking is billed **exactly once**
+- **Weekly remittance terms** in the court-owner agreement (now **Version 2**, forces re-sign): Section 3 renamed "Platform Booking Fee & Weekly Remittance" — defines the billable event (confirmed booking), customer-collected fee, weekly Mon–Sun statement, 5-day GCash due date with proof, and non-payment → suspension
+
+### Changed
+- **Platform fee is now a fixed constant** `PLATFORM_FEE_PER_BOOKING = 15` in `admin.html` — permanent ₱15.00 per confirmed booking that never changes. `generateWeeklyStatement()` no longer reads `settings.maintenance_fee` (that setting belongs to the separate monthly Maintenance report)
+- **Weekly statement generation is now idempotent** — regenerating a week updates the existing statement (one per owner/week) instead of creating a duplicate, refuses to regenerate a paid statement, and stamps the billed bookings
+
+### Security
+- Admin realtime re-render is suppressed while the user is editing a form field or has a modal open — prevents clobbering in-progress input
+
+### DB
+- `20260614_billing_audit.sql` — added `bookings.billed_at` (timestamptz), `bookings.weekly_fee_id` (uuid), `weekly_fees.billed_refs` (jsonb); indexes `idx_bookings_billed_at`, `idx_bookings_weekly_fee_id`. Applied to live database
+- All 7 tables added to the `supabase_realtime` publication with `replica identity full`: `accounts`, `blocked_dates`, `bookings`, `courts`, `open_play_registrations`, `settings`, `weekly_fees`
+
+**Files affected:** `index.html`, `admin.html`, `login.html`, `supabase-config.js`, `supabase/migrations/20260614_billing_audit.sql`
+
+---
+
 ## [2026-06-12] — Date Picker Label & Alignment
 
 ### Added

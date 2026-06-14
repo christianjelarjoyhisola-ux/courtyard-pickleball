@@ -298,7 +298,7 @@ window.DB = {
       payment_type: reg.paymentType,
       payment_method: reg.paymentMethod || 'cash',
       gcash_ref: reg.gcashRef || null,
-      payment_status: 'pending',
+      payment_status: reg.paymentStatus || 'pending',
       amount: reg.amount,
       created_at: new Date().toISOString(),
     });

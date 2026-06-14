@@ -3847,6 +3847,7 @@ let _opSignupData = { courtId: null, courtName: '', date: '', hour: 0, fullPay: 
 
 async function openPlaySignup(courtId, date, h, courtName) {
   _opSignupData = { courtId, courtName, date, hour: h, fullPay: false, payMethod: 'gcash', gcashRef: '' };
+  _opReceiptFile = null;
   const sysFee = _serviceFeeRate;
   const opTotal = openPlayFee + sysFee;
   const half = opTotal / 2;
@@ -3909,6 +3910,24 @@ async function openPlaySignup(courtId, date, h, courtName) {
       </div>
     </div>
     <div id="opPayInfo" style="margin-bottom:14px"></div>
+    <div id="opReceiptWrap" style="display:none;margin-bottom:14px">
+      <div style="border:1px dashed rgba(74,154,74,.3);border-radius:var(--r);padding:12px;background:rgba(74,154,74,.04)">
+        <label style="font-size:.73rem;text-transform:uppercase;letter-spacing:1px;color:var(--accent);font-weight:700;display:block;margin-bottom:6px">
+          📸 Upload Payment Receipt <span style="color:#e53935">*</span>
+        </label>
+        <label id="opReceiptDrop" style="display:flex;align-items:center;gap:9px;padding:11px 13px;background:var(--card);border:1.5px dashed var(--border);border-radius:8px;cursor:pointer;font-size:.84rem;color:var(--muted)">
+          📷 Tap to attach your receipt screenshot
+          <input type="file" accept="image/*" id="opReceiptImg" style="display:none" onchange="onOpReceiptPicked(event)" />
+        </label>
+        <div id="opReceiptPreviewWrap" style="display:none;margin-top:8px;align-items:center;gap:10px">
+          <img id="opReceiptPreview" alt="Receipt preview" style="width:56px;height:56px;object-fit:cover;border-radius:8px;border:1px solid var(--border)" />
+          <span id="opReceiptName" style="font-size:.76rem;color:var(--text);flex:1;word-break:break-all"></span>
+          <button type="button" onclick="clearOpReceipt()" style="background:none;border:none;color:#e53935;font-size:.74rem;font-weight:700;cursor:pointer">✕ Remove</button>
+        </div>
+        <div id="opReceiptStatus" style="display:none;margin-top:8px;font-size:.78rem;font-weight:700;border-radius:8px;padding:8px 10px;line-height:1.5"></div>
+        <div style="font-size:.68rem;color:var(--muted);margin-top:7px;line-height:1.6">We auto-check the amount, reference, date/time and receiver — confirming your spot instantly.</div>
+      </div>
+    </div>
     <div style="background:var(--input);border:1px solid var(--border);border-radius:var(--r);padding:14px">
       <div style="display:flex;justify-content:space-between;font-size:.84rem">
         <span style="color:var(--muted)">Open Play Fee</span>
@@ -3934,6 +3953,8 @@ function opPickPay(method) {
   if (!paymentMethods[method]) return;
   _opSignupData.payMethod = method;
   document.querySelectorAll('#opPayOpts .pay-opt').forEach(el => el.classList.toggle('on', el.dataset.m === method));
+  const rw = $('opReceiptWrap');
+  if (rw) rw.style.display = (method === 'cash') ? 'none' : '';
   const info = $('opPayInfo');
   if (!info) return;
   const opTotal = openPlayFee + _serviceFeeRate;
@@ -3985,6 +4006,56 @@ function opSetDP(full) {
 
 function closeOpModal() {
   $('opModal').classList.remove('active');
+  clearOpReceipt();
+}
+
+/* ── Open Play receipt upload + auto-verification ──────────────────────── */
+let _opReceiptFile = null;
+
+function onOpReceiptPicked(e) {
+  const f = e.target.files && e.target.files[0];
+  if (!f) return;
+  if (!f.type.startsWith('image/')) { toast('Please choose an image file.', 'err'); e.target.value = ''; return; }
+  if (f.size > 5 * 1024 * 1024) { toast('Image too large (max 5 MB).', 'err'); e.target.value = ''; return; }
+  _opReceiptFile = f;
+  const prev = $('opReceiptPreview'); if (prev) prev.src = URL.createObjectURL(f);
+  if ($('opReceiptName')) $('opReceiptName').textContent = f.name;
+  if ($('opReceiptPreviewWrap')) $('opReceiptPreviewWrap').style.display = 'flex';
+  const drop = $('opReceiptDrop'); if (drop) drop.style.display = 'none';
+}
+
+function clearOpReceipt() {
+  _opReceiptFile = null;
+  if ($('opReceiptImg')) $('opReceiptImg').value = '';
+  if ($('opReceiptPreviewWrap')) $('opReceiptPreviewWrap').style.display = 'none';
+  const drop = $('opReceiptDrop'); if (drop) drop.style.display = '';
+  const st = $('opReceiptStatus'); if (st) st.style.display = 'none';
+}
+
+async function verifyOpReceipt(ref, method, inlineData) {
+  const st = $('opReceiptStatus');
+  if (st) { st.style.display = ''; st.style.background = 'rgba(74,154,220,.1)'; st.style.color = '#3b82f6'; st.textContent = '🔎 Verifying your receipt…'; }
+  try {
+    const dataUrl = await _fileToBase64(_opReceiptFile);
+    const res = await DB.verifyGcashReceipt({
+      bookingRef: ref,
+      provider: method,
+      imageBase64: dataUrl,
+      contentType: _opReceiptFile.type || 'image/jpeg',
+      bookingData: inlineData,
+    });
+    const status = res?.status || 'manual_review';
+    const msg = res?.message || 'Receipt received.';
+    if (st) {
+      if (status === 'auto_approved') { st.style.background = 'rgba(74,154,74,.12)'; st.style.color = '#2a8a4a'; st.textContent = '✅ ' + msg; }
+      else if (status === 'rejected') { st.style.background = 'rgba(229,57,53,.1)'; st.style.color = '#e53935'; st.textContent = '⚠️ ' + msg; }
+      else { st.style.background = 'rgba(184,126,0,.12)'; st.style.color = '#b87e00'; st.textContent = '🕓 ' + msg; }
+    }
+    return { status, message: msg, flags: res?.flags || [] };
+  } catch (err) {
+    if (st) { st.style.background = 'rgba(184,126,0,.12)'; st.style.color = '#b87e00'; st.textContent = '🕓 Receipt uploaded — the owner will verify it manually.'; }
+    return { status: 'manual_review', message: 'Receipt uploaded — pending manual verification.', flags: [] };
+  }
 }
 
 async function submitOpenPlay() {
@@ -4007,6 +4078,11 @@ async function submitOpenPlay() {
     refEl?.focus();
     return;
   }
+  if (needsRef && !_opReceiptFile) {
+    const drop = $('opReceiptDrop'); if (drop) drop.style.borderColor = 'var(--red)';
+    toast('Please upload your payment receipt screenshot.', 'err');
+    return;
+  }
   const opTotal = openPlayFee + _serviceFeeRate;
   const amt = _opSignupData.fullPay ? opTotal : opTotal / 2;
   const payType = _opSignupData.fullPay ? '100%' : '50%';
@@ -4027,6 +4103,26 @@ async function submitOpenPlay() {
       $('opModalFt').innerHTML = `<button class="btn btn-g" style="width:100%;justify-content:center" onclick="closeOpModal()">Got it</button>`;
       return;
     }
+    // Auto-verify the uploaded receipt BEFORE saving (digital payments only).
+    // Inline bookingData makes the edge function verify-only (no bookings write).
+    let regPayStatus = 'pending';
+    if (needsRef && _opReceiptFile) {
+      const opRef = 'OP-' + Date.now().toString(36).toUpperCase();
+      const receiptResult = await verifyOpReceipt(opRef, payMethod, {
+        ref: opRef,
+        total: opTotal,
+        downpayment: amt,
+        gcash_ref: _opSignupData.gcashRef,
+        date: _opSignupData.date,
+        full_name: name,
+      });
+      if (receiptResult.status === 'rejected') {
+        toast('Receipt could not be verified: ' + receiptResult.message, 'err');
+        if (btn) { btn.disabled = false; btn.textContent = '🏓 Join Open Play'; }
+        return;
+      }
+      regPayStatus = receiptResult.status === 'auto_approved' ? 'paid' : 'pending';
+    }
     const timeLabel = `${fmtT(_opSignupData.hour)} – ${fmtT(_opSignupData.hour + 1)}`;
     await DB.addOpenPlayRegistration({
       fullName: name,
@@ -4038,6 +4134,7 @@ async function submitOpenPlay() {
       paymentType: payType,
       paymentMethod: _opSignupData.payMethod,
       gcashRef: _opSignupData.gcashRef || null,
+      paymentStatus: regPayStatus,
       amount: amt,
     });
 
@@ -4056,7 +4153,9 @@ async function submitOpenPlay() {
           Thanks, <strong>${name}</strong>!<br/>
           ${_opSignupData.payMethod === 'cash'
             ? `Pay <strong>${fmt(amt)}</strong> at the front desk upon arrival.`
-            : `Please send <strong>${fmt(amt)}</strong> via ${_opSignupData.payMethod.charAt(0).toUpperCase() + _opSignupData.payMethod.slice(1)} and show your receipt at the front desk.`
+            : regPayStatus === 'paid'
+              ? `✅ Your <strong>${fmt(amt)}</strong> payment was verified. Your spot is confirmed — see you on the court!`
+              : `We received your <strong>${fmt(amt)}</strong> receipt. The owner will verify it shortly — just show your receipt at the front desk.`
           }
         </div>
       </div>`;

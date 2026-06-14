@@ -3807,9 +3807,11 @@ async function savePaymentSettings() {
     if (pnbName) await DB.saveSetting('pnb_merchant_name', pnbName);
 
     // Save QR images (base64 data URLs) — save empty string if removed
+    const platformQrSrc = $('platformGcashQrPreview')?.src || '';
     const gcashQrSrc = $('gcashQrPreview')?.src || '';
     const gotymeQrSrc = $('gotymeQrPreview')?.src || '';
     const pnbQrSrc = $('pnbQrPreview')?.src || '';
+    if (platformQrSrc.startsWith('data:')) await DB.saveSetting('platform_gcash_qr', platformQrSrc);
     if (gcashQrSrc.startsWith('data:')) await DB.saveSetting('gcash_qr_image', gcashQrSrc);
     if (gotymeQrSrc.startsWith('data:')) await DB.saveSetting('gotyme_qr_image', gotymeQrSrc);
     if (pnbQrSrc.startsWith('data:')) await DB.saveSetting('pnb_qr_image', pnbQrSrc);

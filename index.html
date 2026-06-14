@@ -2033,6 +2033,7 @@ let gcashSettings = {
   checkoutUrl: '',
   merchantNumber: '0935 935 5010',
   merchantName: 'CourtYard Pickleball',
+  platformQrImage: '',
   checkoutVisited: false,
 };
 let paymentMethods = { cash: true, gcash: true, gotyme: true, pnb: true };
@@ -2170,6 +2171,7 @@ function applyPaymentSettings(settings) {
   gcashSettings.checkoutUrl = (settings.gcash_checkout_url || '').trim();
   gcashSettings.merchantNumber = settings.gcash_merchant_number || '0935 935 5010';
   gcashSettings.merchantName = settings.gcash_merchant_name || 'CourtYard Pickleball';
+  gcashSettings.platformQrImage = settings.platform_gcash_qr || '';
   paymentMethods.cash = settings.payment_method_cash !== '0';
   paymentMethods.gcash = settings.payment_method_gcash !== '0';
   paymentMethods.gotyme = settings.payment_method_gotyme !== '0';
@@ -3970,9 +3972,11 @@ function opPickPay(method) {
       <div style="font-size:.7rem;color:var(--muted);margin-top:4px">Enter the reference number shown after your payment</div>
     </div>`;
   if (method === 'gcash') {
-    info.innerHTML = `<div style="background:rgba(74,154,74,.06);border:1px solid rgba(74,154,74,.25);border-radius:var(--r);padding:14px">
+    const qrDisplay = gcashSettings.platformQrImage ? `<img src="${gcashSettings.platformQrImage}" alt="GCash QR" style="width:140px;height:140px;object-fit:contain;border-radius:6px;border:1px solid rgba(74,154,74,.3);background:#fff;padding:4px;margin:10px 0"/>` : `<div style="width:140px;height:140px;display:flex;align-items:center;justify-content:center;background:rgba(74,154,74,.05);border:1px dashed rgba(74,154,74,.25);border-radius:6px;margin:10px 0;color:var(--muted);font-size:.75rem;text-align:center">📸 No QR uploaded</div>`;
+    info.innerHTML = `<div style="background:rgba(74,154,74,.06);border:1px solid rgba(74,154,74,.25);border-radius:var(--r);padding:14px;text-align:center">
       <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--accent);margin-bottom:8px">📱 Send GCash Payment To</div>
-      <div style="font-size:1.05rem;font-weight:700">${gcashSettings.merchantNumber}</div>
+      ${qrDisplay}
+      <div style="font-size:1.05rem;font-weight:700;margin-top:8px">${gcashSettings.merchantNumber}</div>
       <div style="font-size:.82rem;color:var(--muted);margin-top:2px">${gcashSettings.merchantName}</div>
       ${refHtml}
     </div>`;

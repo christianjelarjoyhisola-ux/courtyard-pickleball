@@ -1099,6 +1099,73 @@ footer { background:var(--card); border-top:1px solid var(--border); padding:40p
 .slot.maintenance .slot-end  { color: var(--muted); opacity:.7; }
 .slot.maintenance .slot-tag.mt-tag { background: none; color: #f4a825; font-size:.62rem; font-weight:700; letter-spacing:.3px; }
 
+/* ── COMBINED OPEN PLAY BLOCK ── */
+.open-play-block {
+  grid-column: 1 / -1;
+  margin-bottom: 8px;
+  padding: 18px 16px;
+  background: linear-gradient(135deg, rgba(244,168,37,.12) 0%, rgba(244,168,37,.06) 100%);
+  border: 2px solid rgba(244,168,37,.4);
+  border-radius: var(--r);
+  cursor: pointer;
+  transition: all .2s ease;
+  animation: openPlayGlow 2.5s ease-in-out infinite, openPlayBorderPulse 2s ease-in-out infinite;
+  position: relative;
+  overflow: hidden;
+}
+.open-play-block::before {
+  content: '';
+  position: absolute; top: -50%; right: -50%; width: 200%; height: 200%;
+  background: radial-gradient(circle, rgba(244,168,37,.15) 0%, transparent 70%);
+  animation: openPlayFloatFire 4s ease-in-out infinite;
+  pointer-events: none;
+}
+.open-play-block:active { transform: scale(.98); }
+.opb-header {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 10px;
+  position: relative; z-index: 1;
+}
+.opb-icon { font-size: 1.8rem; animation: openPlayFloatFire 3s ease-in-out infinite; }
+.opb-title {
+  flex: 1;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #f4a825;
+  letter-spacing: .3px;
+  line-height: 1.3;
+}
+.opb-time {
+  font-size: .85rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
+}
+.opb-footer {
+  display: flex; align-items: center; gap: 10px; justify-content: space-between;
+  margin-top: 10px;
+  padding-top: 10px; border-top: 1px solid rgba(244,168,37,.2);
+  position: relative; z-index: 1;
+}
+.opb-spots {
+  display: flex; align-items: center; gap: 6px;
+  font-size: .85rem; font-weight: 700; color: var(--text);
+}
+.opb-spots-icon { font-size: 1.2rem; animation: openPlayFloatFire 2.5s ease-in-out infinite 0.3s; }
+.opb-spots-count {
+  color: #f4a825; font-weight: 900; font-size: 1rem;
+}
+.opb-cta {
+  font-size: .75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  color: #f4a825;
+  opacity: .8;
+  transition: opacity .2s;
+}
+.open-play-block:hover .opb-cta { opacity: 1; }
+
 /* Live note banner */
 .slots-live-note {
   font-size: .78rem;
@@ -1501,6 +1568,9 @@ body.light #splashScreen { background: var(--bg); }
 @keyframes gsPulse { 0%,100% { box-shadow:0 0 0 0 rgba(244,168,37,.15); } 50% { box-shadow:0 0 0 8px rgba(244,168,37,.0); } }
 @keyframes gsFadeOut { to { opacity:0; transform:scale(.96); } }
 #grandSplash.closing, #easterSplash.closing, #opAnnounceSplash.closing { animation:gsFadeOut .45s ease forwards; }
+@keyframes openPlayGlow { 0%,100% { box-shadow: 0 0 20px rgba(244,168,37,.3), inset 0 0 20px rgba(244,168,37,.08); } 50% { box-shadow: 0 0 30px rgba(244,168,37,.5), inset 0 0 30px rgba(244,168,37,.12); } }
+@keyframes openPlayBorderPulse { 0%,100% { border-color: rgba(244,168,37,.5); } 50% { border-color: rgba(244,168,37,.8); } }
+@keyframes openPlayFloatFire { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
 </style>
 
 <nav class="nav">
@@ -2969,6 +3039,38 @@ async function renderSlots() {
     return !booked.has(h) && !isPast && !isNow && !isOpenPlayHour(date, h) && !isMaintenanceHour(date, h, court?.id);
   });
 
+  // Check if there's an Open Play session on this date and get registration count
+  let openPlayBlock = '';
+  if (openPlayConfig?.enabled && isOpenPlayHour(date, openPlayConfig.start || 0)) {
+    const opStartHour = Number(openPlayConfig.start);
+    const opEndHour = Number(openPlayConfig.end);
+    if (Number.isFinite(opStartHour) && Number.isFinite(opEndHour) && opStartHour !== opEndHour) {
+      const opRegCount = await DB.getOpenPlayCountForDate(date);
+      const opSpotsLeft = Math.max(0, (openPlayMaxPlayers || 40) - opRegCount);
+      const startTime = fmtT(opStartHour);
+      const endTime = fmtT(opEndHour);
+      const cid = (court.id || '').replace(/'/g, "\\'");
+      const cnm = (court.name || '').replace(/'/g, "\\'");
+      openPlayBlock = `
+        <div class="open-play-block slots-grid" onclick="openPlaySignup('${cid}', '${date}', ${opStartHour}, '${cnm}')" style="display:grid;grid-template-columns:1fr">
+          <div class="opb-header">
+            <div class="opb-icon">🎉</div>
+            <div>
+              <div class="opb-title">Open Play</div>
+              <div class="opb-time">${startTime} – ${endTime}</div>
+            </div>
+          </div>
+          <div class="opb-footer">
+            <div class="opb-spots">
+              <span class="opb-spots-icon">🔥</span>
+              <span><span class="opb-spots-count">${opSpotsLeft}</span> Spot${opSpotsLeft !== 1 ? 's' : ''} Available</span>
+            </div>
+            <div class="opb-cta">TAP TO JOIN →</div>
+          </div>
+        </div>`;
+    }
+  }
+
   let availCount = 0;
   let hasOpenPlay = false;
   let hasMaint = false;
@@ -3020,7 +3122,7 @@ async function renderSlots() {
       ${todayFlag ? '<span class="leg" style="color:var(--muted)">⬛ Past</span><span class="leg" style="color:#4fc3f7">🔵 Now</span>' : ''}
     </div>`;
 
-  g.innerHTML = liveNote + legend + `<div class="slots-grid">${slotHtml}</div>`;
+  g.innerHTML = liveNote + legend + `<div class="slots-grid">${openPlayBlock}${slotHtml}</div>`;
 }
 
 function toggleSlot(h) {

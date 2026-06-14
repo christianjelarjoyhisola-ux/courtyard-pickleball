@@ -3991,42 +3991,49 @@ function opPickPay(method) {
   const opTotal = openPlayFee + _serviceFeeRate;
   const amt = _opSignupData.fullPay ? opTotal : opTotal / 2;
   const refHtml = `
-    <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(74,154,74,.2)">
-      <label style="font-size:.73rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:6px;display:block">Reference # (after sending)</label>
+    <div style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(74,154,74,.2)">
+      <label style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:4px;display:block">Reference # (after sending)</label>
       <input type="text" class="fi" id="opGcashRef" placeholder="e.g. 1234567890123" inputmode="numeric"
-        style="margin:0;font-family:monospace;letter-spacing:1px;font-size:.95rem"
+        style="margin:0;font-family:monospace;letter-spacing:1px;font-size:.9rem;padding:6px 8px"
         oninput="this.style.borderColor='';_opSignupData.gcashRef=this.value.trim()"
         value="${_opSignupData.gcashRef || ''}"/>
-      <div style="font-size:.7rem;color:var(--muted);margin-top:4px">Enter the reference number shown after your payment</div>
+      <div style="font-size:.65rem;color:var(--muted);margin-top:2px">Enter the reference number shown after your payment</div>
     </div>`;
   if (method === 'gcash') {
-    const qrDisplay = gcashSettings.qrImage ? `<img src="${gcashSettings.qrImage}" alt="GCash QR" style="width:140px;height:140px;object-fit:contain;border-radius:6px;border:1px solid rgba(74,154,74,.3);background:#fff;padding:4px;margin:10px 0"/>` : `<div style="width:140px;height:140px;display:flex;align-items:center;justify-content:center;background:rgba(74,154,74,.05);border:1px dashed rgba(74,154,74,.25);border-radius:6px;margin:10px 0;color:var(--muted);font-size:.75rem;text-align:center">📸 No QR uploaded</div>`;
-    info.innerHTML = `<div style="background:rgba(74,154,74,.06);border:1px solid rgba(74,154,74,.25);border-radius:var(--r);padding:14px;text-align:center">
-      <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--accent);margin-bottom:8px">📱 Send GCash Payment To</div>
+    const qrDisplay = gcashSettings.qrImage ? `<img src="${gcashSettings.qrImage}" alt="GCash QR" style="width:110px;height:110px;object-fit:contain;border-radius:6px;border:1px solid rgba(74,154,74,.3);background:#fff;padding:3px;margin:6px 0"/>` : `<div style="width:110px;height:110px;display:flex;align-items:center;justify-content:center;background:rgba(74,154,74,.05);border:1px dashed rgba(74,154,74,.25);border-radius:6px;margin:6px 0;color:var(--muted);font-size:.7rem;text-align:center">📸 No QR</div>`;
+    info.innerHTML = `<div style="background:rgba(74,154,74,.06);border:1px solid rgba(74,154,74,.25);border-radius:var(--r);padding:10px;text-align:center">
+      <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--accent);margin-bottom:6px">📱 Send GCash Payment To</div>
       ${qrDisplay}
-      <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px">
-        <div style="font-size:1.05rem;font-weight:700">${gcashSettings.merchantNumber}</div>
-        <button type="button" onclick="copyToClipboard('${gcashSettings.merchantNumber}')" style="background:rgba(74,154,220,.15);color:#5a9ad4;border:1px solid rgba(74,154,220,.3);padding:4px 8px;border-radius:4px;cursor:pointer;font-size:.75rem;font-weight:600;transition:all .2s">📋 Copy</button>
+      <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin:6px 0">
+        <div style="font-size:.95rem;font-weight:700">${gcashSettings.merchantNumber}</div>
+        <button type="button" onclick="copyToClipboard('${gcashSettings.merchantNumber}')" style="background:rgba(74,154,220,.15);color:#5a9ad4;border:1px solid rgba(74,154,220,.3);padding:3px 6px;border-radius:4px;cursor:pointer;font-size:.7rem;font-weight:600;transition:all .2s">📋 Copy</button>
       </div>
-      <div style="font-size:.82rem;color:var(--muted);margin-top:2px">${gcashSettings.merchantName}</div>
-      ${refHtml}
+      <div style="font-size:.78rem;color:var(--muted);margin:2px 0">${gcashSettings.merchantName}</div>
+      <div style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(74,154,74,.2)">
+        <label style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:4px;display:block">Reference # (after sending)</label>
+        <input type="text" class="fi" id="opGcashRef" placeholder="e.g. 1234567890123" inputmode="numeric"
+          style="margin:0;font-family:monospace;letter-spacing:1px;font-size:.9rem;padding:6px 8px"
+          oninput="this.style.borderColor='';_opSignupData.gcashRef=this.value.trim()"
+          value="${_opSignupData.gcashRef || ''}"/>
+        <div style="font-size:.65rem;color:var(--muted);margin-top:2px">Enter the reference number shown after your payment</div>
+      </div>
     </div>`;
   } else if (method === 'gotyme') {
-    info.innerHTML = `<div style="background:rgba(74,154,74,.06);border:1px solid rgba(74,154,74,.25);border-radius:var(--r);padding:14px">
-      <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--accent);margin-bottom:8px">🏦 Send GoTyme Payment To</div>
-      <div style="font-size:.82rem;color:var(--muted)">${gcashSettings.merchantName}</div>
+    info.innerHTML = `<div style="background:rgba(74,154,74,.06);border:1px solid rgba(74,154,74,.25);border-radius:var(--r);padding:10px">
+      <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--accent);margin-bottom:6px">🏦 Send GoTyme Payment To</div>
+      <div style="font-size:.78rem;color:var(--muted)">${gcashSettings.merchantName}</div>
       ${refHtml}
     </div>`;
   } else if (method === 'pnb') {
-    info.innerHTML = `<div style="background:rgba(74,154,74,.06);border:1px solid rgba(74,154,74,.25);border-radius:var(--r);padding:14px">
-      <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--accent);margin-bottom:8px">🏛️ Send PNB Payment To</div>
-      <div style="font-size:.82rem;color:var(--muted)">${gcashSettings.merchantName}</div>
+    info.innerHTML = `<div style="background:rgba(74,154,74,.06);border:1px solid rgba(74,154,74,.25);border-radius:var(--r);padding:10px">
+      <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--accent);margin-bottom:6px">🏛️ Send PNB Payment To</div>
+      <div style="font-size:.78rem;color:var(--muted)">${gcashSettings.merchantName}</div>
       ${refHtml}
     </div>`;
   } else if (method === 'cash') {
-    info.innerHTML = `<div style="background:rgba(74,154,74,.06);border:1px solid rgba(74,154,74,.25);border-radius:var(--r);padding:14px">
-      <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--accent);margin-bottom:8px">💵 Cash Payment</div>
-      <div style="font-size:.82rem;color:var(--muted)">Pay <strong>${fmt(amt)}</strong> at the front desk upon arrival.</div>
+    info.innerHTML = `<div style="background:rgba(74,154,74,.06);border:1px solid rgba(74,154,74,.25);border-radius:var(--r);padding:10px">
+      <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--accent);margin-bottom:6px">💵 Cash Payment</div>
+      <div style="font-size:.78rem;color:var(--muted)">Pay <strong>${fmt(amt)}</strong> at the front desk upon arrival.</div>
     </div>`;
   }
 }

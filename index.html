@@ -3075,7 +3075,6 @@ async function renderSlots() {
   }
 
   let availCount = 0;
-  let hasOpenPlay = false;
   let hasMaint = false;
   let slotHtml = '';
 
@@ -3086,10 +3085,13 @@ async function renderSlots() {
     const isSel       = selSlots.includes(h);
     const isOpenPlay  = isOpenPlayHour(date, h);
     const isMaint     = isMaintenanceHour(date, h, court?.id);
-    const isUnavail   = isPast || isBooked || isOpenPlay || isMaint;
+    
+    // Skip rendering individual Open Play slots — shown in combined block above
+    if (isOpenPlay) continue;
+    
+    const isUnavail   = isPast || isBooked || isMaint;
 
     if (!isUnavail && !isNow) availCount++;
-    if (isOpenPlay && !isBooked && !isPast) hasOpenPlay = true;
     if (isMaint && !isBooked && !isPast) hasMaint = true;
 
     let cls = 'slot';
@@ -3120,7 +3122,6 @@ async function renderSlots() {
       <span class="leg">⬜ Available</span>
       <span class="leg" style="color:var(--accent)">🟩 Selected</span>
       <span class="leg" style="color:var(--red)">🟥 Booked</span>
-      ${hasOpenPlay ? '<span class="leg" style="color:#ff6b6b">🟥 Open Play</span>' : ''}
       ${hasMaint ? '<span class="leg" style="color:#ff9800">🟧 Maintenance</span>' : ''}
       ${todayFlag ? '<span class="leg" style="color:var(--muted)">⬛ Past</span><span class="leg" style="color:#4fc3f7">🔵 Now</span>' : ''}
     </div>`;

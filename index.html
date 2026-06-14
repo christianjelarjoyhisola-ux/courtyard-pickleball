@@ -1725,7 +1725,7 @@ body.light #splashScreen { background: var(--bg); }
               <span class="gc-header-icon">📲</span>
               <span class="gc-header-lbl">GCash Payment</span>
             </div>
-            <div style="font-size:.75rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:700;margin-bottom:8px">How much do you want to pay?</div>
+            <div style="font-size:.75rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:700;margin-bottom:8px" id="gcPayLabel">How much do you want to pay?</div>
             <div class="pay-amount-toggle" id="gcPayAmtToggle">
               <div class="pat-btn on" id="gcPat50" onclick="setPayAmount('half')" style="display:none">
                 <div class="pat-icon">⚡</div>
@@ -1775,7 +1775,7 @@ body.light #splashScreen { background: var(--bg); }
               <span class="gc-header-icon">🏦</span>
               <span class="gc-header-lbl">GoTyme Payment</span>
             </div>
-            <div style="font-size:.75rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:700;margin-bottom:8px">How much do you want to pay?</div>
+            <div style="font-size:.75rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:700;margin-bottom:8px" id="gtPayLabel">How much do you want to pay?</div>
             <div class="pay-amount-toggle" id="gtPayAmtToggle">
               <div class="pat-btn on" id="gtPat50" onclick="setPayAmount('half')" style="display:none">
                 <div class="pat-icon">⚡</div>
@@ -1821,7 +1821,7 @@ body.light #splashScreen { background: var(--bg); }
               <span class="gc-header-icon">🏛️</span>
               <span class="gc-header-lbl">PNB Payment</span>
             </div>
-            <div style="font-size:.75rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:700;margin-bottom:8px">How much do you want to pay?</div>
+            <div style="font-size:.75rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:700;margin-bottom:8px" id="pnPayLabel">How much do you want to pay?</div>
             <div class="pay-amount-toggle" id="pnPayAmtToggle">
               <div class="pat-btn on" id="pnPat50" onclick="setPayAmount('half')" style="display:none">
                 <div class="pat-icon">⚡</div>
@@ -3287,21 +3287,30 @@ function updatePaymentAmountUI() {
   
   // Update booking wizard payment toggles
   ['gc', 'gt', 'pn'].forEach(p => {
+    const label = $(p + 'PayLabel');
     const toggle = $(p + 'PayAmtToggle');
     if (!toggle) return;
     const btn50 = $(p + 'Pat50');
     const btn100 = $(p + 'Pat100');
+    
     if (dpOnly) {
-      if (btn50) btn50.style.display = '';
-      if (btn100) btn100.style.display = 'none';
+      // Only downpayment — hide toggle and label, auto-select 50%
+      if (label) label.style.display = 'none';
+      if (toggle) toggle.style.display = 'none';
       if (btn50) btn50.classList.add('on');
+      if (btn100) btn100.classList.remove('on');
       payFull = false;
     } else if (fpOnly) {
-      if (btn50) btn50.style.display = 'none';
-      if (btn100) btn100.style.display = '';
+      // Only full payment — hide toggle and label, auto-select 100%
+      if (label) label.style.display = 'none';
+      if (toggle) toggle.style.display = 'none';
+      if (btn50) btn50.classList.remove('on');
       if (btn100) btn100.classList.add('on');
       payFull = true;
     } else {
+      // Both options — show toggle and label
+      if (label) label.style.display = '';
+      if (toggle) toggle.style.display = '';
       if (btn50) btn50.style.display = '';
       if (btn100) btn100.style.display = '';
     }
@@ -4046,6 +4055,29 @@ async function openPlaySignup(courtId, date, h, courtName) {
     paymentMethods.cash    ? `<div class="pay-opt"    data-m="cash"    onclick="opPickPay('cash')"><span class="po-ico">💵</span><span class="po-lbl">Cash</span><span class="po-sub">Pay at front desk</span></div>` : '',
   ].filter(Boolean).join('');
 
+  // Auto-set downpayment based on mode
+  const dpOnly = paymentAcceptanceMode === 'downpayment_only';
+  const fpOnly = paymentAcceptanceMode === 'full_payment_only';
+  if (dpOnly) _opSignupData.fullPay = false;
+  else if (fpOnly) _opSignupData.fullPay = true;
+
+  const dpSection = (dpOnly || fpOnly) ? `<div style="display:none"></div>` : `
+    <div style="margin-bottom:18px">
+      <label class="fl" style="margin-bottom:10px">Downpayment</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="pat-btn on" id="opDp50" onclick="opSetDP(false)" style="cursor:pointer">
+          <div class="pat-icon">⚡</div>
+          <div style="font-size:.78rem;font-weight:700;margin:2px 0">50%</div>
+          <div class="pat-amt">${fmt(half)}</div>
+        </div>
+        <div class="pat-btn" id="opDp100" onclick="opSetDP(true)" style="cursor:pointer">
+          <div class="pat-icon">✅</div>
+          <div style="font-size:.78rem;font-weight:700;margin:2px 0">100%</div>
+          <div class="pat-amt">${fmt(opTotal)}</div>
+        </div>
+      </div>
+    </div>`;
+
   $('opModalBody').innerHTML = `
     <div style="background:rgba(244,168,37,.08);border:1px solid rgba(244,168,37,.3);border-radius:10px;padding:14px 16px;margin-bottom:16px;text-align:center">
       <div style="font-size:2rem;font-weight:800;color:#f4a825;line-height:1">${spotsLeft}<span style="font-size:1rem;color:var(--muted);font-weight:600"> / ${openPlayMaxPlayers}</span></div>
@@ -4059,21 +4091,7 @@ async function openPlaySignup(courtId, date, h, courtName) {
       <label class="fl" style="margin-bottom:10px">Payment Method</label>
       <div class="pay-opts" id="opPayOpts">${payOpts}</div>
     </div>
-    <div style="margin-bottom:18px">
-      <label class="fl" style="margin-bottom:10px">Downpayment</label>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div class="pat-btn on" id="opDp50" onclick="opSetDP(false)" style="cursor:pointer;display:${paymentAcceptanceMode === 'full_payment_only' ? 'none' : 'flex'}">
-          <div class="pat-icon">⚡</div>
-          <div style="font-size:.78rem;font-weight:700;margin:2px 0">50%</div>
-          <div class="pat-amt">${fmt(half)}</div>
-        </div>
-        <div class="pat-btn${paymentAcceptanceMode === 'downpayment_only' ? ' on' : ''}" id="opDp100" onclick="opSetDP(true)" style="cursor:pointer;display:${paymentAcceptanceMode === 'downpayment_only' ? 'none' : 'flex'}">
-          <div class="pat-icon">✅</div>
-          <div style="font-size:.78rem;font-weight:700;margin:2px 0">100%</div>
-          <div class="pat-amt">${fmt(opTotal)}</div>
-        </div>
-      </div>
-    </div>
+    ${dpSection}
     <div id="opPayInfo" style="margin-bottom:14px"></div>\n    <div id="opReceiptWrap" style="display:none;margin-bottom:14px">
       <div style="border:1px dashed rgba(74,154,74,.3);border-radius:var(--r);padding:12px;background:rgba(74,154,74,.04)">
         <label style="font-size:.73rem;text-transform:uppercase;letter-spacing:1px;color:var(--accent);font-weight:700;display:block;margin-bottom:6px">
@@ -4110,6 +4128,10 @@ async function openPlaySignup(courtId, date, h, courtName) {
     <button class="btn" style="border:1.5px solid var(--border);color:var(--muted);background:transparent" onclick="closeOpModal()">Cancel</button>
     <button class="btn btn-g" id="opSubmitBtn" onclick="submitOpenPlay()">🏓 Join Open Play</button>`;
   opPickPay('gcash');
+  // Auto-set DP based on payment acceptance mode
+  if (dpOnly || fpOnly) {
+    opSetDP(_opSignupData.fullPay);
+  }
   setTimeout(() => $('opFullName')?.focus(), 80);
 }
 

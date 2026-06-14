@@ -2226,7 +2226,7 @@ let wizStep = 1, wizStartStep = 1;
 let _lastSubmitAt = 0; // rate limiting — ms timestamp of last submission attempt
 let openHour  = 6;
 let closeHour = 22;
-let openPlayConfig = null; // { enabled, start, end, days[], fee, maxPlayers }
+let openPlayConfig = null; // { enabled, start, end, days[], specificDates[], courtIds[], fee, maxPlayers }
 let openPlayFee = 100; // default ₱100, overridden by settings
 let openPlayMaxPlayers = 40; // default 40, overridden by settings
 let paymentAcceptanceMode = 'both'; // 'both', 'downpayment_only', 'full_payment_only'
@@ -2293,8 +2293,15 @@ function maskName(fullName) {
   return mask(parts[0]) + ' ' + mask(parts[parts.length - 1]);
 }
 
-function isOpenPlayHour(date, h) {
+function isOpenPlayCourt(courtId) {
   if (!openPlayConfig || !openPlayConfig.enabled) return false;
+  const courtIds = Array.isArray(openPlayConfig.courtIds) ? openPlayConfig.courtIds.map(String).filter(Boolean) : [];
+  return !courtId || courtIds.length === 0 || courtIds.includes(String(courtId));
+}
+
+function isOpenPlayHour(date, h, courtId = null) {
+  if (!openPlayConfig || !openPlayConfig.enabled) return false;
+  if (!isOpenPlayCourt(courtId)) return false;
   const days = Array.isArray(openPlayConfig.days) ? openPlayConfig.days : [];
   const specificDates = Array.isArray(openPlayConfig.specificDates) ? openPlayConfig.specificDates : [];
   if (!days.includes(dayOfWeek(date)) && !specificDates.includes(date)) return false;
@@ -2304,12 +2311,13 @@ function isOpenPlayHour(date, h) {
   return start < end ? (h >= start && h < end) : (h >= start || h < end);
 }
 
-function getOpenPlaySessionForDate(date) {
+function getOpenPlaySessionForDate(date, courtId = null) {
   if (!openPlayConfig || !openPlayConfig.enabled || !date) return null;
+  if (!isOpenPlayCourt(courtId)) return null;
   const start = Number(openPlayConfig.start);
   const end = Number(openPlayConfig.end);
   if (!Number.isFinite(start) || !Number.isFinite(end) || start === end) return null;
-  if (!isOpenPlayHour(date, start)) return null;
+  if (!isOpenPlayHour(date, start, courtId)) return null;
   return { start, end, label: `${fmtT(start)} – ${fmtT(end)}` };
 }
 
@@ -2653,7 +2661,7 @@ const slotTimeLabel = h => `<span class="t-full">${fmtT(h)} – ${fmtT(h+1)}</sp
 async function toggleCardSlot(courtId, date, h) {
   if (date < todayStr()) { toast('Cannot book a past date.', 'err'); return; }
   await ensureCourt(courtId);
-  if (isOpenPlayHour(date, h)) {
+  if (isOpenPlayHour(date, h, courtId)) {
     openPlaySignup(courtId, date, h, court ? court.name : '');
     return;
   }
@@ -2758,7 +2766,7 @@ async function proceedToBook(courtId) {
   if (!cardSel.courtId || cardSel.slots.length === 0) {
     toast('Please select at least one time slot.', 'inf'); return;
   }
-  if (cardSel.slots.some(h => isOpenPlayHour(cardSel.date, h) || isMaintenanceHour(cardSel.date, h, cardSel.courtId))) {
+  if (cardSel.slots.some(h => isOpenPlayHour(cardSel.date, h, cardSel.courtId) || isMaintenanceHour(cardSel.date, h, cardSel.courtId))) {
     toast('Some selected slots are unavailable. Please choose another time.', 'err');
     if (cardSel.date) await onCardDate(courtId, cardSel.date);
     return;
@@ -2991,10 +2999,10 @@ async function onCardDate(courtId, date) {
   const isToday_ = date === todayStr();
   const isPastDate_ = date < todayStr();
   const curHour  = nowHour();
-  const openPlaySession = getOpenPlaySessionForDate(date);
+  const openPlaySession = getOpenPlaySessionForDate(date, courtId);
   let openPlayCardHtml = '';
   if (!isPastDate_ && openPlaySession) {
-    const opRegCount = await DB.getOpenPlayCountForDate(date);
+    const opRegCount = await DB.getOpenPlayCountForDate(date, courtId);
     const opSpotsLeft = Math.max(0, (openPlayMaxPlayers || 40) - opRegCount);
     openPlayCardHtml = openPlaySessionHtml({
       courtId,
@@ -3012,8 +3020,8 @@ async function onCardDate(courtId, date) {
   if (availBadgeEl) {
     const isToday_badge = date === todayStr();
     const curHour_badge = isToday_badge ? nowHour() : (isPastDate_ ? 999 : -1);
-    const avail = allSlots.filter(h => h > curHour_badge && !bookedHrs.has(h) && !isOpenPlayHour(date, h) && !isMaintenanceHour(date, h, courtId)).length;
-    const bookable = allSlots.filter(h => h > curHour_badge && !isOpenPlayHour(date, h) && !isMaintenanceHour(date, h, courtId)).length;
+    const avail = allSlots.filter(h => h > curHour_badge && !bookedHrs.has(h) && !isOpenPlayHour(date, h, courtId) && !isMaintenanceHour(date, h, courtId)).length;
+    const bookable = allSlots.filter(h => h > curHour_badge && !isOpenPlayHour(date, h, courtId) && !isMaintenanceHour(date, h, courtId)).length;
     const [cls, txt] = avail > 0
       ? ['av', `⚡ ${avail} available`]
       : bookable === 0
@@ -3031,7 +3039,7 @@ async function onCardDate(courtId, date) {
   grid.innerHTML = openPlayCardHtml + allSlots.map(h => {
     const isPast_   = isPastDate_ || (isToday_ && h <= curHour);
     const isBooked_ = bookedHrs.has(h);
-    const isOpenPlay_ = isOpenPlayHour(date, h);
+    const isOpenPlay_ = isOpenPlayHour(date, h, courtId);
     const isMaint_ = isMaintenanceHour(date, h, courtId);
     const timeRange = slotTimeLabel(h);
     if (isPast_)    return `<div class="cc-slot-btn past-slot"><div class="csl-time">${timeRange}</div><div class="csl-tag">${isPastDate_ ? 'Past' : 'Done'}</div></div>`;
@@ -3060,9 +3068,15 @@ async function renderCourts() {
   const curHour = nowHour();
   const courtsGrid = $('courtsGrid');
   if (!courtsGrid) return;
-  const todayOpenPlaySession = getOpenPlaySessionForDate(today);
-  const todayOpenPlayCount = todayOpenPlaySession ? await DB.getOpenPlayCountForDate(today) : 0;
-  const todayOpenPlaySpotsLeft = Math.max(0, (openPlayMaxPlayers || 40) - todayOpenPlayCount);
+  const openPlayTodayByCourt = {};
+  await Promise.all(courts.map(async c => {
+    const session = getOpenPlaySessionForDate(today, c.id);
+    const count = session ? await DB.getOpenPlayCountForDate(today, c.id) : 0;
+    openPlayTodayByCourt[c.id] = {
+      session,
+      spotsLeft: Math.max(0, (openPlayMaxPlayers || 40) - count),
+    };
+  }));
 
   courtsGrid.innerHTML = courts.map(c => {
     const blk = c.blocked;
@@ -3078,8 +3092,12 @@ async function renderCourts() {
             }));
     const bookedHours = new Set(Object.keys(slotNameMap).map(Number));
 
-    const availToday = blk ? 0 : allSlots.filter(h => h > curHour && !bookedHours.has(h) && !isOpenPlayHour(today, h) && !isMaintenanceHour(today, h, c.id)).length;
-    const bookableToday = blk ? 0 : allSlots.filter(h => h > curHour && !isOpenPlayHour(today, h) && !isMaintenanceHour(today, h, c.id)).length;
+    const todayOpenPlay = openPlayTodayByCourt[c.id] || {};
+    const todayOpenPlaySession = todayOpenPlay.session;
+    const todayOpenPlaySpotsLeft = todayOpenPlay.spotsLeft || 0;
+
+    const availToday = blk ? 0 : allSlots.filter(h => h > curHour && !bookedHours.has(h) && !isOpenPlayHour(today, h, c.id) && !isMaintenanceHour(today, h, c.id)).length;
+    const bookableToday = blk ? 0 : allSlots.filter(h => h > curHour && !isOpenPlayHour(today, h, c.id) && !isMaintenanceHour(today, h, c.id)).length;
     const availBadgeCls = blk ? 'mnt' : availToday > 0 ? 'av' : bookableToday === 0 ? 'av' : 'full';
     const availBadgeTxt = blk ? '🔧 Maintenance' : availToday > 0 ? `⚡ ${availToday} available` : bookableToday === 0 ? '🏓 Open Play only' : '⛔ Fully booked';
 
@@ -3113,7 +3131,7 @@ async function renderCourts() {
       : openPlayCardHtml + allSlots.map(h => {
           const isPast_   = h <= curHour;
           const isBooked_ = bookedHours.has(h);
-          const isOpenPlay_ = isOpenPlayHour(today, h);
+          const isOpenPlay_ = isOpenPlayHour(today, h, c.id);
           const isMaint_ = isMaintenanceHour(today, h, c.id);
           const timeRange = slotTimeLabel(h);
           if (isPast_)    return `<div class="cc-slot-btn past-slot"><div class="csl-time">${timeRange}</div><div class="csl-tag">Done</div></div>`;
@@ -3194,7 +3212,7 @@ async function renderCourts() {
         bookings.filter(b => b.courtId === c.id && b.date === today_ && b.status !== 'cancelled')
                 .flatMap(b => b.slots)
       );
-      const avail_ = blk ? 0 : allSl_.filter(h => h > cur_ && !booked_.has(h) && !isOpenPlayHour(today_, h) && !isMaintenanceHour(today_, h, c.id)).length;
+      const avail_ = blk ? 0 : allSl_.filter(h => h > cur_ && !booked_.has(h) && !isOpenPlayHour(today_, h, c.id) && !isMaintenanceHour(today_, h, c.id)).length;
       const dotCls  = blk ? 'tab-dot-mnt' : avail_ > 0 ? 'tab-dot-av' : 'tab-dot-full';
       const shortName = c.name.replace(/^SMASH\s*/i, '');
       return `<button class="court-tab" data-court="${c.id}" onclick="switchCourtTab('${c.id}')" title="${c.name}">
@@ -3311,14 +3329,14 @@ async function renderSlots() {
   selSlots = selSlots.filter(h => {
     const isPast = todayFlag && h < curHour;
     const isNow = todayFlag && h === curHour;
-    return !booked.has(h) && !isPast && !isNow && !isOpenPlayHour(date, h) && !isMaintenanceHour(date, h, court?.id);
+    return !booked.has(h) && !isPast && !isNow && !isOpenPlayHour(date, h, court?.id) && !isMaintenanceHour(date, h, court?.id);
   });
 
   // Check if there's an Open Play session on this date and get registration count
   let openPlayBlock = '';
-  const openPlaySession = getOpenPlaySessionForDate(date);
+  const openPlaySession = getOpenPlaySessionForDate(date, court?.id);
   if (openPlaySession) {
-    const opRegCount = await DB.getOpenPlayCountForDate(date);
+    const opRegCount = await DB.getOpenPlayCountForDate(date, court?.id);
     const opSpotsLeft = Math.max(0, (openPlayMaxPlayers || 40) - opRegCount);
     openPlayBlock = openPlaySessionHtml({
       courtId: court.id,
@@ -3339,7 +3357,7 @@ async function renderSlots() {
     const isNow       = todayFlag && h === curHour;
     const isBooked    = booked.has(h);
     const isSel       = selSlots.includes(h);
-    const isOpenPlay  = isOpenPlayHour(date, h);
+    const isOpenPlay  = isOpenPlayHour(date, h, court?.id);
     const isMaint     = isMaintenanceHour(date, h, court?.id);
     
     // Skip rendering individual Open Play slots — shown in combined block above
@@ -3396,7 +3414,7 @@ function toggleSlot(h) {
   if (cachedBookedSlots.has(h)) { toast('This slot is already booked.', 'err'); return; }
   if (todayFlag && h < curHour) { toast('This time slot has already passed.', 'err'); return; }
   if (todayFlag && h === curHour) { toast('This hour is currently in progress — book the next available slot.', 'inf'); return; }
-  if (isOpenPlayHour(date, h)) {
+  if (isOpenPlayHour(date, h, court ? court.id : '')) {
     openPlaySignup(court ? court.id : '', date, h, court ? court.name : '');
     return;
   }
@@ -3766,7 +3784,7 @@ async function submitBooking(e) {
     bookingSaved = true;
 
     // Notify owner via Telegram (fire-and-forget — never blocks booking flow)
-    fetch('https://ikeujqaqmwmvkyhjqdmv.functions.supabase.co/send-telegram-notification', {
+    if (!window.PB_USE_LOCAL_DATA) fetch('https://ikeujqaqmwmvkyhjqdmv.functions.supabase.co/send-telegram-notification', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'apikey': SUPABASE_ANON_KEY },
       body: JSON.stringify({
@@ -4128,6 +4146,7 @@ async function refreshLiveViews() {
 }
 
 function startRealtime() {
+  if (window.PB_USE_LOCAL_DATA) return;
   const onChange = () => {
     // Debounce: a single booking can emit several row events in quick succession.
     clearTimeout(_rtDebounce);
@@ -4352,7 +4371,7 @@ function firstEnabledPaymentMethod() {
 
 async function openPlaySignup(courtId, date, h, courtName) {
   const defaultPayMethod = firstEnabledPaymentMethod();
-  const session = getOpenPlaySessionForDate(date) || { start: h, end: h + 1, label: `${fmtT(h)} – ${fmtT(h + 1)}` };
+  const session = getOpenPlaySessionForDate(date, courtId) || { start: h, end: h + 1, label: `${fmtT(h)} – ${fmtT(h + 1)}` };
   if (getOpenPlaySessionState(date, session, 1) === 'ended') {
     toast('Open Play session has ended for this date.', 'inf');
     return;
@@ -4370,7 +4389,7 @@ async function openPlaySignup(courtId, date, h, courtName) {
   $('opModal').classList.add('active');
 
   // Check capacity
-  const count = await DB.getOpenPlayCountForDate(date);
+  const count = await DB.getOpenPlayCountForDate(date, courtId);
   if (count >= openPlayMaxPlayers) {
     $('opModalBody').innerHTML = `
       <div style="text-align:center;padding:28px 0">
@@ -4682,7 +4701,7 @@ async function submitOpenPlay() {
   if (btn) { btn.disabled = true; btn.textContent = 'Submitting…'; }
   try {
     // Re-check capacity at submit time to prevent race conditions
-    const currentCount = await DB.getOpenPlayCountForDate(_opSignupData.date);
+    const currentCount = await DB.getOpenPlayCountForDate(_opSignupData.date, _opSignupData.courtId);
     if (currentCount >= openPlayMaxPlayers) {
       $('opModalBody').innerHTML = `
         <div style="text-align:center;padding:28px 0">

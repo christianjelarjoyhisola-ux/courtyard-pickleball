@@ -12,6 +12,21 @@ const _sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // Expose globally so HTML pages can use real-time subscriptions
 window._supabase = _sb;
 
+const PB_IS_LOCAL_HOST = ['localhost', '127.0.0.1', '::1'].includes(location.hostname);
+const PB_DATA_MODE_KEY = 'pb_data_mode';
+
+if (PB_IS_LOCAL_HOST) {
+  const params = new URLSearchParams(location.search);
+  if (['1', 'true', 'local'].includes((params.get('localData') || '').toLowerCase())) {
+    localStorage.setItem(PB_DATA_MODE_KEY, 'local');
+  }
+  if (['1', 'true', 'remote'].includes((params.get('remoteData') || '').toLowerCase())) {
+    localStorage.removeItem(PB_DATA_MODE_KEY);
+  }
+}
+
+window.PB_USE_LOCAL_DATA = PB_IS_LOCAL_HOST && localStorage.getItem(PB_DATA_MODE_KEY) === 'local';
+
 function _safeJsonParse(v) {
   try { return JSON.parse(v); } catch(_) { return null; }
 }
@@ -329,11 +344,13 @@ window.DB = {
     if (error) { console.error('updateOpenPlayRegistration:', error); throw error; }
   },
 
-  async getOpenPlayCountForDate(date) {
-    const { count, error } = await _sb.from('open_play_registrations')
+  async getOpenPlayCountForDate(date, courtId = null) {
+    let query = _sb.from('open_play_registrations')
       .select('*', { count: 'exact', head: true })
       .eq('date', date)
       .or('payment_status.is.null,payment_status.neq.rejected');
+    if (courtId) query = query.eq('court_id', String(courtId));
+    const { count, error } = await query;
     if (error) { console.error('getOpenPlayCountForDate:', error); return 0; }
     return count || 0;
   },
@@ -625,6 +642,298 @@ window.DB = {
 // Admin accounts are managed in Supabase Dashboard → Authentication → Users
 // The accounts table stores role/display info linked by email.
 // =============================================
+// =============================================
+// LOCAL DATA MODE
+// Enable only on localhost with localStorage.setItem('pb_data_mode', 'local')
+// or by opening a local page with ?localData=1. Disable with ?remoteData=1.
+// =============================================
+(function installLocalDataMode() {
+  if (!window.PB_USE_LOCAL_DATA) return;
+
+  const STORE_KEY = 'pb_local_db_v1';
+  const nowIso = () => new Date().toISOString();
+  const localRef = prefix => `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`.toUpperCase();
+
+  const defaultCourts = () => Array.from({ length: 10 }, (_, i) => {
+    const n = i + 1;
+    return {
+      id: `c${n}`,
+      name: n === 1 ? 'CourtYard Pickleball' : `Court ${n}`,
+      desc: 'Outdoor',
+      rate: n <= 5 ? 60 : 90,
+      blocked: false,
+      feats: ['Outdoor'],
+      photo: '',
+      rateSchedule: [
+        { from: 6, to: 18, rate: 60 },
+        { from: 18, to: 23, rate: 90 },
+      ],
+    };
+  });
+
+  const defaultSettings = () => ({
+    open_hour: '6',
+    close_hour: '23',
+    open_play_config: JSON.stringify({
+      enabled: true,
+      start: 6,
+      end: 23,
+      days: [0, 6],
+      specificDates: ['2026-06-20'],
+      courtIds: [],
+      fee: 25,
+      maxPlayers: 16,
+    }),
+    payment_acceptance_mode: 'full_payment_only',
+    payment_method_cash: '0',
+    payment_method_gcash: '1',
+    payment_method_gotyme: '0',
+    payment_method_pnb: '0',
+    gcash_merchant_number: '09524825766',
+    gcash_merchant_name: 'Annaliza M. Acero',
+    service_fee_rate: '15',
+    maintenance_fee: '5',
+    fee_type: 'booking',
+  });
+
+  const defaultAccounts = () => ([{
+    id: 'owner_001',
+    username: 'developer',
+    password: 'dev123',
+    role: 'owner',
+    fullName: 'System Owner',
+    email: 'owner@courtyardpickleball.com',
+    createdAt: nowIso(),
+  }]);
+
+  function freshDb() {
+    return {
+      courts: defaultCourts(),
+      bookings: [],
+      openPlayRegistrations: [],
+      blockedDates: [],
+      accounts: defaultAccounts(),
+      settings: defaultSettings(),
+      agreements: [],
+      weeklyFees: [],
+    };
+  }
+
+  function readDb() {
+    const parsed = _safeJsonParse(localStorage.getItem(STORE_KEY));
+    if (!parsed || typeof parsed !== 'object') {
+      const db = freshDb();
+      localStorage.setItem(STORE_KEY, JSON.stringify(db));
+      return db;
+    }
+    return {
+      ...freshDb(),
+      ...parsed,
+      settings: { ...defaultSettings(), ...(parsed.settings || {}) },
+      courts: Array.isArray(parsed.courts) && parsed.courts.length ? parsed.courts : defaultCourts(),
+      bookings: Array.isArray(parsed.bookings) ? parsed.bookings : [],
+      openPlayRegistrations: Array.isArray(parsed.openPlayRegistrations) ? parsed.openPlayRegistrations : [],
+      blockedDates: Array.isArray(parsed.blockedDates) ? parsed.blockedDates : [],
+      accounts: Array.isArray(parsed.accounts) && parsed.accounts.length ? parsed.accounts : defaultAccounts(),
+      agreements: Array.isArray(parsed.agreements) ? parsed.agreements : [],
+      weeklyFees: Array.isArray(parsed.weeklyFees) ? parsed.weeklyFees : [],
+    };
+  }
+
+  function writeDb(db) {
+    localStorage.setItem(STORE_KEY, JSON.stringify(db));
+  }
+
+  window.DB = {
+    async getCourts() { return readDb().courts; },
+    async saveCourt(court) {
+      const db = readDb();
+      const row = { ...court, id: String(court.id || localRef('court')).toLowerCase() };
+      const idx = db.courts.findIndex(c => String(c.id) === String(row.id));
+      if (idx >= 0) db.courts[idx] = { ...db.courts[idx], ...row };
+      else db.courts.push(row);
+      writeDb(db);
+    },
+    async deleteCourt(id) {
+      const db = readDb();
+      db.courts = db.courts.filter(c => String(c.id) !== String(id));
+      writeDb(db);
+    },
+
+    async getBookings() {
+      return readDb().bookings.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+    },
+    async addBooking(booking) {
+      const db = readDb();
+      const bookedSlots = db.bookings
+        .filter(b => String(b.courtId) === String(booking.courtId) && b.date === booking.date && b.status !== 'cancelled')
+        .flatMap(b => b.slots || []);
+      const conflict = (booking.slots || []).some(s => bookedSlots.includes(s));
+      if (conflict) throw new Error('One or more time slots are no longer available. Please refresh and choose a different time.');
+      db.bookings.push({ ...booking, ref: booking.ref || localRef('PB'), createdAt: booking.createdAt || nowIso() });
+      writeDb(db);
+    },
+    async getBookingByRef(ref) { return readDb().bookings.find(b => String(b.ref) === String(ref)) || null; },
+    async updateBooking(ref, updates) {
+      const db = readDb();
+      db.bookings = db.bookings.map(b => String(b.ref) === String(ref) ? { ...b, ...updates } : b);
+      writeDb(db);
+    },
+    async markBookingsBilled(refs, weeklyFeeId) {
+      if (!Array.isArray(refs) || refs.length === 0) return;
+      const db = readDb();
+      db.bookings = db.bookings.map(b => refs.includes(b.ref) ? { ...b, billedAt: nowIso(), weeklyFeeId } : b);
+      writeDb(db);
+    },
+    async deleteBooking(ref) {
+      const db = readDb();
+      db.bookings = db.bookings.filter(b => String(b.ref) !== String(ref));
+      writeDb(db);
+    },
+
+    async getOpenPlayRegistrations() {
+      return readDb().openPlayRegistrations.sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
+    },
+    async addOpenPlayRegistration(reg) {
+      const db = readDb();
+      db.openPlayRegistrations.push({
+        id: localRef('op'),
+        full_name: reg.fullName,
+        court_id: String(reg.courtId),
+        court_name: reg.courtName,
+        date: reg.date,
+        hour: reg.hour,
+        time_label: reg.timeLabel,
+        payment_type: reg.paymentType,
+        payment_method: reg.paymentMethod || 'cash',
+        gcash_ref: reg.gcashRef || null,
+        payment_status: reg.paymentStatus || 'pending',
+        amount: reg.amount,
+        receipt_image_url: reg.receiptImageUrl || null,
+        receipt_image_hash: reg.receiptImageHash || null,
+        receipt_phash: reg.receiptPhash || null,
+        receipt_status: reg.receiptStatus || 'none',
+        receipt_flags: reg.receiptFlags || [],
+        receipt_extracted: reg.receiptExtracted || null,
+        receipt_confidence: reg.receiptConfidence ?? null,
+        receipt_verified_at: reg.receiptVerifiedAt || null,
+        created_at: nowIso(),
+      });
+      writeDb(db);
+    },
+    async updateOpenPlayRegistration(id, updates) {
+      const db = readDb();
+      db.openPlayRegistrations = db.openPlayRegistrations.map(r => {
+        if (String(r.id) !== String(id)) return r;
+        return {
+          ...r,
+          payment_status: updates.paymentStatus !== undefined ? updates.paymentStatus : r.payment_status,
+          gcash_ref: updates.gcashRef !== undefined ? updates.gcashRef : r.gcash_ref,
+          receipt_image_url: updates.receiptImageUrl !== undefined ? updates.receiptImageUrl : r.receipt_image_url,
+          receipt_image_hash: updates.receiptImageHash !== undefined ? updates.receiptImageHash : r.receipt_image_hash,
+          receipt_phash: updates.receiptPhash !== undefined ? updates.receiptPhash : r.receipt_phash,
+          receipt_status: updates.receiptStatus !== undefined ? updates.receiptStatus : r.receipt_status,
+          receipt_flags: updates.receiptFlags !== undefined ? updates.receiptFlags : r.receipt_flags,
+          receipt_extracted: updates.receiptExtracted !== undefined ? updates.receiptExtracted : r.receipt_extracted,
+          receipt_confidence: updates.receiptConfidence !== undefined ? updates.receiptConfidence : r.receipt_confidence,
+          receipt_verified_at: updates.receiptVerifiedAt !== undefined ? updates.receiptVerifiedAt : r.receipt_verified_at,
+        };
+      });
+      writeDb(db);
+    },
+    async getOpenPlayCountForDate(date, courtId = null) {
+      return readDb().openPlayRegistrations.filter(r =>
+        r.date === date &&
+        (!courtId || String(r.court_id) === String(courtId)) &&
+        r.payment_status !== 'rejected'
+      ).length;
+    },
+    async deleteOpenPlayRegistration(id) {
+      const db = readDb();
+      db.openPlayRegistrations = db.openPlayRegistrations.filter(r => String(r.id) !== String(id));
+      writeDb(db);
+    },
+
+    async getBlockedDates() { return readDb().blockedDates; },
+    async addBlockedDate(date) {
+      const db = readDb();
+      if (!db.blockedDates.includes(date)) db.blockedDates.push(date);
+      db.blockedDates.sort();
+      writeDb(db);
+    },
+    async removeBlockedDate(date) {
+      const db = readDb();
+      db.blockedDates = db.blockedDates.filter(d => d !== date);
+      writeDb(db);
+    },
+
+    async getAccounts() { return readDb().accounts; },
+    async saveAccount(account) {
+      const db = readDb();
+      const idx = db.accounts.findIndex(a => String(a.id) === String(account.id));
+      if (idx >= 0) db.accounts[idx] = { ...db.accounts[idx], ...account };
+      else db.accounts.push({ ...account, id: account.id || localRef('acc'), createdAt: account.createdAt || nowIso() });
+      writeDb(db);
+    },
+    async deleteAccount(id) {
+      const db = readDb();
+      db.accounts = db.accounts.filter(a => String(a.id) !== String(id));
+      writeDb(db);
+    },
+
+    async getSettings() { return readDb().settings; },
+    async saveSetting(key, value) {
+      const db = readDb();
+      db.settings[key] = value;
+      writeDb(db);
+    },
+
+    async createPaymentSession() { throw new Error('Online checkout is disabled in local data mode.'); },
+    async verifyGcashReceipt() {
+      return { ok: true, status: 'manual_review', flags: ['local_data_mode'], extracted: {}, confidence: 0, message: 'Local data mode: receipt OCR is not sent to Supabase.' };
+    },
+    async getReceiptSignedUrl() { throw new Error('No stored receipt in local data mode.'); },
+    async getOpenPlayReceiptSignedUrl() { throw new Error('No stored receipt in local data mode.'); },
+
+    async seedDefaultData() { readDb(); },
+    async getAgreement(userId, version = 1) {
+      return readDb().agreements.find(a => String(a.userId) === String(userId) && Number(a.version) === Number(version)) || null;
+    },
+    async saveAgreement(data) {
+      const db = readDb();
+      const version = data.version || 1;
+      const idx = db.agreements.findIndex(a => String(a.userId) === String(data.userId) && Number(a.version || 1) === Number(version));
+      const row = { ...data, version, agreedAt: nowIso() };
+      if (idx >= 0) db.agreements[idx] = row;
+      else db.agreements.push(row);
+      writeDb(db);
+    },
+    async getWeeklyFees() { return readDb().weeklyFees; },
+    async saveWeeklyFee(statement) {
+      const db = readDb();
+      const row = { ...statement, id: statement.id || localRef('fee'), generatedAt: statement.generatedAt || nowIso() };
+      db.weeklyFees.unshift(row);
+      writeDb(db);
+      return row;
+    },
+    async updateWeeklyFee(id, updates) {
+      const db = readDb();
+      db.weeklyFees = db.weeklyFees.map(f => String(f.id) === String(id) ? { ...f, ...updates } : f);
+      writeDb(db);
+    },
+    async submitWeeklyFeePayment(id, data) {
+      await this.updateWeeklyFee(id, { ...data, status: 'submitted', submittedAt: nowIso() });
+    },
+  };
+
+  window.PB_RESET_LOCAL_DATA = function resetLocalData() {
+    localStorage.removeItem(STORE_KEY);
+    return readDb();
+  };
+
+  console.info('[CourtYard] Local data mode enabled. Supabase writes are bypassed in this browser.');
+})();
+
 window.Auth = {
 
   // ── Role model ──────────────────────────────────────────
@@ -751,3 +1060,55 @@ window.Auth = {
     return { ok: true };
   },
 };
+
+if (window.PB_USE_LOCAL_DATA) {
+  Object.assign(window.Auth, {
+    async login(usernameOrEmail, password, remember = false) {
+      const accounts = await DB.getAccounts();
+      const user = accounts.find(a =>
+        (a.username === usernameOrEmail || a.email === usernameOrEmail) &&
+        (!a.password || a.password === password)
+      );
+      if (!user) return { ok: false };
+      const session = { ...user, loginAt: new Date().toISOString(), isLocalData: true };
+      const store = remember ? localStorage : sessionStorage;
+      store.setItem('pb_session', JSON.stringify(session));
+      if (remember) localStorage.setItem('pb_remember', '1');
+      return { ok: true };
+    },
+
+    async logout() {
+      sessionStorage.removeItem('pb_session');
+      localStorage.removeItem('pb_session');
+      localStorage.removeItem('pb_remember');
+      window.location.href = 'login.html';
+    },
+
+    async add(d) {
+      const all = await DB.getAccounts();
+      if (all.find(x => x.username === d.username || x.email === d.email)) return { ok: false, msg: 'Username or email already exists.' };
+      const acc = {
+        id: `local_${Date.now().toString(36)}`,
+        fullName: d.fullName,
+        username: d.username,
+        password: d.password,
+        email: d.email,
+        role: this.ROLES.includes(d.role) ? d.role : 'staff',
+        createdAt: new Date().toISOString(),
+      };
+      await DB.saveAccount(acc);
+      return { ok: true };
+    },
+
+    async changePassword(currentPassword, newPassword) {
+      const sess = this.getSession();
+      if (!sess) return { ok: false, msg: 'No active session. Please sign in again.' };
+      const accounts = await DB.getAccounts();
+      const user = accounts.find(a => String(a.id) === String(sess.id));
+      if (user?.password && user.password !== currentPassword) return { ok: false, msg: 'Current password is incorrect.' };
+      if (!newPassword || newPassword.length < 6) return { ok: false, msg: 'New password must be at least 6 characters.' };
+      await DB.saveAccount({ ...user, password: newPassword });
+      return { ok: true };
+    },
+  });
+}

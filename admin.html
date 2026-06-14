@@ -501,6 +501,23 @@ tr:hover td { background: var(--bg2); }
 .op-day input { display: none; }
 .op-day:hover { border-color: var(--green); color: var(--text); }
 .op-day:has(input:checked) { background: var(--green); border-color: var(--green); color: #fff; }
+.op-court-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.op-court-chip {
+  width: 100%;
+  min-width: 0;
+  justify-content: center;
+  padding: 8px 10px;
+  border-radius: 12px;
+}
+.op-court-chip span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 /* ── ADMIN SLOT GRID ───────────────────────────────────── */
 .nb-slots-grid {
@@ -973,7 +990,7 @@ tr:hover td { background: var(--bg2); }
       <div class="toolbar"><h2>🎾 OPEN PLAY</h2></div>
 
       <!-- OPEN PLAY HOURS -->
-      <div class="panel" style="max-width:580px;margin-bottom:20px">
+      <div class="panel" style="max-width:760px;margin-bottom:20px">
         <h4>⏰ Open Play Schedule</h4>
         <p style="color:var(--muted);font-size:.84rem;margin:8px 0 18px">Set the time window when open/drop-in play is available. Courts are open for walk-in players during these hours.</p>
 
@@ -984,6 +1001,16 @@ tr:hover td { background: var(--bg2); }
             <div style="font-weight:700;font-size:.9rem">Enable Open Play</div>
             <div style="font-size:.76rem;color:var(--muted)">When off, open play is not available.</div>
           </div>
+        </div>
+
+        <!-- Court scope -->
+        <div style="margin-bottom:18px;padding-bottom:16px;border-bottom:1px solid var(--border)">
+          <label class="fl" style="margin-bottom:10px">Open Play Courts</label>
+          <label class="op-day" style="justify-content:flex-start;width:max-content;max-width:100%;margin-bottom:10px">
+            <input type="checkbox" id="opAllCourts" onchange="opSyncCourtPicker()"> All courts
+          </label>
+          <div id="opCourtList" class="op-court-grid"></div>
+          <div style="font-size:.76rem;color:var(--muted);margin-top:8px">Choose which courts use this Open Play schedule. Capacity applies separately to each selected court.</div>
         </div>
 
         <!-- Time range -->
@@ -1033,9 +1060,9 @@ tr:hover td { background: var(--bg2); }
               <div style="font-size:.76rem;color:var(--muted);margin-top:4px">Customers pay 50% or 100% of this.</div>
             </div>
             <div>
-              <label class="fl" style="margin-bottom:6px">Max Players per Day</label>
+              <label class="fl" style="margin-bottom:6px">Max Players per Court / Day</label>
               <input type="number" class="fi" id="opMaxPlayers" min="1" step="1" placeholder="40"/>
-              <div style="font-size:.76rem;color:var(--muted);margin-top:4px">Sign-ups blocked when limit is reached.</div>
+              <div style="font-size:.76rem;color:var(--muted);margin-top:4px">Limit applies separately to each Open Play court.</div>
             </div>
           </div>
         </div>
@@ -1048,8 +1075,11 @@ tr:hover td { background: var(--bg2); }
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
           <h4 style="margin:0">📋 Open Play Reservations</h4>
           <div style="display:flex;gap:8px;align-items:center">
+            <select class="fi" id="opRegCourt" style="max-width:180px" onchange="renderOpRegistrations()">
+              <option value="">All Courts</option>
+            </select>
             <input type="date" class="fi" id="opRegDate" style="max-width:160px" onchange="renderOpRegistrations()"/>
-            <button class="btn btn-sm" style="border:1px solid var(--border);color:var(--muted);background:transparent;font-size:.78rem" onclick="$('opRegDate').value='';renderOpRegistrations()">Clear</button>
+            <button class="btn btn-sm" style="border:1px solid var(--border);color:var(--muted);background:transparent;font-size:.78rem" onclick="$('opRegDate').value='';$('opRegCourt').value='';renderOpRegistrations()">Clear</button>
           </div>
         </div>
         <div id="opRegList"><p style="color:var(--muted);font-style:italic">Loading…</p></div>
@@ -1814,6 +1844,7 @@ async function goto(s){
    ============================================== */
 let _admRtDebounce=null;
 function startAdminRealtime(){
+  if (window.PB_USE_LOCAL_DATA) return;
   const rerender=()=>{
     clearTimeout(_admRtDebounce);
     _admRtDebounce=setTimeout(async ()=>{
@@ -2638,12 +2669,17 @@ async function openNewBookingModal() {
   $('newBookingModal').classList.add('show');
 }
 
-function _nbIsOpenPlayHour(dateStr, h) {
+function _nbIsOpenPlayHour(dateStr, h, courtId = null) {
   if (!_nbOpenPlayCfg || !_nbOpenPlayCfg.enabled) return false;
+  const courtIds = Array.isArray(_nbOpenPlayCfg.courtIds) ? _nbOpenPlayCfg.courtIds.map(String).filter(Boolean) : [];
+  if (courtId && courtIds.length > 0 && !courtIds.includes(String(courtId))) return false;
   const dow = new Date(dateStr + 'T00:00:00').getDay();
   const specificDates = Array.isArray(_nbOpenPlayCfg.specificDates) ? _nbOpenPlayCfg.specificDates : [];
   if (!(_nbOpenPlayCfg.days || []).includes(dow) && !specificDates.includes(dateStr)) return false;
-  return h >= _nbOpenPlayCfg.start && h < _nbOpenPlayCfg.end;
+  const start = Number(_nbOpenPlayCfg.start);
+  const end = Number(_nbOpenPlayCfg.end);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || start === end) return false;
+  return start < end ? (h >= start && h < end) : (h >= start || h < end);
 }
 
 function _nbCheckRule(rule, dateStr, h, courtId) {
@@ -2706,7 +2742,7 @@ async function nbRenderSlots() {
 
   // Remove stale selections
   _nbSelSlots = _nbSelSlots.filter(h =>
-    !_nbBookedSlots.has(h) && !(isToday && h <= curHour) && !_nbIsOpenPlayHour(date, h) && !_nbIsMaintenanceHour(date, h, court.id)
+    !_nbBookedSlots.has(h) && !(isToday && h <= curHour) && !_nbIsOpenPlayHour(date, h, court.id) && !_nbIsMaintenanceHour(date, h, court.id)
   );
 
   let availCount = 0;
@@ -2719,7 +2755,7 @@ async function nbRenderSlots() {
     const isNow = isToday && h === curHour;
     const isBooked = _nbBookedSlots.has(h);
     const isSel = _nbSelSlots.includes(h);
-    const isOP = _nbIsOpenPlayHour(date, h);
+    const isOP = _nbIsOpenPlayHour(date, h, court.id);
     const isMT = _nbIsMaintenanceHour(date, h, court.id);
     const isUnavail = isPast || isBooked || isOP || isMT || isNow;
 
@@ -2776,7 +2812,7 @@ function nbToggleSlot(h) {
   if (_nbBookedSlots.has(h)) { toast('This slot is already booked.', 'err'); return; }
   if (isToday && h < curHour) { toast('This time has passed.', 'err'); return; }
   if (isToday && h === curHour) { toast('This hour is in progress.', 'inf'); return; }
-  if (_nbIsOpenPlayHour(date, h)) { toast('Reserved for Open Play.', 'inf'); return; }
+  if (_nbIsOpenPlayHour(date, h, courtId)) { toast('Reserved for Open Play.', 'inf'); return; }
   if (_nbIsMaintenanceHour(date, h, court.id)) {
     const rule = (() => { if (!_nbMaintenanceCfg) return null; if (Array.isArray(_nbMaintenanceCfg.rules)) return _nbMaintenanceCfg.rules.find(r => _nbCheckRule(r, date, h, court.id)) || null; return _nbCheckRule(_nbMaintenanceCfg, date, h, court.id) ? _nbMaintenanceCfg : null; })();
     const lbl = {maintenance:'Maintenance',reserved:'Reserved',blocked:'Blocked',private:'Private Event',group:'Group Session'}[rule?.label] || 'Maintenance';
@@ -3041,7 +3077,7 @@ async function saveReschedule() {
     renderDash();
 
     // Send reschedule email fire-and-forget
-    DB.getBookingByRef(ref).then(bk => {
+    if (!window.PB_USE_LOCAL_DATA) DB.getBookingByRef(ref).then(bk => {
       if (!bk?.email) return;
       fetch('https://ikeujqaqmwmvkyhjqdmv.functions.supabase.co/send-reschedule-email', {
         method: 'POST',
@@ -4194,6 +4230,53 @@ function opPopulateTimePickers() {
 }
 
 let _opDates = [];
+let _opCourts = [];
+
+function opRenderCourtPicker(courts = [], selectedIds = []) {
+  _opCourts = courts || [];
+  const list = $('opCourtList');
+  const allToggle = $('opAllCourts');
+  if (!list || !allToggle) return;
+  const availableIds = new Set(_opCourts.map(c => String(c.id)));
+  const ids = (selectedIds || []).map(String).filter(id => availableIds.has(id));
+  const allCourts = ids.length === 0;
+  allToggle.checked = allCourts;
+  allToggle.disabled = !_opCourts.length;
+  if (!_opCourts.length) {
+    list.innerHTML = '<p style="grid-column:1/-1;color:var(--muted);font-style:italic;margin:0">No courts found yet.</p>';
+    return;
+  }
+  allToggle.disabled = false;
+  list.innerHTML = _opCourts.map(c => {
+    const id = String(c.id);
+    const checked = allCourts || ids.includes(id) ? 'checked' : '';
+    return `<label class="op-day op-court-chip"><input type="checkbox" class="op-court-cb" value="${esc(id)}" ${checked} onchange="opSyncCourtPicker()"> <span>${esc(c.name || 'Court')}</span></label>`;
+  }).join('');
+  opSyncCourtPicker();
+}
+
+function opSyncCourtPicker() {
+  const allCourts = $('opAllCourts')?.checked !== false;
+  document.querySelectorAll('.op-court-cb').forEach(cb => {
+    cb.disabled = allCourts;
+    if (allCourts) cb.checked = true;
+  });
+}
+
+function opSelectedCourtIds() {
+  if ($('opAllCourts')?.checked !== false) return [];
+  return [...document.querySelectorAll('.op-court-cb:checked')].map(cb => cb.value);
+}
+
+function opRenderRegCourtFilter(courts = []) {
+  const sel = $('opRegCourt');
+  if (!sel) return;
+  const current = sel.value;
+  sel.innerHTML = '<option value="">All Courts</option>' + (courts || [])
+    .map(c => `<option value="${esc(String(c.id))}">${esc(c.name || 'Court')}</option>`)
+    .join('');
+  sel.value = [...sel.options].some(o => o.value === current) ? current : '';
+}
 
 function opAddDate() {
   const v = $('opNewDate').value;
@@ -4218,10 +4301,12 @@ function opRenderDateList() {
 
 async function renderBlocked(){
   // Load open play settings
-  const settings = await DB.getSettings();
+  const [settings, courts] = await Promise.all([DB.getSettings(), DB.getCourts()]);
   const cfg = settings.open_play_config ? JSON.parse(settings.open_play_config) : { enabled: true, start: 17, end: 24, days: [1,2,3,4,5,6], fee: 100, maxPlayers: 40 };
 
   opPopulateTimePickers();
+  opRenderCourtPicker(courts, cfg.courtIds || []);
+  opRenderRegCourtFilter(courts);
   $('opEnabled').checked = cfg.enabled !== false;
   $('opStart').value = cfg.start ?? 17;
   $('opEnd').value   = cfg.end   ?? 24;
@@ -4253,11 +4338,13 @@ async function saveOpenPlay() {
   const days    = [...document.querySelectorAll('#opDays input:checked')].map(cb => Number(cb.value));
   const fee        = parseFloat($('opFee').value) || 100;
   const maxPlayers = parseInt($('opMaxPlayers').value) || 40;
+  const courtIds = opSelectedCourtIds();
 
   if (enabled && end <= start) { toast('End time must be after start time.', 'err'); return; }
   if (enabled && days.length === 0 && _opDates.length === 0) { toast('Select at least one active day or add a specific date.', 'err'); return; }
+  if (enabled && $('opAllCourts')?.checked === false && courtIds.length === 0) { toast('Select at least one Open Play court, or choose All courts.', 'err'); return; }
 
-  await DB.saveSetting('open_play_config', JSON.stringify({ enabled, start, end, days, specificDates: _opDates, fee, maxPlayers }));
+  await DB.saveSetting('open_play_config', JSON.stringify({ enabled, start, end, days, specificDates: _opDates, courtIds, fee, maxPlayers }));
   toast('Open Play schedule saved!');
 }
 
@@ -4267,13 +4354,17 @@ async function renderOpRegistrations() {
   el.innerHTML = '<p style="color:var(--muted);font-style:italic">Loading…</p>';
   let regs = await DB.getOpenPlayRegistrations();
   const filterDate = $('opRegDate')?.value;
+  const filterCourt = $('opRegCourt')?.value;
   if (filterDate) regs = regs.filter(r => r.date === filterDate);
+  if (filterCourt) regs = regs.filter(r => String(r.court_id) === String(filterCourt));
   if (regs.length === 0) {
     el.innerHTML = '<p style="color:var(--muted);font-style:italic">No Open Play reservations found.</p>';
     return;
   }
   const fmt = n => '₱' + Number(n).toLocaleString('en-PH', { minimumFractionDigits: 2 });
   const methodLabel = m => ({ gcash: 'GCash', gotyme: 'GoTyme', pnb: 'PNB', cash: 'Cash' }[m] || (m || 'Cash'));
+  const activeRegs = regs.filter(r => r.payment_status !== 'rejected');
+  const maxPerCourt = $('opMaxPlayers')?.value || '?';
   el.innerHTML = `
     <div style="overflow-x:auto">
       <table style="width:100%;border-collapse:collapse;font-size:.82rem">
@@ -4322,7 +4413,7 @@ async function renderOpRegistrations() {
         </tbody>
       </table>
     </div>
-    <div style="margin-top:10px;font-size:.78rem;color:var(--muted)">${regs.length} / ${$('opMaxPlayers')?.value || '?'} players · Total collected: <strong style="color:var(--text)">${fmt(regs.reduce((s, r) => s + Number(r.amount), 0))}</strong></div>`;
+    <div style="margin-top:10px;font-size:.78rem;color:var(--muted)">${activeRegs.length} active reservations shown · Max ${maxPerCourt} per court/day · Total collected: <strong style="color:var(--text)">${fmt(activeRegs.reduce((s, r) => s + Number(r.amount), 0))}</strong></div>`;
 }
 
 async function deleteOpReg(id) {

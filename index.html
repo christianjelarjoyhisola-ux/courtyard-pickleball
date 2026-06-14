@@ -257,6 +257,41 @@ body.light .nav { background:rgba(248,250,252,.92); }
 @media(max-width:480px){ .cc-slots-grid{ grid-template-columns:repeat(3,1fr); gap:5px; } }
 @media(max-width:340px){ .cc-slots-grid{ grid-template-columns:repeat(2,1fr); } }
 
+/* ── PICKLEBALL LOADER ── */
+.pb-loader {
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:18px; padding:60px 20px; text-align:center; grid-column:1/-1;
+}
+.pb-ball {
+  width:64px; height:64px; border-radius:50%;
+  background:radial-gradient(circle at 32% 30%, #fde047, #facc15 55%, #d4a017);
+  box-shadow:inset -6px -6px 12px rgba(120,80,0,.35), 0 6px 18px rgba(250,204,21,.35);
+  position:relative;
+  animation:pb-spin 1s linear infinite;
+}
+/* perforated holes spread across the face like a real pickleball */
+.pb-ball::before {
+  content:''; position:absolute; top:30px; left:30px;
+  width:6px; height:6px; border-radius:50%;
+  background:rgba(90,62,0,.55);
+  box-shadow:
+    -16px -14px 0 0 rgba(90,62,0,.5),
+     2px  -20px 0 0 rgba(90,62,0,.5),
+    18px  -10px 0 0 rgba(90,62,0,.5),
+   -20px    2px 0 0 rgba(90,62,0,.5),
+    20px    6px 0 0 rgba(90,62,0,.5),
+   -10px   18px 0 0 rgba(90,62,0,.5),
+    12px   18px 0 0 rgba(90,62,0,.5);
+}
+@keyframes pb-spin { to { transform:rotate(360deg); } }
+.pb-loader-txt {
+  font-family:'Bebas Neue',sans-serif; font-size:1.15rem; letter-spacing:1.5px;
+  color:var(--accent);
+}
+.pb-loader-txt::after { content:''; animation:pb-dots 1.4s steps(4,end) infinite; }
+@keyframes pb-dots { 0%{content:'';} 25%{content:'.';} 50%{content:'..';} 75%{content:'...';} }
+@media (prefers-reduced-motion: reduce) { .pb-ball { animation-duration:2.4s; } }
+
 /* ── MOBILE COURT TABS ── */
 .court-tabs {
   display:none;
@@ -1496,7 +1531,12 @@ body.light #splashScreen { background: var(--bg); }
   </div>
   <div class="court-tabs-hint">👇 Tap a court to view available times 👇</div>
   <div id="courtTabs" class="court-tabs"></div>
-  <div class="courts" id="courtsGrid"></div>
+  <div class="courts" id="courtsGrid">
+    <div class="pb-loader">
+      <div class="pb-ball" aria-hidden="true"></div>
+      <div class="pb-loader-txt">Loading courts</div>
+    </div>
+  </div>
 </div>
 
 <!-- BOOKING MODAL — 4-step wizard -->

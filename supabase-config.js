@@ -462,15 +462,6 @@ window.DB = {
         { id: 'c2', name: 'Court Beta',  description: 'Outdoor · Air passing through · Standard Flooring', rate: 280, blocked: false, feats: ['Outdoor','Open Air','Standard Floor'], photo: null },
       ]);
     }
-
-    const accounts = await this.getAccounts();
-    if (accounts.length === 0) {
-      await _sb.from('accounts').insert([{
-        id: 'dev_001', username: 'developer', password: 'dev123',
-        role: 'developer', full_name: 'Super Admin',
-        email: 'dev@pickleballhub.com', created_at: new Date().toISOString(),
-      }]);
-    }
   },
 
   // Check if user has accepted the current agreement version

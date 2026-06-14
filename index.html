@@ -3627,12 +3627,17 @@ async function refreshLiveViews() {
 }
 
 function startRealtime() {
-  _supabase.channel('bookings-rt')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => {
-      // Debounce: a single booking can emit several row events in quick succession.
-      clearTimeout(_rtDebounce);
-      _rtDebounce = setTimeout(() => { refreshLiveViews().catch(() => {}); }, 250);
-    })
+  const onChange = () => {
+    // Debounce: a single booking can emit several row events in quick succession.
+    clearTimeout(_rtDebounce);
+    _rtDebounce = setTimeout(() => { refreshLiveViews().catch(() => {}); }, 250);
+  };
+  _supabase.channel('public-rt')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, onChange)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'courts' }, onChange)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, onChange)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'blocked_dates' }, onChange)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'open_play_registrations' }, onChange)
     .subscribe();
 }
 

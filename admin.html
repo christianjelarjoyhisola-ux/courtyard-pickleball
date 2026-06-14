@@ -1669,6 +1669,8 @@ let sess;
    ============================================== */
 const titles={dash:'Dashboard',bookings:'Bookings',reports:'Reports',courts:'Courts',accounts:'Accounts',blocked:'Open Play',maintenance:'Maintenance',payments:'Payments'};
 const SECTION_PERM={dash:'dashboard',bookings:'bookings',reports:'reports',courts:'courts',accounts:'accounts',blocked:'open_play',maintenance:'maintenance',payments:'payments'};
+const SECTION_LOADERS={dash:renderDash,bookings:renderBookings,reports:renderReport,courts:renderCourts,accounts:renderAccounts,blocked:renderBlocked,maintenance:renderMaintenance,payments:renderPaymentSettings};
+let _curSection=null;
 async function goto(s){
   // Block navigation to sections the current role can't access
   const perm=SECTION_PERM[s];
@@ -1679,8 +1681,37 @@ async function goto(s){
   $('topTitle').textContent=titles[s]||s;
   document.getElementById('sidebar').classList.remove('open');
   document.getElementById('sidebarOverlay').classList.remove('show');
-  const loaders={dash:renderDash,bookings:renderBookings,reports:renderReport,courts:renderCourts,accounts:renderAccounts,blocked:renderBlocked,maintenance:renderMaintenance,payments:renderPaymentSettings};
-  if(loaders[s]) await loaders[s]();
+  _curSection=s;
+  if(SECTION_LOADERS[s]) await SECTION_LOADERS[s]();
+}
+
+/* ==============================================
+   REALTIME — keep the admin dashboard live (no manual refresh)
+   ============================================== */
+let _admRtDebounce=null;
+function startAdminRealtime(){
+  const rerender=()=>{
+    clearTimeout(_admRtDebounce);
+    _admRtDebounce=setTimeout(async ()=>{
+      // Never clobber a form the admin is actively editing (e.g. payment settings).
+      const ae=document.activeElement;
+      if(ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return;
+      // Don't yank content out from under an open modal dialog.
+      if(document.querySelector('.overlay.show')) return;
+      try{
+        if(_curSection && SECTION_LOADERS[_curSection]) await SECTION_LOADERS[_curSection]();
+      }catch(_){}
+    },300);
+  };
+  _supabase.channel('admin-rt')
+    .on('postgres_changes',{event:'*',schema:'public',table:'bookings'},rerender)
+    .on('postgres_changes',{event:'*',schema:'public',table:'courts'},rerender)
+    .on('postgres_changes',{event:'*',schema:'public',table:'settings'},rerender)
+    .on('postgres_changes',{event:'*',schema:'public',table:'blocked_dates'},rerender)
+    .on('postgres_changes',{event:'*',schema:'public',table:'open_play_registrations'},rerender)
+    .on('postgres_changes',{event:'*',schema:'public',table:'weekly_fees'},rerender)
+    .on('postgres_changes',{event:'*',schema:'public',table:'accounts'},rerender)
+    .subscribe();
 }
 
 /* ==============================================
@@ -4270,6 +4301,7 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   // Show agreement gate for court_owner before entering dashboard
   const gated = await checkAgreementGate(sess);
   if (!gated) await goto(firstAllowed);
+  startAdminRealtime();
 });
 
 /* ==============================================

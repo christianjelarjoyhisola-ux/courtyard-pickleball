@@ -261,6 +261,7 @@ tr:hover td { background: var(--bg2); }
 .bdg-p { background: var(--yellow-bg); color: var(--yellow); }
 .bdg-c { background: var(--green-bg); color: var(--green); }
 .bdg-d { background: rgba(128,128,255,.1); color: #7070ee; }
+.bdg-v { background: rgba(100,180,255,.15); color: #4a9ad4; }
 .bdg-x { background: var(--red-bg); color: var(--red); }
 
 /* ── FORM ──────────────────────────────────────────────── */
@@ -467,6 +468,7 @@ tr:hover td { background: var(--bg2); }
 .cal-dot.pending { background: var(--yellow); }
 .cal-dot.confirmed { background: var(--green); }
 .cal-dot.completed { background: #4fc3f7; }
+.cal-dot.verifying { background: #4a9ad4; }
 .cal-dot.cancelled { background: var(--red); }
 .cal-count { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; }
 .cal-legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 14px; font-size: 12px; color: var(--text3); }
@@ -591,7 +593,7 @@ tr:hover td { background: var(--bg2); }
   th { font-weight: 700 !important; background: #eee !important; }
   tr { page-break-inside: avoid; }
   code { font-family: inherit !important; font-size: inherit !important; }
-  .bdg-p, .bdg-c, .bdg-d, .r-mgr, .r-owner, .r-court-owner, .r-staff { border: 1px solid #000 !important; padding: 1px 5px !important; font-weight: 700 !important; }
+  .bdg-p, .bdg-c, .bdg-d, .bdg-v, .r-mgr, .r-owner, .r-court-owner, .r-staff { border: 1px solid #000 !important; padding: 1px 5px !important; font-weight: 700 !important; }
   @page { margin: 5mm; }
 }
 </style>
@@ -761,6 +763,7 @@ tr:hover td { background: var(--bg2); }
           <span><span class="cal-dot pending"></span>Pending</span>
           <span><span class="cal-dot confirmed"></span>Confirmed</span>
           <span><span class="cal-dot completed"></span>Completed</span>
+          <span><span class="cal-dot verifying"></span>Processing</span>
           <span><span class="cal-dot cancelled"></span>Cancelled</span>
         </div>
       </div>
@@ -777,6 +780,7 @@ tr:hover td { background: var(--bg2); }
                 <option value="pending">Pending</option>
                 <option value="confirmed">Confirmed</option>
                 <option value="completed">Completed</option>
+                <option value="verifying">Processing</option>
                 <option value="cancelled">Cancelled</option>
               </select>
               <button class="btn btn-g btn-sm" onclick="clearFilters()">Clear</button>
@@ -1648,7 +1652,7 @@ function toggleSidebar() {
 const $=id=>document.getElementById(id);
 const fmt=n=>'₱'+Number(n).toLocaleString('en-PH',{minimumFractionDigits:2});
 const fmtD=s=>{if(!s)return'—';return new Date(s+'T00:00:00').toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'});};
-function statusBdg(s){const m={pending:'bdg-p',confirmed:'bdg-c',completed:'bdg-d',cancelled:'bdg-x'};return`<span class="bdg ${m[s]||''}">${s}</span>`;}
+function statusBdg(s){const m={pending:'bdg-p',confirmed:'bdg-c',completed:'bdg-d',verifying:'bdg-v',cancelled:'bdg-x'};return`<span class="bdg ${m[s]||''}">${s}</span>`;}
 function payStatusBdg(s){
   const v = (s || 'unpaid').toLowerCase();
   const label = v === 'paid' ? 'Fully Paid' : v === 'downpayment_paid' ? 'Downpayment Paid' : v === 'for_verification' ? 'For Verification' : v === 'pending' ? 'Pending' : v === 'failed' ? 'Failed' : 'Unpaid';
@@ -2038,6 +2042,7 @@ async function renderBookings(){
         <select class="fi" style="padding:4px 7px;font-size:.76rem;width:auto" onchange="updateStatus('${b.ref}',this.value)">
           <option value="pending" ${b.status==='pending'?'selected':''}>Pending</option>
           <option value="confirmed" ${b.status==='confirmed'?'selected':''}>Confirmed</option>
+          <option value="verifying" ${b.status==='verifying'?'selected':''}>Processing</option>
           <option value="completed" ${b.status==='completed'?'selected':''}>Completed</option>
           <option value="cancelled" ${b.status==='cancelled'?'selected':''}>Cancelled</option>
         </select>
@@ -2881,11 +2886,13 @@ function _rpDateRange(){
 async function renderReport(){
   const allBks=await DB.getBookings();
   const{from,to}=_rpDateRange();
-  let bks=allBks.filter(b=>b.status!=='cancelled');
+  // Active bookings = confirmed + verifying + completed (exclude pending & cancelled)
+  let bks=allBks.filter(b=>['confirmed','verifying','completed'].includes(b.status));
   if(from) bks=bks.filter(b=>b.date>=from);
   if(to)   bks=bks.filter(b=>b.date<=to);
   _rpBks=bks;
 
+  // Gross revenue = only from active (confirmed/verifying/completed) bookings
   const gross=bks.reduce((s,b)=>s+(b.total||0),0);
   const collected=bks.filter(b=>b.paymentStatus==='paid').reduce((s,b)=>s+(b.total||0),0);
   const pending=bks.filter(b=>!b.paymentStatus||b.paymentStatus==='unpaid'||b.paymentStatus==='downpayment_paid').reduce((s,b)=>s+(b.total||0),0);
@@ -2918,7 +2925,7 @@ async function renderReport(){
       <div class="rp-bar-val">${fmt(rev)}</div>
     </div>`).join('');
 
-  // Monthly trend — last 6 months (always all bookings, not filtered by period)
+  // Monthly trend — last 6 months (only active bookings: confirmed/verifying/completed)
   const now2=new Date();
   const months=[];
   for(let i=5;i>=0;i--){
@@ -2926,7 +2933,7 @@ async function renderReport(){
     months.push({label:d.toLocaleDateString('en-PH',{month:'short',year:'2-digit'}),key:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`});
   }
   const monthMap={};
-  allBks.filter(b=>b.status!=='cancelled').forEach(b=>{
+  allBks.filter(b=>['confirmed','verifying','completed'].includes(b.status)).forEach(b=>{
     const mk=(b.date||'').substring(0,7);
     if(months.find(m=>m.key===mk)) monthMap[mk]=(monthMap[mk]||0)+(b.total||0);
   });

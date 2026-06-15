@@ -13,7 +13,7 @@
 // Decision lanes:
 //   auto_approved : zero hard flags, zero soft flags, OCR confident
 //   manual_review : soft flag(s) or unreadable fields or low confidence
-//   rejected      : any hard flag (duplicate / wrong number / underpay / stale)
+//   rejected      : any hard flag (duplicate ref / wrong number / underpay / stale)
 //
 // Rejections never auto-cancel the booking (OCR is heuristic — avoid harming
 // honest customers). They flag the booking red and alert the admin.
@@ -41,7 +41,6 @@ const HARD_FLAGS = new Set([
   "SUSPECTED_FAKE",     // OCR ran and image has zero receipt-like content
   "IMAGE_UNREADABLE",   // OCR found NO text at all -> random/blank/non-receipt image
   "DUPLICATE_REF",
-  "DUPLICATE_IMAGE",
   "REF_MISMATCH",
   "DATE_NOT_TODAY",
   "TIME_EXPIRED",
@@ -107,17 +106,6 @@ async function dHash(bytes: Uint8Array): Promise<string | null> {
     return null; // HEIC/unknown formats — skip perceptual dedupe, not fatal
   }
 }
-
-function hammingHex(a: string, b: string): number {
-  if (!a || !b || a.length !== b.length) return 999;
-  let dist = 0;
-  for (let i = 0; i < a.length; i++) {
-    let x = parseInt(a[i], 16) ^ parseInt(b[i], 16);
-    while (x) { dist += x & 1; x >>= 1; }
-  }
-  return dist;
-}
-
 function phManilaNow(): Date {
   // Current instant shifted to UTC+8 wall clock.
   return new Date(Date.now() + 8 * 60 * 60 * 1000);
@@ -469,9 +457,10 @@ Deno.serve(async (req) => {
     const expectedName = expectedMerchant.name;
     const expectedAmount = Number(booking.downpayment ?? (Number(booking.total) || 0) / 2);
 
-    // Hashes (computed before OCR so duplicate images short-circuit cost).
+    // Keep an image hash for audit metadata only. Repeated GCash screenshots
+    // are allowed; payment details/ref are the source of truth.
     const imageHash = await sha256Hex(bytes);
-    const phash = await dHash(bytes);
+    const phash = null;
 
     // Store the image immediately (evidence kept even if rejected).
     const ext = contentType.includes("png") ? "png" : contentType.includes("webp") ? "webp" : "jpg";
@@ -483,27 +472,6 @@ Deno.serve(async (req) => {
     if (upErr) console.error("receipt upload failed:", errMsg(upErr));
 
     const flags: string[] = [];
-
-    // ── duplicate-image checks (exact + perceptual) ─────────────────────────
-    {
-      const { data: dupExact } = await db
-        .from("bookings")
-        .select("ref")
-        .eq("receipt_image_hash", imageHash)
-        .neq("ref", bookingRef)
-        .limit(1);
-      if (dupExact && dupExact.length) flags.push("DUPLICATE_IMAGE");
-    }
-    if (phash && !flags.includes("DUPLICATE_IMAGE")) {
-      const { data: others } = await db
-        .from("bookings")
-        .select("ref, receipt_phash")
-        .neq("ref", bookingRef)
-        .not("receipt_phash", "is", null);
-      for (const o of others || []) {
-        if (hammingHex(phash, o.receipt_phash as string) <= 6) { flags.push("DUPLICATE_IMAGE"); break; }
-      }
-    }
 
     // ── OCR ─────────────────────────────────────────────────────────────────
     const visionKey = Deno.env.get("GOOGLE_VISION_API_KEY") || "";

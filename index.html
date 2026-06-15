@@ -2554,7 +2554,7 @@ function applyPaymentMethodVisibility() {
   if ($('payOptPnb')) $('payOptPnb').style.display = paymentMethods.pnb ? '' : 'none';
 
   const enabledMethods = ['gcash', 'gotyme', 'pnb', 'cash'].filter(m => paymentMethods[m]);
-  if ($('payMethodBlock')) $('payMethodBlock').style.display = enabledMethods.length > 1 ? '' : 'none';
+  if ($('payMethodBlock')) $('payMethodBlock').style.display = enabledMethods.length === 1 ? 'none' : '';
 
   const hasAny = paymentMethods.cash || paymentMethods.gcash || paymentMethods.gotyme || paymentMethods.pnb;
   if ($('payMethodsHint')) {
@@ -2564,17 +2564,36 @@ function applyPaymentMethodVisibility() {
 
   const selected = $('bPay')?.value || '';
   if (selected && !paymentMethods[selected]) {
-    $('bPay').value = '';
-    document.querySelectorAll('.pay-opt').forEach(el => el.classList.remove('on'));
-    $('gcashBox').classList.remove('show');
-    $('gotymeBox').classList.remove('show');
-    $('pnbBox').classList.remove('show');
-    const refWrap = $('gcashRefWrap');
-    if (refWrap) refWrap.style.display = 'none';
-    $('cashNote').style.display = 'none';
+    clearPaymentSelection();
   }
   if ((!$('bPay')?.value || !paymentMethods[$('bPay')?.value]) && enabledMethods.length) {
     pickPay(enabledMethods[0]);
+  }
+}
+
+function clearPaymentSelection() {
+  if ($('bPay')) $('bPay').value = '';
+  document.querySelectorAll('.pay-opt').forEach(el => el.classList.remove('on'));
+  $('gcashBox')?.classList.remove('show');
+  $('gotymeBox')?.classList.remove('show');
+  $('pnbBox')?.classList.remove('show');
+  const refWrap = $('gcashRefWrap');
+  if (refWrap) refWrap.style.display = 'none';
+  if ($('cashNote')) $('cashNote').style.display = 'none';
+}
+
+function ensurePaymentStepReady() {
+  applyPaymentMethodVisibility();
+  const enabledMethods = ['gcash', 'gotyme', 'pnb', 'cash'].filter(m => paymentMethods[m]);
+  const selected = $('bPay')?.value || '';
+  if (!enabledMethods.length) {
+    clearPaymentSelection();
+    return;
+  }
+  if (!selected || !paymentMethods[selected]) {
+    pickPay(enabledMethods[0]);
+  } else {
+    pickPay(selected);
   }
 }
 
@@ -2895,7 +2914,10 @@ function wizGoTo(n) {
   $('wizNextBtn').textContent = n === 4 ? '🎾 Confirm Booking' : 'Next →';
   if (n === 2) { renderSlots(); }
   if (n === 3) { updateWiz3Summary(); }
-  if (n === 4) { updatePrice(); }
+  if (n === 4) {
+    ensurePaymentStepReady();
+    updatePrice();
+  }
   const body = document.querySelector('.bk-modal-body');
   if (body) body.scrollTop = 0;
 }
@@ -3683,6 +3705,7 @@ async function submitBooking(e) {
     submitBtn.disabled = true;
     submitBtn.textContent = 'Processing...';
   }
+  ensurePaymentStepReady();
   const payMethod = $('bPay').value;
   const gcashRef  = $('bGcashRef')?.value?.trim() || '';
   const hasPaymentMethod = paymentMethods.cash || paymentMethods.gcash || paymentMethods.gotyme || paymentMethods.pnb;

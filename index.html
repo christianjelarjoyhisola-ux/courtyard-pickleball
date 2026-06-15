@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6965664743687392" crossorigin="anonymous"></script>
 <title>CourtYard Pickleball — Sibagat, Agusan del Sur</title>
 <link rel="icon" type="image/jpeg" href="courtyard-logo.jpg">
@@ -1107,7 +1107,7 @@ footer { background:var(--card); border-top:1px solid var(--border); padding:40p
   .sec{padding:32px 14px;}
   .fg { margin-bottom:10px; }
   .fl { margin-bottom:4px; }
-  .fi { padding:8px 11px; font-size:.87rem; }
+  .fi { padding:8px 11px; font-size:16px; }
   .frow { gap:10px; margin-bottom:10px; }
   .wiz-sec-title { margin-bottom:10px; padding-bottom:6px; }
   .bk-sum-row { padding:3px 0; font-size:.8rem; }
@@ -4233,6 +4233,17 @@ function animateStat(el, final) {
   requestAnimationFrame(step);
 }
 
+function lockMobileZoom() {
+  document.addEventListener('gesturestart', e => e.preventDefault(), { passive: false });
+  document.addEventListener('gesturechange', e => e.preventDefault(), { passive: false });
+  let lastTouchEnd = 0;
+  document.addEventListener('touchend', e => {
+    const now = Date.now();
+    if (now - lastTouchEnd <= 300) e.preventDefault();
+    lastTouchEnd = now;
+  }, { passive: false });
+}
+
 /* =============================================
    INIT
    ============================================= */
@@ -4249,6 +4260,7 @@ function dismissSplash() {
 document.body.style.overflow = 'hidden';
 
 document.addEventListener('DOMContentLoaded', async () => {
+  lockMobileZoom();
   initDark();
   await DB.seedDefaultData();
   await loadOperatingHours();

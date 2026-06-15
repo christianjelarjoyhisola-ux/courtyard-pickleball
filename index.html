@@ -682,13 +682,9 @@ select.fi option { background:var(--card); }
   background:var(--input); border:1px solid rgba(244,168,37,.34); border-radius:8px;
   padding:11px 12px; margin-bottom:12px;
 }
-.bpay-summary-top { display:grid; grid-template-columns:1fr 1fr; gap:10px; text-align:center; margin-bottom:9px; }
+.bpay-summary-top { display:grid; grid-template-columns:1fr; gap:10px; text-align:center; }
 .bpay-summary-lbl { display:block; font-size:.62rem; color:var(--muted); text-transform:uppercase; letter-spacing:.7px; font-weight:800; margin-bottom:2px; }
 .bpay-summary-val { display:block; color:#f4a825; font-size:1.1rem; font-weight:900; line-height:1.1; }
-.bpay-fees { border-top:1px solid rgba(244,168,37,.2); padding-top:8px; display:grid; gap:4px; }
-.bpay-fees .pr { padding:0; font-size:.74rem; color:var(--muted); }
-.bpay-fees .pr span:last-child { color:var(--text); font-weight:800; }
-.bpay-fees .pr.tot span { color:#f4a825; font-weight:900; }
 .bpay-card {
   padding:12px; margin-top:0; text-align:left; border-radius:8px;
   background:rgba(var(--ac),.055); border:1px solid rgba(var(--ac),.24);
@@ -1898,16 +1894,6 @@ body.light #splashScreen { background: var(--bg); }
                 <span class="bpay-summary-lbl" id="pDownLabel">50% Downpayment</span>
                 <span class="bpay-summary-val" id="pDown">₱0.00</span>
               </div>
-              <div>
-                <span class="bpay-summary-lbl">Total</span>
-                <span class="bpay-summary-val" id="pTot">₱0.00</span>
-              </div>
-            </div>
-            <div class="bpay-fees">
-              <div class="pr"><span>Duration</span><span id="pHrs">0 hrs</span></div>
-              <div class="pr"><span>Hourly Rate</span><span id="pRate">₱0/hr</span></div>
-              <div class="pr"><span>Court Fee</span><span id="pCourtFee">₱0.00</span></div>
-              <div class="pr" id="pSvcFeeRow" style="display:none"><span>System Usage Fee</span><span id="pSvcFee">₱0.00</span></div>
             </div>
           </div>
 
@@ -3490,13 +3476,13 @@ function updatePrice() {
     : selectedRates.length > 1
       ? `${fmt(selectedRates[0])} – ${fmt(selectedRates[selectedRates.length - 1])}/hr`
       : (court ? fmt(court.rate) + '/hr' : '—');
-  $('pHrs').textContent  = `${hrs} hr${hrs !== 1 ? 's' : ''}`;
-  $('pRate').textContent = rateLabel;
+  if ($('pHrs')) $('pHrs').textContent  = `${hrs} hr${hrs !== 1 ? 's' : ''}`;
+  if ($('pRate')) $('pRate').textContent = rateLabel;
   if ($('pCourtFee')) $('pCourtFee').textContent = fmt(courtTotal);
   if ($('pSvcFeeRow')) $('pSvcFeeRow').style.display = svcFee > 0 ? '' : 'none';
   if ($('pSvcFee'))    $('pSvcFee').textContent = fmt(svcFee);
-  $('pTot').textContent  = fmt(total);
-  $('pDown').textContent = fmt(payAmt);
+  if ($('pTot'))  $('pTot').textContent  = fmt(total);
+  if ($('pDown')) $('pDown').textContent = fmt(payAmt);
 
   // Update toggle button amount labels
   if ($('gcPat50Amt'))  $('gcPat50Amt').textContent  = fmt(half);

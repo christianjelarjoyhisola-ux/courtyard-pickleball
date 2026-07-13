@@ -88,10 +88,21 @@ CREATE TABLE IF NOT EXISTS public.open_play_registrations (
   date         date NOT NULL,
   hour         integer,
   time_label   text,
+  session_key  text,
+  session_start integer,
+  session_end  integer,
+  base_fee     numeric,
+  system_fee   numeric,
+  total_due    numeric,
   payment_type text,
   amount       numeric,
   created_at   timestamptz NOT NULL DEFAULT now()
 );
+CREATE INDEX IF NOT EXISTS idx_open_play_date_court_hour
+  ON public.open_play_registrations (date, court_id, hour);
+CREATE INDEX IF NOT EXISTS idx_open_play_date_court_session_key
+  ON public.open_play_registrations (date, court_id, session_key)
+  WHERE session_key IS NOT NULL;
 
 
 -- ── 7. PAYMENT SESSIONS TABLE ────────────────────────────────

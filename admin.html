@@ -492,6 +492,7 @@ tr:hover td { background: var(--bg2); }
 /* ── OPEN PLAY DAY CHIPS ──────────────────────────────── */
 .op-day {
   display: inline-flex; align-items: center; gap: 5px;
+  position: relative;
   padding: 6px 16px; border-radius: 100px;
   border: 1px solid var(--border); background: var(--surface);
   cursor: pointer; font-size: 13px; font-weight: 500;
@@ -517,6 +518,208 @@ tr:hover td { background: var(--bg2); }
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Open Play session editor */
+.op-session-editor {
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+.op-session-editor-hd {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+.op-session-editor-hd h5 {
+  margin: 0 0 4px;
+  font-size: .96rem;
+  color: var(--text);
+}
+.op-session-editor-hd p {
+  margin: 0;
+  color: var(--text2);
+  font-size: .78rem;
+  line-height: 1.5;
+}
+.op-session-editor-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.op-session-list {
+  display: grid;
+  gap: 12px;
+}
+.op-session-card {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: 0 1px 0 rgba(0,0,0,.02);
+}
+.op-session-card-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface2);
+}
+.op-session-card-title {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.op-session-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 9px;
+  color: var(--yellow);
+  background: var(--yellow-bg);
+  font: 700 .7rem 'DM Mono', monospace;
+}
+.op-session-summary {
+  min-width: 0;
+  font-size: .84rem;
+  font-weight: 750;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.op-session-remove {
+  min-width: 38px;
+  min-height: 38px;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  color: var(--text2);
+  background: var(--surface);
+  font: 700 .75rem 'DM Sans', sans-serif;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.op-session-remove:hover { color: var(--red); border-color: var(--red); background: var(--red-bg); }
+.op-session-grid {
+  display: grid;
+  grid-template-columns: minmax(150px,1.25fr) minmax(105px,.8fr) minmax(105px,.8fr) minmax(105px,.75fr) minmax(115px,.8fr);
+  gap: 10px;
+  padding: 14px;
+  align-items: end;
+}
+.op-session-grid .fg { margin: 0; min-width: 0; }
+.op-money-field { position: relative; }
+.op-money-field > span {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text2);
+  font-weight: 700;
+  pointer-events: none;
+}
+.op-money-field .fi { padding-left: 28px; }
+.op-session-empty {
+  padding: 24px 18px;
+  text-align: center;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  color: var(--text2);
+  font-size: .82rem;
+  background: var(--surface2);
+}
+.op-add-session {
+  width: 100%;
+  min-height: 46px;
+  margin-top: 12px;
+  border: 1.5px dashed var(--green);
+  border-radius: 12px;
+  color: var(--green);
+  background: var(--green-bg);
+  font: 750 .84rem 'DM Sans', sans-serif;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.op-add-session:hover { border-style: solid; background: var(--surface); }
+.op-session-tip {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: var(--text2);
+  background: var(--surface2);
+  font-size: .75rem;
+  line-height: 1.45;
+}
+.op-session-tip strong { color: var(--text); }
+.op-session-errors {
+  display: none;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--red);
+  border-radius: 10px;
+  color: var(--red);
+  background: var(--red-bg);
+  font-size: .78rem;
+  line-height: 1.45;
+}
+.op-session-errors.show { display: block; }
+.op-session-card.has-error { border-color: var(--red); }
+.op-session-card.has-error .op-session-card-hd { background: var(--red-bg); }
+.op-session-save {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+.op-session-card :focus-visible,
+.op-add-session:focus-visible,
+.op-session-remove:focus-visible,
+.op-day:focus-within {
+  outline: 3px solid var(--glow);
+  outline-offset: 2px;
+}
+.op-day input {
+  display: block;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+@media (max-width: 700px) {
+  .op-session-grid { grid-template-columns: 1fr 1fr; }
+  .op-session-grid .op-session-name { grid-column: 1 / -1; }
+  .op-session-editor-hd { flex-direction: column; }
+  .op-session-editor-tools { width: 100%; }
+  .op-session-editor-tools .btn { flex: 1; justify-content: center; min-height: 42px; }
+  .op-session-save {
+    position: sticky;
+    z-index: 8;
+    bottom: 0;
+    margin: 18px -16px -16px;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    background: color-mix(in srgb, var(--surface) 94%, transparent);
+    backdrop-filter: blur(10px);
+  }
+  .op-session-save .btn { width: 100%; min-height: 46px; justify-content: center; }
+}
+@media (max-width: 480px) {
+  .op-court-grid { grid-template-columns: 1fr 1fr; }
+  .op-session-card-hd { align-items: flex-start; }
+  .op-session-summary { white-space: normal; }
+  .op-session-grid { padding: 12px; gap: 12px 8px; }
+  .op-session-grid .op-session-price,
+  .op-session-grid .op-session-capacity { grid-column: 1 / -1; }
+  .op-session-remove { min-width: 44px; min-height: 44px; font-size: 0; }
+  .op-session-remove::after { content: '\2715'; font-size: 1rem; }
 }
 
 /* ── ADMIN SLOT GRID ───────────────────────────────────── */
@@ -992,11 +1195,11 @@ tr:hover td { background: var(--bg2); }
       <!-- OPEN PLAY HOURS -->
       <div class="panel" style="max-width:760px;margin-bottom:20px">
         <h4>⏰ Open Play Schedule</h4>
-        <p style="color:var(--muted);font-size:.84rem;margin:8px 0 18px">Set the time window when open/drop-in play is available. Courts are open for walk-in players during these hours.</p>
+        <p style="color:var(--muted);font-size:.84rem;margin:8px 0 18px">Choose when Open Play runs, then add one or more sessions with their own price and player limit.</p>
 
         <!-- Enable toggle -->
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;padding-bottom:16px;border-bottom:1px solid var(--border)">
-          <label class="sw"><input type="checkbox" id="opEnabled"><span class="sw-tr"></span></label>
+          <label class="sw"><input type="checkbox" id="opEnabled" aria-label="Enable Open Play"><span class="sw-tr"></span></label>
           <div>
             <div style="font-weight:700;font-size:.9rem">Enable Open Play</div>
             <div style="font-size:.76rem;color:var(--muted)">When off, open play is not available.</div>
@@ -1011,18 +1214,6 @@ tr:hover td { background: var(--bg2); }
           </label>
           <div id="opCourtList" class="op-court-grid"></div>
           <div style="font-size:.76rem;color:var(--muted);margin-top:8px">Choose which courts use this Open Play schedule. Capacity applies separately to each selected court.</div>
-        </div>
-
-        <!-- Time range -->
-        <div class="frow" style="margin-bottom:16px">
-          <div>
-            <label class="fl">Start Time</label>
-            <select class="fi" id="opStart"></select>
-          </div>
-          <div>
-            <label class="fl">End Time</label>
-            <select class="fi" id="opEnd"></select>
-          </div>
         </div>
 
         <!-- Days of week -->
@@ -1051,23 +1242,30 @@ tr:hover td { background: var(--bg2); }
           <div id="opDateList"><p style="color:var(--muted);font-style:italic">No specific dates added.</p></div>
         </div>
 
-        <!-- Fee + Max Players -->
-        <div style="margin-bottom:18px;padding-top:16px;border-top:1px solid var(--border)">
-          <div class="frow" style="margin-bottom:0">
+        <!-- Sessions + pricing -->
+        <div class="op-session-editor">
+          <div class="op-session-editor-hd">
             <div>
-              <label class="fl" style="margin-bottom:6px">Fee per Player (₱)</label>
-              <input type="number" class="fi" id="opFee" min="0" step="0.5" placeholder="100"/>
-              <div style="font-size:.76rem;color:var(--muted);margin-top:4px">Customers pay 50% or 100% of this.</div>
+              <h5>Sessions &amp; pricing</h5>
+              <p>Each session has its own time, player price, and capacity per court.</p>
             </div>
-            <div>
-              <label class="fl" style="margin-bottom:6px">Max Players per Court / Day</label>
-              <input type="number" class="fi" id="opMaxPlayers" min="1" step="1" placeholder="40"/>
-              <div style="font-size:.76rem;color:var(--muted);margin-top:4px">Limit applies separately to each Open Play court.</div>
+            <div class="op-session-editor-tools">
+              <button type="button" class="btn btn-g btn-sm" onclick="opApplyEveningSplit()">⚡ Use 4–7 / 7–11 preset</button>
+              <span class="bdg bdg-p" id="opSessionCount">0 sessions</span>
             </div>
           </div>
+          <div class="op-session-list" id="opSessionList"></div>
+          <button type="button" class="op-add-session" onclick="opAddSession()">＋ Add another session</button>
+          <div class="op-session-tip">
+            <span aria-hidden="true">💡</span>
+            <span><strong>Back-to-back sessions are allowed.</strong> For example, a 4:00–7:00 PM session can be followed by a 7:00–11:00 PM session without overlapping.</span>
+          </div>
+          <div class="op-session-errors" id="opSessionErrors" role="alert" aria-live="polite"></div>
         </div>
 
-        <button class="btn btn-p" onclick="saveOpenPlay()">💾 Save Open Play Schedule</button>
+        <div class="op-session-save">
+          <button class="btn btn-p" onclick="saveOpenPlay()">💾 Save Open Play Schedule</button>
+        </div>
       </div>
 
       <!-- OPEN PLAY RESERVATIONS -->
@@ -2676,10 +2874,7 @@ function _nbIsOpenPlayHour(dateStr, h, courtId = null) {
   const dow = new Date(dateStr + 'T00:00:00').getDay();
   const specificDates = Array.isArray(_nbOpenPlayCfg.specificDates) ? _nbOpenPlayCfg.specificDates : [];
   if (!(_nbOpenPlayCfg.days || []).includes(dow) && !specificDates.includes(dateStr)) return false;
-  const start = Number(_nbOpenPlayCfg.start);
-  const end = Number(_nbOpenPlayCfg.end);
-  if (!Number.isFinite(start) || !Number.isFinite(end) || start === end) return false;
-  return start < end ? (h >= start && h < end) : (h >= start || h < end);
+  return normalizeOpenPlaySessions(_nbOpenPlayCfg).some(session => h >= session.start && h < session.end);
 }
 
 function _nbCheckRule(rule, dateStr, h, courtId) {
@@ -4214,23 +4409,219 @@ async function saveNewPassword(){
 /* ==============================================
    OPEN PLAY + BLOCKED DATES
    ============================================== */
-function opPopulateTimePickers() {
-  const labels = ['12:00 AM','1:00 AM','2:00 AM','3:00 AM','4:00 AM','5:00 AM','6:00 AM','7:00 AM','8:00 AM','9:00 AM','10:00 AM','11:00 AM',
-    '12:00 PM','1:00 PM','2:00 PM','3:00 PM','4:00 PM','5:00 PM','6:00 PM','7:00 PM','8:00 PM','9:00 PM','10:00 PM','11:00 PM','12:00 AM (midnight)'];
-  [$('opStart'), $('opEnd')].forEach((sel, si) => {
-    sel.innerHTML = '';
-    const max = si === 0 ? 23 : 24;
-    for (let h = 0; h <= max; h++) {
-      const opt = document.createElement('option');
-      opt.value = h;
-      opt.textContent = labels[h];
-      sel.appendChild(opt);
-    }
-  });
-}
-
 let _opDates = [];
 let _opCourts = [];
+let _opSessions = [];
+
+function opFmtTime(h) {
+  const n = Number(h);
+  if (n === 24 || n === 0) return '12:00 AM';
+  return `${n % 12 || 12}:00 ${n < 12 ? 'AM' : 'PM'}`;
+}
+
+function opSessionKey(session, index = 0) {
+  const saved = String(session?.key || session?.id || '').trim();
+  if (saved) return saved;
+  const start = Number(session?.start);
+  const end = Number(session?.end);
+  return Number.isFinite(start) && Number.isFinite(end)
+    ? `op-${start}-${end}`
+    : `op-session-${index + 1}`;
+}
+
+function normalizeOpenPlaySessions(cfg = {}) {
+  const legacyStart = Number(cfg.start ?? 17);
+  const legacyEnd = Number(cfg.end ?? 24);
+  const legacyFeeValue = Number(cfg.fee ?? 100);
+  const legacyMaxValue = parseInt(cfg.maxPlayers ?? 40, 10);
+  const legacyFee = Number.isFinite(legacyFeeValue) && legacyFeeValue >= 0 ? legacyFeeValue : 100;
+  const legacyMax = Number.isInteger(legacyMaxValue) && legacyMaxValue > 0 ? legacyMaxValue : 40;
+  const raw = Array.isArray(cfg.sessions) && cfg.sessions.length
+    ? cfg.sessions
+    : [{ start: legacyStart, end: legacyEnd, fee: legacyFee, maxPlayers: legacyMax }];
+
+  return raw.map((session, index) => {
+    const start = Number(session.start);
+    const end = Number(session.end);
+    const fee = Number(session.fee);
+    const maxPlayers = parseInt(session.maxPlayers ?? legacyMax, 10);
+    return {
+      key: opSessionKey(session, index),
+      name: String(session.name || `Open Play Session ${index + 1}`).trim(),
+      start,
+      end,
+      fee: Number.isFinite(fee) ? fee : legacyFee,
+      maxPlayers: Number.isFinite(maxPlayers) ? maxPlayers : legacyMax,
+    };
+  }).filter(session => Number.isFinite(session.start) && Number.isFinite(session.end));
+}
+
+function opTimeOptions(selected, isEnd = false) {
+  const max = isEnd ? 24 : 23;
+  return Array.from({ length: max + 1 }, (_, hour) => {
+    const midnight = hour === 24 ? ' (midnight)' : '';
+    return `<option value="${hour}"${Number(selected) === hour ? ' selected' : ''}>${opFmtTime(hour)}${midnight}</option>`;
+  }).join('');
+}
+
+function opDefaultSessionName(start, index) {
+  if (Number(start) < 12) return 'Morning Open Play';
+  if (Number(start) < 18) return index === 0 ? 'Early Open Play' : 'Afternoon Open Play';
+  return 'Evening Open Play';
+}
+
+function opSessionSummary(session) {
+  const fee = Number.isFinite(Number(session.fee)) ? `₱${Number(session.fee).toLocaleString('en-PH')}` : 'Set price';
+  const spots = Number.isFinite(Number(session.maxPlayers)) ? `${Number(session.maxPlayers)} spots` : 'Set capacity';
+  return `${opFmtTime(session.start)}–${opFmtTime(session.end)} · ${fee} · ${spots}`;
+}
+
+function opRenderSessions() {
+  const list = $('opSessionList');
+  if (!list) return;
+  $('opSessionCount').textContent = `${_opSessions.length} session${_opSessions.length === 1 ? '' : 's'}`;
+  $('opSessionErrors').classList.remove('show');
+  $('opSessionErrors').innerHTML = '';
+  if (!_opSessions.length) {
+    list.innerHTML = '<div class="op-session-empty"><strong>No sessions yet.</strong><br>Add a session to set its hours, price, and capacity.</div>';
+    return;
+  }
+
+  list.innerHTML = _opSessions.map((session, index) => {
+    const key = esc(opSessionKey(session, index));
+    const name = esc(session.name || '');
+    const summary = esc(opSessionSummary(session));
+    return `
+      <section class="op-session-card" data-session-key="${key}" aria-labelledby="opSessionTitle${index}">
+        <div class="op-session-card-hd">
+          <div class="op-session-card-title">
+            <span class="op-session-number" aria-hidden="true">${String(index + 1).padStart(2, '0')}</span>
+            <div>
+              <div id="opSessionTitle${index}" style="font-size:.76rem;font-weight:800;color:var(--text2);margin-bottom:2px">SESSION ${index + 1}</div>
+              <div class="op-session-summary" id="opSessionSummary${index}">${summary}</div>
+            </div>
+          </div>
+          <button type="button" class="op-session-remove" onclick="opRemoveSession(${index})" aria-label="Remove session ${index + 1}">Remove</button>
+        </div>
+        <div class="op-session-grid">
+          <div class="fg op-session-name">
+            <label class="fl" for="opSessionName${index}">Session name</label>
+            <input class="fi op-session-name-input" id="opSessionName${index}" type="text" maxlength="50" value="${name}" placeholder="e.g. Early Open Play" oninput="opUpdateSession(${index}, 'name', this.value)" />
+          </div>
+          <div class="fg">
+            <label class="fl" for="opSessionStart${index}">From</label>
+            <select class="fi op-session-start" id="opSessionStart${index}" onchange="opUpdateSession(${index}, 'start', this.value)">${opTimeOptions(session.start, false)}</select>
+          </div>
+          <div class="fg">
+            <label class="fl" for="opSessionEnd${index}">To</label>
+            <select class="fi op-session-end" id="opSessionEnd${index}" onchange="opUpdateSession(${index}, 'end', this.value)">${opTimeOptions(session.end, true)}</select>
+          </div>
+          <div class="fg op-session-price">
+            <label class="fl" for="opSessionFee${index}">Price / player</label>
+            <div class="op-money-field"><span>₱</span><input class="fi op-session-fee" id="opSessionFee${index}" type="number" inputmode="decimal" min="0" step="1" value="${Number.isFinite(Number(session.fee)) ? Number(session.fee) : ''}" placeholder="100" oninput="opUpdateSession(${index}, 'fee', this.value)" /></div>
+          </div>
+          <div class="fg op-session-capacity">
+            <label class="fl" for="opSessionMax${index}">Max players / court</label>
+            <input class="fi op-session-max" id="opSessionMax${index}" type="number" inputmode="numeric" min="1" step="1" value="${Number.isFinite(Number(session.maxPlayers)) ? Number(session.maxPlayers) : ''}" placeholder="40" oninput="opUpdateSession(${index}, 'maxPlayers', this.value)" />
+          </div>
+        </div>
+      </section>`;
+  }).join('');
+}
+
+function opReadSessionRows() {
+  return [...document.querySelectorAll('#opSessionList .op-session-card')].map((row, index) => ({
+    key: row.dataset.sessionKey || opSessionKey({}, index),
+    name: (row.querySelector('.op-session-name-input')?.value || '').trim(),
+    start: Number(row.querySelector('.op-session-start')?.value),
+    end: Number(row.querySelector('.op-session-end')?.value),
+    fee: row.querySelector('.op-session-fee')?.value === '' ? NaN : Number(row.querySelector('.op-session-fee')?.value),
+    maxPlayers: row.querySelector('.op-session-max')?.value === '' ? NaN : Number(row.querySelector('.op-session-max')?.value),
+  }));
+}
+
+function opUpdateSession(index, field, value) {
+  if (!_opSessions[index]) return;
+  _opSessions[index][field] = field === 'name' ? value : (value === '' ? NaN : Number(value));
+  const summary = $('opSessionSummary' + index);
+  if (summary) summary.textContent = opSessionSummary(_opSessions[index]);
+  document.querySelectorAll('#opSessionList .op-session-card')[index]?.classList.remove('has-error');
+  $('opSessionErrors')?.classList.remove('show');
+}
+
+function opAddSession() {
+  const rows = opReadSessionRows();
+  if (rows.length) _opSessions = rows;
+  const last = _opSessions[_opSessions.length - 1];
+  const start = Number.isFinite(Number(last?.end)) && Number(last.end) < 24 ? Number(last.end) : 16;
+  const safeStart = Math.min(start, 23);
+  const end = Math.min(safeStart + (safeStart >= 18 ? 4 : 3), 24);
+  const index = _opSessions.length;
+  _opSessions.push({
+    key: `op-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+    name: opDefaultSessionName(safeStart, index),
+    start: safeStart,
+    end,
+    fee: index === 0 ? 80 : 100,
+    maxPlayers: Number(last?.maxPlayers) > 0 ? Number(last.maxPlayers) : 40,
+  });
+  opRenderSessions();
+  requestAnimationFrame(() => $('opSessionName' + index)?.focus());
+}
+
+function opApplyEveningSplit() {
+  const current = opReadSessionRows();
+  const maxPlayers = Number(current[0]?.maxPlayers) > 0 ? Number(current[0].maxPlayers) : 40;
+  const existingEarly = current.find(session => session.start === 16 && session.end === 19);
+  const existingEvening = current.find(session => session.start === 19 && session.end === 23);
+  _opSessions = [
+    { key: existingEarly?.key || 'op-16-19', name: 'Early Open Play', start: 16, end: 19, fee: 80, maxPlayers },
+    { key: existingEvening?.key || 'op-19-23', name: 'Evening Open Play', start: 19, end: 23, fee: 100, maxPlayers },
+  ];
+  opRenderSessions();
+  toast('4–7 PM and 7–11 PM sessions applied. Save the schedule to publish.');
+}
+
+function opRemoveSession(index) {
+  const rows = opReadSessionRows();
+  if (rows.length) _opSessions = rows;
+  _opSessions.splice(index, 1);
+  opRenderSessions();
+}
+
+function opValidateSessions() {
+  const sessions = opReadSessionRows();
+  const rows = [...document.querySelectorAll('#opSessionList .op-session-card')];
+  rows.forEach(row => row.classList.remove('has-error'));
+  const errors = [];
+  sessions.forEach((session, index) => {
+    if (!session.name) errors.push({ index, message: `Session ${index + 1}: add a name.` });
+    if (!Number.isInteger(session.start) || !Number.isInteger(session.end) || session.start < 0 || session.start > 23 || session.end < 1 || session.end > 24 || session.end <= session.start) {
+      errors.push({ index, message: `Session ${index + 1}: the end time must be after the start time.` });
+    }
+    if (!Number.isFinite(session.fee) || session.fee < 0) errors.push({ index, message: `Session ${index + 1}: enter a valid price.` });
+    if (!Number.isInteger(session.maxPlayers) || session.maxPlayers < 1) errors.push({ index, message: `Session ${index + 1}: capacity must be at least 1.` });
+  });
+
+  const sorted = sessions.map((session, index) => ({ session, index })).sort((a, b) => a.session.start - b.session.start);
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i].session.start < sorted[i - 1].session.end) {
+      errors.push({ index: sorted[i].index, message: `${sorted[i - 1].session.name || 'One session'} overlaps ${sorted[i].session.name || 'another session'}. Back-to-back times are okay, but hours cannot overlap.` });
+    }
+  }
+
+  errors.forEach(error => rows[error.index]?.classList.add('has-error'));
+  const errorBox = $('opSessionErrors');
+  if (errors.length) {
+    errorBox.innerHTML = `<strong>Please check the session details:</strong><br>${errors.map(error => `• ${esc(error.message)}`).join('<br>')}`;
+    errorBox.classList.add('show');
+    rows[errors[0].index]?.querySelector('.fi')?.focus();
+  } else {
+    errorBox.innerHTML = '';
+    errorBox.classList.remove('show');
+  }
+  return { sessions: sessions.sort((a, b) => a.start - b.start), errors };
+}
 
 function opRenderCourtPicker(courts = [], selectedIds = []) {
   _opCourts = courts || [];
@@ -4302,16 +4693,24 @@ function opRenderDateList() {
 async function renderBlocked(){
   // Load open play settings
   const [settings, courts] = await Promise.all([DB.getSettings(), DB.getCourts()]);
-  const cfg = settings.open_play_config ? JSON.parse(settings.open_play_config) : { enabled: true, start: 17, end: 24, days: [1,2,3,4,5,6], fee: 100, maxPlayers: 40 };
+  const cfg = settings.open_play_config ? JSON.parse(settings.open_play_config) : {
+    enabled: true,
+    start: 16,
+    end: 23,
+    days: [1,2,3,4,5,6],
+    fee: 80,
+    maxPlayers: 40,
+    sessions: [
+      { key: 'op-16-19', name: 'Early Open Play', start: 16, end: 19, fee: 80, maxPlayers: 40 },
+      { key: 'op-19-23', name: 'Evening Open Play', start: 19, end: 23, fee: 100, maxPlayers: 40 },
+    ],
+  };
 
-  opPopulateTimePickers();
   opRenderCourtPicker(courts, cfg.courtIds || []);
   opRenderRegCourtFilter(courts);
   $('opEnabled').checked = cfg.enabled !== false;
-  $('opStart').value = cfg.start ?? 17;
-  $('opEnd').value   = cfg.end   ?? 24;
-  $('opFee').value        = cfg.fee        ?? 100;
-  $('opMaxPlayers').value = cfg.maxPlayers ?? 40;
+  _opSessions = normalizeOpenPlaySessions(cfg);
+  opRenderSessions();
 
   // Set day checkboxes
   document.querySelectorAll('#opDays input[type=checkbox]').forEach(cb => {
@@ -4333,19 +4732,40 @@ async function renderBlocked(){
 
 async function saveOpenPlay() {
   const enabled = $('opEnabled').checked;
-  const start   = parseInt($('opStart').value);
-  const end     = parseInt($('opEnd').value);
   const days    = [...document.querySelectorAll('#opDays input:checked')].map(cb => Number(cb.value));
-  const fee        = parseFloat($('opFee').value) || 100;
-  const maxPlayers = parseInt($('opMaxPlayers').value) || 40;
   const courtIds = opSelectedCourtIds();
+  const validation = opValidateSessions();
+  const sessions = validation.sessions;
 
-  if (enabled && end <= start) { toast('End time must be after start time.', 'err'); return; }
+  if (enabled && sessions.length === 0) { toast('Add at least one Open Play session.', 'err'); return; }
+  if (validation.errors.length) { toast('Please fix the highlighted session details.', 'err'); return; }
   if (enabled && days.length === 0 && _opDates.length === 0) { toast('Select at least one active day or add a specific date.', 'err'); return; }
   if (enabled && $('opAllCourts')?.checked === false && courtIds.length === 0) { toast('Select at least one Open Play court, or choose All courts.', 'err'); return; }
 
-  await DB.saveSetting('open_play_config', JSON.stringify({ enabled, start, end, days, specificDates: _opDates, courtIds, fee, maxPlayers }));
-  toast('Open Play schedule saved!');
+  // Keep legacy fields during rollout while the new sessions array is the source of truth.
+  const first = sessions[0] || { start: 17, end: 24, fee: 100, maxPlayers: 40 };
+  const config = {
+    enabled,
+    days,
+    specificDates: _opDates,
+    courtIds,
+    sessions,
+    start: sessions.length ? Math.min(...sessions.map(session => session.start)) : first.start,
+    end: sessions.length ? Math.max(...sessions.map(session => session.end)) : first.end,
+    // Older cached clients see one combined window; use the highest fee so
+    // they never undercharge a later session during rollout.
+    fee: sessions.length ? Math.max(...sessions.map(session => session.fee)) : first.fee,
+    maxPlayers: first.maxPlayers,
+  };
+  try {
+    await DB.saveSetting('open_play_config', JSON.stringify(config));
+    _opSessions = sessions;
+    opRenderSessions();
+    toast(`✓ ${sessions.length} Open Play session${sessions.length === 1 ? '' : 's'} saved!`);
+  } catch (error) {
+    console.error('saveOpenPlay:', error);
+    toast('Failed to save the Open Play schedule.', 'err');
+  }
 }
 
 async function renderOpRegistrations() {
@@ -4364,7 +4784,6 @@ async function renderOpRegistrations() {
   const fmt = n => '₱' + Number(n).toLocaleString('en-PH', { minimumFractionDigits: 2 });
   const methodLabel = m => ({ gcash: 'GCash', gotyme: 'GoTyme', pnb: 'PNB', cash: 'Cash' }[m] || (m || 'Cash'));
   const activeRegs = regs.filter(r => r.payment_status !== 'rejected');
-  const maxPerCourt = $('opMaxPlayers')?.value || '?';
   el.innerHTML = `
     <div style="overflow-x:auto">
       <table style="width:100%;border-collapse:collapse;font-size:.82rem">
@@ -4413,7 +4832,7 @@ async function renderOpRegistrations() {
         </tbody>
       </table>
     </div>
-    <div style="margin-top:10px;font-size:.78rem;color:var(--muted)">${activeRegs.length} active reservations shown · Max ${maxPerCourt} per court/day · Total collected: <strong style="color:var(--text)">${fmt(activeRegs.reduce((s, r) => s + Number(r.amount), 0))}</strong></div>`;
+    <div style="margin-top:10px;font-size:.78rem;color:var(--muted)">${activeRegs.length} active reservations shown · Capacity is tracked per court and session · Total collected: <strong style="color:var(--text)">${fmt(activeRegs.reduce((s, r) => s + Number(r.amount), 0))}</strong></div>`;
 }
 
 async function deleteOpReg(id) {

@@ -174,6 +174,51 @@ function courtToRow(c) {
   };
 }
 
+// Open Play session details are copied onto each registration so later config
+// edits do not change the time or price the player originally selected.
+function _openPlaySessionSnapshot(reg) {
+  const snapshot = {};
+  const fieldMap = [
+    ['sessionKey',   'session_key'],
+    ['sessionStart', 'session_start'],
+    ['sessionEnd',   'session_end'],
+    ['baseFee',      'base_fee'],
+    ['systemFee',    'system_fee'],
+    ['totalDue',     'total_due'],
+  ];
+
+  fieldMap.forEach(([jsKey, dbKey]) => {
+    const value = reg[jsKey] !== undefined ? reg[jsKey] : reg[dbKey];
+    if (value !== undefined && value !== null) snapshot[dbKey] = value;
+  });
+  return snapshot;
+}
+
+function _openPlaySessionStart(sessionKeyOrStart) {
+  if (typeof sessionKeyOrStart === 'number' && Number.isFinite(sessionKeyOrStart)) {
+    return sessionKeyOrStart;
+  }
+  if (sessionKeyOrStart && typeof sessionKeyOrStart === 'object') {
+    const start = Number(sessionKeyOrStart.start ?? sessionKeyOrStart.sessionStart);
+    return Number.isFinite(start) ? start : null;
+  }
+  if (typeof sessionKeyOrStart !== 'string') return null;
+
+  const value = sessionKeyOrStart.trim();
+  if (/^-?\d+(?:\.\d+)?$/.test(value)) return Number(value);
+  // Admin-generated keys use op-<start>-<end>. Parsing the start lets new
+  // session cards include pre-migration registrations that only stored `hour`.
+  const keyMatch = value.match(/^op-(-?\d+(?:\.\d+)?)-/i);
+  return keyMatch ? Number(keyMatch[1]) : null;
+}
+
+function _isMissingOpenPlaySessionColumn(error) {
+  if (!error) return false;
+  const details = `${error.message || ''} ${error.details || ''} ${error.hint || ''}`.toLowerCase();
+  const mentionsSessionColumn = /session_key|session_start|session_end|base_fee|system_fee|total_due/.test(details);
+  return mentionsSessionColumn && (error.code === 'PGRST204' || error.code === '42703' || /column|schema cache/.test(details));
+}
+
 function rowToAccount(r) {
   return {
     id:        r.id,
@@ -303,12 +348,12 @@ window.DB = {
   },
 
   async addOpenPlayRegistration(reg) {
-    const { error } = await _sb.from('open_play_registrations').insert({
+    const legacyRow = {
       full_name: reg.fullName,
       court_id: String(reg.courtId),
       court_name: reg.courtName,
       date: reg.date,
-      hour: reg.hour,
+      hour: reg.hour ?? reg.sessionStart,
       time_label: reg.timeLabel,
       payment_type: reg.paymentType,
       payment_method: reg.paymentMethod || 'cash',
@@ -324,7 +369,19 @@ window.DB = {
       receipt_confidence: reg.receiptConfidence ?? null,
       receipt_verified_at: reg.receiptVerifiedAt || null,
       created_at: new Date().toISOString(),
+    };
+    const sessionSnapshot = _openPlaySessionSnapshot(reg);
+    let { error } = await _sb.from('open_play_registrations').insert({
+      ...legacyRow,
+      ...sessionSnapshot,
     });
+
+    // Keep registration working during a staggered rollout where the frontend
+    // is deployed just before the additive migration reaches Supabase.
+    if (error && Object.keys(sessionSnapshot).length && _isMissingOpenPlaySessionColumn(error)) {
+      console.warn('Open Play session snapshot columns are not available yet; saving the legacy registration fields only.');
+      ({ error } = await _sb.from('open_play_registrations').insert(legacyRow));
+    }
     if (error) { console.error('addOpenPlayRegistration:', error); throw error; }
   },
 
@@ -344,14 +401,29 @@ window.DB = {
     if (error) { console.error('updateOpenPlayRegistration:', error); throw error; }
   },
 
-  async getOpenPlayCountForDate(date, courtId = null) {
+  async getOpenPlayCountForDate(date, courtId = null, sessionKeyOrStart = null) {
     let query = _sb.from('open_play_registrations')
       .select('*', { count: 'exact', head: true })
       .eq('date', date)
       .or('payment_status.is.null,payment_status.neq.rejected');
     if (courtId) query = query.eq('court_id', String(courtId));
+
+    const sessionStart = _openPlaySessionStart(sessionKeyOrStart);
+    const sessionKey = typeof sessionKeyOrStart === 'string' ? sessionKeyOrStart.trim() : '';
+    // `hour` is the legacy session-start field and is still written on every
+    // registration, so numeric starts work before and after the migration.
+    if (sessionStart !== null) query = query.eq('hour', sessionStart);
+    else if (sessionKey) query = query.eq('session_key', sessionKey);
+
     const { count, error } = await query;
-    if (error) { console.error('getOpenPlayCountForDate:', error); return 0; }
+    if (error) {
+      if (sessionKey && _isMissingOpenPlaySessionColumn(error)) {
+        console.warn('Cannot count this Open Play session by key until the session snapshot migration is applied.');
+        return 0;
+      }
+      console.error('getOpenPlayCountForDate:', error);
+      return 0;
+    }
     return count || 0;
   },
 
@@ -683,6 +755,9 @@ window.DB = {
       courtIds: [],
       fee: 25,
       maxPlayers: 16,
+      sessions: [
+        { key: 'op-6-23', name: 'Weekend Open Play', start: 6, end: 23, fee: 25, maxPlayers: 16 },
+      ],
     }),
     payment_acceptance_mode: 'full_payment_only',
     payment_method_cash: '0',
@@ -802,7 +877,7 @@ window.DB = {
         court_id: String(reg.courtId),
         court_name: reg.courtName,
         date: reg.date,
-        hour: reg.hour,
+        hour: reg.hour ?? reg.sessionStart,
         time_label: reg.timeLabel,
         payment_type: reg.paymentType,
         payment_method: reg.paymentMethod || 'cash',
@@ -817,6 +892,7 @@ window.DB = {
         receipt_extracted: reg.receiptExtracted || null,
         receipt_confidence: reg.receiptConfidence ?? null,
         receipt_verified_at: reg.receiptVerifiedAt || null,
+        ..._openPlaySessionSnapshot(reg),
         created_at: nowIso(),
       });
       writeDb(db);
@@ -841,10 +917,15 @@ window.DB = {
       });
       writeDb(db);
     },
-    async getOpenPlayCountForDate(date, courtId = null) {
+    async getOpenPlayCountForDate(date, courtId = null, sessionKeyOrStart = null) {
+      const sessionStart = _openPlaySessionStart(sessionKeyOrStart);
+      const sessionKey = typeof sessionKeyOrStart === 'string' ? sessionKeyOrStart.trim() : '';
       return readDb().openPlayRegistrations.filter(r =>
         r.date === date &&
         (!courtId || String(r.court_id) === String(courtId)) &&
+        (sessionStart !== null
+          ? Number(r.hour ?? r.session_start) === sessionStart
+          : (!sessionKey || r.session_key === sessionKey)) &&
         r.payment_status !== 'rejected'
       ).length;
     },

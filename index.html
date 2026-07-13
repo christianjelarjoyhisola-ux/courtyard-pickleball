@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6965664743687392" crossorigin="anonymous"></script>
 <title>CourtYard Pickleball — Sibagat, Agusan del Sur</title>
 <link rel="icon" type="image/jpeg" href="courtyard-logo.jpg">
@@ -1251,19 +1251,30 @@ footer { background:var(--card); border-top:1px solid var(--border); padding:40p
 .slot.maintenance .slot-end  { color: var(--muted); opacity:.7; }
 .slot.maintenance .slot-tag.mt-tag { background: none; color: #f4a825; font-size:.62rem; font-weight:700; letter-spacing:.3px; }
 
-/* ── COMBINED OPEN PLAY BLOCK ── */
-.open-play-block {
+/* ── OPEN PLAY SESSION CARDS ── */
+.open-play-sessions {
   grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 10px;
   margin-bottom: 10px;
+}
+.open-play-block {
+  width: 100%;
+  margin: 0;
   padding: 16px;
   background: linear-gradient(135deg, rgba(244,168,37,.14), rgba(15,23,42,.82));
   border: 1.5px solid rgba(244,168,37,.48);
-  border-radius: 8px;
+  border-radius: 14px;
   cursor: pointer;
   transition: all .2s ease;
   position: relative;
   overflow: hidden;
-  min-height: 112px;
+  min-height: 154px;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  appearance: none;
 }
 .open-play-block::before {
   content: '';
@@ -1274,13 +1285,14 @@ footer { background:var(--card); border-top:1px solid var(--border); padding:40p
 .open-play-block:hover { border-color:#f4a825; transform:translateY(-1px); box-shadow:0 12px 24px rgba(0,0,0,.22); }
 .open-play-block:active { transform: scale(.98); }
 .opb-header {
-  display: flex; align-items: center; gap: 10px;
+  display: flex; align-items: flex-start; gap: 10px;
   margin-bottom: 10px;
   position: relative; z-index: 1;
 }
 .opb-icon { font-size: 1.6rem; }
+.opb-main { min-width: 0; flex: 1; }
 .opb-title {
-  flex: 1;
+  display: block;
   font-size: 1rem;
   font-weight: 800;
   color: #f4a825;
@@ -1288,17 +1300,33 @@ footer { background:var(--card); border-top:1px solid var(--border); padding:40p
   line-height: 1.3;
 }
 .opb-time {
+  display: block;
   font-size: 1rem;
   font-weight: 800;
   color: var(--text);
   line-height: 1.2;
 }
 .opb-sub {
+  display: block;
   font-size: .72rem;
   color: var(--muted);
   margin-top: 3px;
   font-weight: 600;
 }
+.opb-price {
+  flex-shrink: 0;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  padding: 7px 9px;
+  border: 1px solid rgba(244,168,37,.35);
+  border-radius: 10px;
+  color: #f4a825;
+  background: rgba(244,168,37,.11);
+  line-height: 1;
+}
+.opb-price strong { font-size: 1.05rem; font-weight: 900; }
+.opb-price small { margin-top: 4px; font-size: .55rem; font-weight: 750; text-transform: uppercase; letter-spacing: .55px; }
 .opb-footer {
   display: flex; align-items: center; gap: 10px; justify-content: space-between;
   margin-top: 10px;
@@ -1314,6 +1342,14 @@ footer { background:var(--card); border-top:1px solid var(--border); padding:40p
   color: #f4a825; font-weight: 900; font-size: 1rem;
 }
 .opb-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid rgba(244,168,37,.35);
+  border-radius: 9px;
+  background: rgba(244,168,37,.1);
   font-size: .75rem;
   font-weight: 800;
   text-transform: uppercase;
@@ -1323,6 +1359,10 @@ footer { background:var(--card); border-top:1px solid var(--border); padding:40p
   transition: opacity .2s;
 }
 .open-play-block:hover .opb-cta { opacity: 1; }
+.open-play-block:focus-visible {
+  outline: 3px solid rgba(244,168,37,.36);
+  outline-offset: 3px;
+}
 .open-play-block.full {
   cursor: default;
   opacity: .68;
@@ -1330,8 +1370,24 @@ footer { background:var(--card); border-top:1px solid var(--border); padding:40p
   background: rgba(15,23,42,.74);
 }
 .open-play-block.full:hover { transform:none; box-shadow:none; border-color:rgba(148,163,184,.22); }
+.open-play-block:disabled { color: var(--text); }
 .cc-open-play-card {
   margin-bottom: 0;
+}
+
+@media (max-width: 560px) {
+  .open-play-sessions { grid-template-columns: 1fr; }
+  .open-play-block { min-height: 0; padding: 14px; }
+  .opb-footer { align-items: stretch; flex-direction: column; }
+  .opb-cta { width: 100%; min-height: 44px; }
+}
+@media (max-width: 360px) {
+  .opb-header { flex-wrap: wrap; }
+  .opb-price { margin-left: 42px; align-items: flex-start; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .open-play-block, .opb-cta { transition: none; }
+  .open-play-block:hover { transform: none; }
 }
 
 /* Live note banner */
@@ -2212,9 +2268,9 @@ let wizStep = 1, wizStartStep = 1;
 let _lastSubmitAt = 0; // rate limiting — ms timestamp of last submission attempt
 let openHour  = 6;
 let closeHour = 22;
-let openPlayConfig = null; // { enabled, start, end, days[], specificDates[], courtIds[], fee, maxPlayers }
-let openPlayFee = 100; // default ₱100, overridden by settings
-let openPlayMaxPlayers = 40; // default 40, overridden by settings
+let openPlayConfig = null; // normalized config with sessions[{key,name,start,end,fee,maxPlayers}]
+let openPlayFee = 100; // legacy fallback for old saved settings
+let openPlayMaxPlayers = 40; // legacy fallback for old saved settings
 let paymentAcceptanceMode = 'both'; // 'both', 'downpayment_only', 'full_payment_only'
 let _serviceFeeRate = 0; // booking fee amount, loaded from settings
 let _serviceFeeType = 'per_hour'; // 'per_hour' or 'flat'
@@ -2285,26 +2341,69 @@ function isOpenPlayCourt(courtId) {
   return !courtId || courtIds.length === 0 || courtIds.includes(String(courtId));
 }
 
-function isOpenPlayHour(date, h, courtId = null) {
-  if (!openPlayConfig || !openPlayConfig.enabled) return false;
-  if (!isOpenPlayCourt(courtId)) return false;
-  const days = Array.isArray(openPlayConfig.days) ? openPlayConfig.days : [];
-  const specificDates = Array.isArray(openPlayConfig.specificDates) ? openPlayConfig.specificDates : [];
-  if (!days.includes(dayOfWeek(date)) && !specificDates.includes(date)) return false;
-  const start = Number(openPlayConfig.start);
-  const end = Number(openPlayConfig.end);
-  if (!Number.isFinite(start) || !Number.isFinite(end) || start === end) return false;
-  return start < end ? (h >= start && h < end) : (h >= start || h < end);
+function openPlaySessionKey(session, index = 0) {
+  const saved = String(session?.key || session?.id || '').trim();
+  if (saved) return saved;
+  const start = Number(session?.start);
+  const end = Number(session?.end);
+  return Number.isFinite(start) && Number.isFinite(end)
+    ? `op-${start}-${end}`
+    : `op-session-${index + 1}`;
 }
 
-function getOpenPlaySessionForDate(date, courtId = null) {
-  if (!openPlayConfig || !openPlayConfig.enabled || !date) return null;
-  if (!isOpenPlayCourt(courtId)) return null;
-  const start = Number(openPlayConfig.start);
-  const end = Number(openPlayConfig.end);
-  if (!Number.isFinite(start) || !Number.isFinite(end) || start === end) return null;
-  if (!isOpenPlayHour(date, start, courtId)) return null;
-  return { start, end, label: `${fmtT(start)} – ${fmtT(end)}` };
+function normalizeOpenPlayConfig(config) {
+  if (!config || typeof config !== 'object') return null;
+  const legacyStart = Number(config.start ?? 17);
+  const legacyEnd = Number(config.end ?? 24);
+  const legacyFeeValue = Number(config.fee ?? 100);
+  const legacyMaxValue = parseInt(config.maxPlayers ?? 40, 10);
+  const legacyFee = Number.isFinite(legacyFeeValue) && legacyFeeValue >= 0 ? legacyFeeValue : 100;
+  const legacyMax = Number.isInteger(legacyMaxValue) && legacyMaxValue > 0 ? legacyMaxValue : 40;
+  const rawSessions = Array.isArray(config.sessions) && config.sessions.length
+    ? config.sessions
+    : [{ start: legacyStart, end: legacyEnd, fee: legacyFee, maxPlayers: legacyMax }];
+  const sessions = rawSessions.map((session, index) => {
+    const start = Number(session.start);
+    const end = Number(session.end);
+    const fee = Number(session.fee);
+    const maxPlayers = parseInt(session.maxPlayers ?? legacyMax, 10);
+    return {
+      key: openPlaySessionKey(session, index),
+      name: String(session.name || `Open Play Session ${index + 1}`).trim(),
+      start,
+      end,
+      fee: Number.isFinite(fee) && fee >= 0 ? fee : legacyFee,
+      maxPlayers: Number.isInteger(maxPlayers) && maxPlayers > 0 ? maxPlayers : legacyMax,
+      label: `${fmtT(start)} – ${fmtT(end)}`,
+    };
+  }).filter(session => Number.isFinite(session.start) && Number.isFinite(session.end) && session.end > session.start)
+    .sort((a, b) => a.start - b.start);
+  return { ...config, sessions };
+}
+
+function isOpenPlayDate(date) {
+  if (!openPlayConfig || !openPlayConfig.enabled || !date) return false;
+  const days = Array.isArray(openPlayConfig.days) ? openPlayConfig.days : [];
+  const specificDates = Array.isArray(openPlayConfig.specificDates) ? openPlayConfig.specificDates : [];
+  return days.includes(dayOfWeek(date)) || specificDates.includes(date);
+}
+
+function getOpenPlaySessionsForDate(date, courtId = null) {
+  if (!openPlayConfig || !openPlayConfig.enabled || !date || !isOpenPlayCourt(courtId) || !isOpenPlayDate(date)) return [];
+  return Array.isArray(openPlayConfig.sessions) ? openPlayConfig.sessions : [];
+}
+
+function isOpenPlayHour(date, h, courtId = null) {
+  return getOpenPlaySessionsForDate(date, courtId).some(session => Number(h) >= session.start && Number(h) < session.end);
+}
+
+function getOpenPlaySessionForDate(date, courtId = null, sessionRef = null) {
+  const sessions = getOpenPlaySessionsForDate(date, courtId);
+  if (sessionRef === null || sessionRef === undefined || sessionRef === '') return sessions[0] || null;
+  const exact = sessions.find(session => String(session.key) === String(sessionRef));
+  if (exact) return exact;
+  const hour = Number(sessionRef);
+  return sessions.find(session => Number.isFinite(hour) && hour >= session.start && hour < session.end) || null;
 }
 
 function getOpenPlaySessionState(date, session, spotsLeft = 1) {
@@ -2319,40 +2418,93 @@ function getOpenPlaySessionState(date, session, spotsLeft = 1) {
   return 'joinable';
 }
 
-function openPlaySessionHtml({ courtId, courtName, date, session, spotsLeft, maxPlayers, compact = false }) {
+async function getOpenPlaySessionAvailability(date, courtId = null) {
+  const sessions = getOpenPlaySessionsForDate(date, courtId);
+  return Promise.all(sessions.map(async session => {
+    // The stored start hour is the rollout-safe session identifier for capacity.
+    const count = await DB.getOpenPlayCountForDate(date, courtId, session.start);
+    return {
+      session,
+      count,
+      spotsLeft: Math.max(0, session.maxPlayers - count),
+    };
+  }));
+}
+
+function opSafeText(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function opEncodedArg(value) {
+  return encodeURIComponent(String(value ?? '')).replace(/'/g, '%27');
+}
+
+function fmtOpenPlayPrice(value) {
+  const amount = Number(value);
+  if (!Number.isFinite(amount)) return '₱0';
+  return '₱' + amount.toLocaleString('en-PH', {
+    minimumFractionDigits: Number.isInteger(amount) ? 0 : 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function openPlaySessionHtml({ courtId, courtName, date, session, spotsLeft, compact = false }) {
   if (!session) return '';
+  const maxPlayers = session.maxPlayers || openPlayMaxPlayers || 40;
   const state = getOpenPlaySessionState(date, session, spotsLeft);
   const full = state === 'full';
   const ended = state === 'ended';
   const disabled = full || ended;
-  const cid = String(courtId || '').replace(/'/g, "\\'");
-  const cnm = String(courtName || 'Court').replace(/'/g, "\\'");
-  const safeDate = String(date || '').replace(/'/g, "\\'");
-  const click = disabled ? '' : `onclick="event.stopPropagation(); openPlaySignup('${cid}', '${safeDate}', ${session.start}, '${cnm}')"`;
+  const cid = opEncodedArg(courtId || '');
+  const cnm = opEncodedArg(courtName || 'Court');
+  const safeDate = opEncodedArg(date || '');
+  const sessionKey = opEncodedArg(session.key || session.start);
+  const click = disabled ? '' : `onclick="event.stopPropagation(); openPlaySignup(decodeURIComponent('${cid}'), decodeURIComponent('${safeDate}'), decodeURIComponent('${sessionKey}'), decodeURIComponent('${cnm}'))"`;
   const title = ended ? 'Open Play session ended' : full ? 'Open Play is full' : 'Tap to join Open Play';
-  const cta = ended ? 'SESSION ENDED' : full ? 'FULL' : 'JOIN OPEN PLAY →';
+  const cta = ended ? 'Session ended' : full ? 'Session full' : 'Join session →';
   const icon = ended ? '⌛' : full ? '⛔' : '🔥';
   const statusText = ended
     ? `Session ended · Max ${maxPlayers}`
-    : `<span><span class="opb-spots-count">${Math.max(0, spotsLeft)}</span> spot${Math.max(0, spotsLeft) !== 1 ? 's' : ''} left · Max ${maxPlayers}</span>`;
+    : full
+      ? `No spots left · Max ${maxPlayers}`
+      : `<span><span class="opb-spots-count">${Math.max(0, spotsLeft)}</span> spot${Math.max(0, spotsLeft) !== 1 ? 's' : ''} available · Max ${maxPlayers}</span>`;
+  const ariaLabel = opSafeText(`${session.name}. ${session.label}. ${fmtOpenPlayPrice(session.fee)} per player. ${disabled ? cta : 'Join this session'}`);
   return `
-    <div class="open-play-block ${compact ? 'cc-open-play-card' : ''} ${disabled ? 'full' : ''} ${ended ? 'ended' : ''}" ${click} title="${title}">
-      <div class="opb-header">
-        <div class="opb-icon">🏓</div>
-        <div>
-          <div class="opb-title">Open Play Session</div>
-          <div class="opb-time">${session.label}</div>
-          <div class="opb-sub">${fmtD(date)} · ${fmt(openPlayFee)} per player</div>
-        </div>
-      </div>
-      <div class="opb-footer">
-        <div class="opb-spots">
+    <button type="button" class="open-play-block ${compact ? 'cc-open-play-card' : ''} ${disabled ? 'full' : ''} ${ended ? 'ended' : ''}" ${click} title="${title}" aria-label="${ariaLabel}" ${disabled ? 'disabled' : ''}>
+      <span class="opb-header">
+        <span class="opb-icon">🏓</span>
+        <span class="opb-main">
+          <span class="opb-title">${opSafeText(session.name || 'Open Play Session')}</span>
+          <span class="opb-time">${session.label}</span>
+          <span class="opb-sub">${fmtD(date)}</span>
+        </span>
+        <span class="opb-price"><strong>${fmtOpenPlayPrice(session.fee)}</strong><small>per player</small></span>
+      </span>
+      <span class="opb-footer">
+        <span class="opb-spots">
           <span class="opb-spots-icon">${icon}</span>
           <span>${statusText}</span>
-        </div>
-        <div class="opb-cta">${cta}</div>
-      </div>
-    </div>`;
+        </span>
+        <span class="opb-cta">${cta}</span>
+      </span>
+    </button>`;
+}
+
+function openPlaySessionsHtml({ courtId, courtName, date, availability = [], compact = false }) {
+  if (!availability.length) return '';
+  return `<div class="open-play-sessions">${availability.map(item => openPlaySessionHtml({
+    courtId,
+    courtName,
+    date,
+    session: item.session,
+    spotsLeft: item.spotsLeft,
+    compact,
+  })).join('')}</div>`;
 }
 
 function _checkMaintenanceRule(rule, date, h, courtId) {
@@ -2448,10 +2600,14 @@ async function loadOperatingHours() {
   _settingsTiers = pricingTiers.length ? [...pricingTiers] : null;
   if (settings.open_play_config) {
     try {
-      openPlayConfig = JSON.parse(settings.open_play_config);
-      if (openPlayConfig?.fee) openPlayFee = parseFloat(openPlayConfig.fee) || 100;
-      if (openPlayConfig?.maxPlayers) openPlayMaxPlayers = parseInt(openPlayConfig.maxPlayers) || 40;
-    } catch(e) {}
+      openPlayConfig = normalizeOpenPlayConfig(JSON.parse(settings.open_play_config));
+      const firstSession = openPlayConfig?.sessions?.[0];
+      if (firstSession && Number.isFinite(firstSession.fee)) openPlayFee = firstSession.fee;
+      if (firstSession && Number.isInteger(firstSession.maxPlayers)) openPlayMaxPlayers = firstSession.maxPlayers;
+    } catch(e) {
+      console.error('Invalid Open Play configuration:', e);
+      openPlayConfig = null;
+    }
   }
   if (settings.maintenance_config) {
     try { maintenanceConfig = JSON.parse(settings.maintenance_config); } catch(e) {}
@@ -3007,21 +3163,14 @@ async function onCardDate(courtId, date) {
   const isToday_ = date === todayStr();
   const isPastDate_ = date < todayStr();
   const curHour  = nowHour();
-  const openPlaySession = getOpenPlaySessionForDate(date, courtId);
-  let openPlayCardHtml = '';
-  if (!isPastDate_ && openPlaySession) {
-    const opRegCount = await DB.getOpenPlayCountForDate(date, courtId);
-    const opSpotsLeft = Math.max(0, (openPlayMaxPlayers || 40) - opRegCount);
-    openPlayCardHtml = openPlaySessionHtml({
-      courtId,
-      courtName: c.name,
-      date,
-      session: openPlaySession,
-      spotsLeft: opSpotsLeft,
-      maxPlayers: openPlayMaxPlayers || 40,
-      compact: true,
-    });
-  }
+  const opAvailability = isPastDate_ ? [] : await getOpenPlaySessionAvailability(date, courtId);
+  const openPlayCardHtml = openPlaySessionsHtml({
+    courtId,
+    courtName: c.name,
+    date,
+    availability: opAvailability,
+    compact: true,
+  });
 
   // Update availability badge for selected date
   const availBadgeEl = $('cAvail_' + courtId);
@@ -3078,12 +3227,7 @@ async function renderCourts() {
   if (!courtsGrid) return;
   const openPlayTodayByCourt = {};
   await Promise.all(courts.map(async c => {
-    const session = getOpenPlaySessionForDate(today, c.id);
-    const count = session ? await DB.getOpenPlayCountForDate(today, c.id) : 0;
-    openPlayTodayByCourt[c.id] = {
-      session,
-      spotsLeft: Math.max(0, (openPlayMaxPlayers || 40) - count),
-    };
+    openPlayTodayByCourt[c.id] = await getOpenPlaySessionAvailability(today, c.id);
   }));
 
   courtsGrid.innerHTML = courts.map(c => {
@@ -3100,9 +3244,7 @@ async function renderCourts() {
             }));
     const bookedHours = new Set(Object.keys(slotNameMap).map(Number));
 
-    const todayOpenPlay = openPlayTodayByCourt[c.id] || {};
-    const todayOpenPlaySession = todayOpenPlay.session;
-    const todayOpenPlaySpotsLeft = todayOpenPlay.spotsLeft || 0;
+    const todayOpenPlay = openPlayTodayByCourt[c.id] || [];
 
     const availToday = blk ? 0 : allSlots.filter(h => h > curHour && !bookedHours.has(h) && !isOpenPlayHour(today, h, c.id) && !isMaintenanceHour(today, h, c.id)).length;
     const bookableToday = blk ? 0 : allSlots.filter(h => h > curHour && !isOpenPlayHour(today, h, c.id) && !isMaintenanceHour(today, h, c.id)).length;
@@ -3122,14 +3264,12 @@ async function renderCourts() {
       ? `<img src="${c.photo}" alt="${c.name}" style="width:100%;height:100%;object-fit:cover;display:block;position:absolute;inset:0"/>`
       : `<div style="width:100%;height:100%;background:linear-gradient(135deg,#0c1c0c,#091409);display:flex;align-items:center;justify-content:center;position:absolute;inset:0"><svg width="80" height="54" viewBox="0 0 110 74" fill="none"><rect x="2" y="2" width="106" height="70" rx="3" stroke="rgba(74,154,74,.5)" stroke-width="1.8"/><line x1="55" y1="2" x2="55" y2="72" stroke="rgba(74,154,74,.4)" stroke-width="1.4"/><line x1="2" y1="37" x2="108" y2="37" stroke="rgba(74,154,74,.3)" stroke-width="1"/><circle cx="55" cy="37" r="6" stroke="rgba(74,154,74,.35)" stroke-width="1.5"/></svg></div>`;
 
-    const openPlayCardHtml = (!blk && todayOpenPlaySession)
-      ? openPlaySessionHtml({
+    const openPlayCardHtml = !blk
+      ? openPlaySessionsHtml({
           courtId: c.id,
           courtName: c.name,
           date: today,
-          session: todayOpenPlaySession,
-          spotsLeft: todayOpenPlaySpotsLeft,
-          maxPlayers: openPlayMaxPlayers || 40,
+          availability: todayOpenPlay,
           compact: true,
         })
       : '';
@@ -3340,21 +3480,14 @@ async function renderSlots() {
     return !booked.has(h) && !isPast && !isNow && !isOpenPlayHour(date, h, court?.id) && !isMaintenanceHour(date, h, court?.id);
   });
 
-  // Check if there's an Open Play session on this date and get registration count
-  let openPlayBlock = '';
-  const openPlaySession = getOpenPlaySessionForDate(date, court?.id);
-  if (openPlaySession) {
-    const opRegCount = await DB.getOpenPlayCountForDate(date, court?.id);
-    const opSpotsLeft = Math.max(0, (openPlayMaxPlayers || 40) - opRegCount);
-    openPlayBlock = openPlaySessionHtml({
-      courtId: court.id,
-      courtName: court.name,
-      date,
-      session: openPlaySession,
-      spotsLeft: opSpotsLeft,
-      maxPlayers: openPlayMaxPlayers || 40,
-    });
-  }
+  // Load each Open Play session independently so price and capacity never bleed across tiers.
+  const openPlayAvailability = await getOpenPlaySessionAvailability(date, court?.id);
+  const openPlayBlock = openPlaySessionsHtml({
+    courtId: court.id,
+    courtName: court.name,
+    date,
+    availability: openPlayAvailability,
+  });
 
   let availCount = 0;
   let hasMaint = false;
@@ -4384,25 +4517,49 @@ function closeGrandSplash() {
 /* =============================================
    OPEN PLAY SIGN-UP
    ============================================= */
-let _opSignupData = { courtId: null, courtName: '', date: '', hour: 0, sessionEnd: 0, sessionLabel: '', fullPay: false, payMethod: 'gcash', gcashRef: '', startedAt: null };
+let _opSignupData = { courtId: null, courtName: '', date: '', hour: 0, sessionEnd: 0, sessionKey: '', sessionName: '', sessionLabel: '', sessionFee: 0, sessionMaxPlayers: 40, fullPay: false, payMethod: 'gcash', gcashRef: '', startedAt: null };
+let _opSignupRequestToken = 0;
 
 function firstEnabledPaymentMethod() {
   return ['gcash', 'gotyme', 'pnb', 'cash'].find(m => paymentMethods[m]) || '';
 }
 
-async function openPlaySignup(courtId, date, h, courtName) {
+function selectedOpenPlayTotal() {
+  return Number(_opSignupData.sessionFee || 0) + Number(_serviceFeeRate || 0);
+}
+
+async function openPlaySignup(courtId, date, sessionRef, courtName) {
+  const requestToken = ++_opSignupRequestToken;
   const defaultPayMethod = firstEnabledPaymentMethod();
-  const session = getOpenPlaySessionForDate(date, courtId) || { start: h, end: h + 1, label: `${fmtT(h)} – ${fmtT(h + 1)}` };
+  const session = getOpenPlaySessionForDate(date, courtId, sessionRef);
+  if (!session) {
+    toast('This Open Play session is no longer available. Please refresh and try again.', 'inf');
+    return;
+  }
   if (getOpenPlaySessionState(date, session, 1) === 'ended') {
     toast('Open Play session has ended for this date.', 'inf');
     return;
   }
-  _opSignupData = { courtId, courtName, date, hour: session.start, sessionEnd: session.end, sessionLabel: session.label, fullPay: false, payMethod: defaultPayMethod, gcashRef: '', startedAt: new Date().toISOString() };
+  _opSignupData = {
+    courtId,
+    courtName,
+    date,
+    hour: session.start,
+    sessionEnd: session.end,
+    sessionKey: session.key,
+    sessionName: session.name,
+    sessionLabel: session.label,
+    sessionFee: session.fee,
+    sessionMaxPlayers: session.maxPlayers,
+    fullPay: false,
+    payMethod: defaultPayMethod,
+    gcashRef: '',
+    startedAt: new Date().toISOString(),
+  };
   _opReceiptFile = null;
-  const sysFee = _serviceFeeRate;
-  const opTotal = openPlayFee + sysFee;
+  const opTotal = selectedOpenPlayTotal();
   const half = opTotal / 2;
-  $('opModalMeta').textContent = `${courtName || 'Court'} · ${fmtD(date)} · ${session.label}`;
+  $('opModalMeta').textContent = `${session.name} · ${courtName || 'Court'} · ${fmtD(date)} · ${session.label}`;
 
   // Show modal immediately with loading state
   $('opModalBody').innerHTML = `<div style="text-align:center;padding:32px 0;color:var(--muted)">Checking availability…</div>`;
@@ -4410,21 +4567,22 @@ async function openPlaySignup(courtId, date, h, courtName) {
   $('opModal').classList.add('active');
 
   // Check capacity
-  const count = await DB.getOpenPlayCountForDate(date, courtId);
-  if (count >= openPlayMaxPlayers) {
+  const count = await DB.getOpenPlayCountForDate(date, courtId, session.start);
+  if (requestToken !== _opSignupRequestToken) return;
+  if (count >= session.maxPlayers) {
     $('opModalBody').innerHTML = `
       <div style="text-align:center;padding:28px 0">
         <div style="font-size:3rem;margin-bottom:12px">😔</div>
         <div style="font-size:1.1rem;font-weight:700;margin-bottom:8px">Session Full</div>
         <div style="color:var(--muted);font-size:.88rem;line-height:1.65">
-          Open Play for <strong>${fmtD(date)}</strong> has reached the maximum of <strong>${openPlayMaxPlayers} players</strong>.<br/>Walk-ins may still be accommodated at the venue.
+          <strong>${opSafeText(session.name)}</strong> (${session.label}) has reached its limit of <strong>${session.maxPlayers} players</strong>.<br/>Please choose another session or ask about walk-in availability.
         </div>
       </div>`;
     $('opModalFt').innerHTML = `<button class="btn btn-g" style="width:100%;justify-content:center" onclick="closeOpModal()">Got it</button>`;
     return;
   }
 
-  const spotsLeft = openPlayMaxPlayers - count;
+  const spotsLeft = session.maxPlayers - count;
   if (!defaultPayMethod) {
     $('opModalBody').innerHTML = `
       <div style="text-align:center;padding:28px 0">
@@ -4480,10 +4638,10 @@ async function openPlaySignup(courtId, date, h, courtName) {
         </div>
         <div class="op-summary-cell">
           <span class="op-stat-label">Spots</span>
-          <span class="op-stat-value">${spotsLeft}/${openPlayMaxPlayers}</span>
+          <span class="op-stat-value">${spotsLeft}/${session.maxPlayers}</span>
         </div>
         <div class="op-fee-breakdown">
-          <div class="op-fee-line"><span>Open Play Fee</span><strong>${fmt(openPlayFee)}</strong></div>
+          <div class="op-fee-line"><span>${opSafeText(session.name)}</span><strong>${fmt(session.fee)}</strong></div>
           <div class="op-fee-line"><span>System Usage Fee</span><strong>${fmt(_serviceFeeRate)}</strong></div>
           <div class="op-fee-line total"><span>Total</span><strong>${fmt(opTotal)}</strong></div>
         </div>
@@ -4509,7 +4667,7 @@ function opPickPay(method) {
   document.querySelectorAll('#opPayOpts .pay-opt').forEach(el => el.classList.toggle('on', el.dataset.m === method));
   const info = $('opPayInfo');
   if (!info) return;
-  const opTotal = openPlayFee + _serviceFeeRate;
+  const opTotal = selectedOpenPlayTotal();
   const amt = _opSignupData.fullPay ? opTotal : opTotal / 2;
   const cleanRef = normalizePaymentRef(_opSignupData.gcashRef || '', method);
   _opSignupData.gcashRef = cleanRef;
@@ -4607,12 +4765,13 @@ function opSetDP(full) {
   _opSignupData.fullPay = full;
   $('opDp50')?.classList.toggle('on', !full);
   $('opDp100')?.classList.toggle('on', full);
-  const opTotal = openPlayFee + _serviceFeeRate;
+  const opTotal = selectedOpenPlayTotal();
   if ($('opAmtDue')) $('opAmtDue').textContent = fmt(full ? opTotal : opTotal / 2);
   opPickPay(_opSignupData.payMethod);
 }
 
 function closeOpModal() {
+  _opSignupRequestToken++;
   $('opModal').classList.remove('active');
   clearOpReceipt();
 }
@@ -4645,16 +4804,16 @@ function clearOpReceipt() {
   const st = $('opReceiptStatus'); if (st) st.style.display = 'none';
 }
 
-async function verifyOpReceipt(ref, method, inlineData) {
+async function verifyOpReceipt(ref, method, inlineData, receiptFile = _opReceiptFile) {
   const st = $('opReceiptStatus');
   if (st) { st.style.display = ''; st.style.background = 'rgba(74,154,220,.1)'; st.style.color = '#3b82f6'; st.textContent = '🔎 Verifying your receipt…'; }
   try {
-    const dataUrl = await _fileToBase64(_opReceiptFile);
+    const dataUrl = await _fileToBase64(receiptFile);
     const res = await DB.verifyGcashReceipt({
       bookingRef: ref,
       provider: method,
       imageBase64: dataUrl,
-      contentType: _opReceiptFile.type || 'image/jpeg',
+      contentType: receiptFile?.type || 'image/jpeg',
       bookingData: inlineData,
     });
     const status = res?.status || 'manual_review';
@@ -4682,6 +4841,10 @@ async function verifyOpReceipt(ref, method, inlineData) {
 }
 
 async function submitOpenPlay() {
+  const submitToken = _opSignupRequestToken;
+  const signup = { ..._opSignupData };
+  const receiptFile = _opReceiptFile;
+  const systemFee = Number(_serviceFeeRate || 0);
   const nameEl = $('opFullName');
   const name = (nameEl?.value || '').trim();
   if (!name) {
@@ -4690,40 +4853,42 @@ async function submitOpenPlay() {
     nameEl?.focus();
     return;
   }
-  const payMethod = _opSignupData.payMethod;
+  const payMethod = signup.payMethod;
   const needsRef = (payMethod === 'gcash' || payMethod === 'gotyme' || payMethod === 'pnb');
   // Sync ref from input in case oninput didn't fire
   const refEl = $('opGcashRef');
   if (refEl) {
-    _opSignupData.gcashRef = normalizePaymentRef(refEl.value, payMethod);
-    refEl.value = _opSignupData.gcashRef;
+    signup.gcashRef = normalizePaymentRef(refEl.value, payMethod);
+    if (submitToken === _opSignupRequestToken) _opSignupData.gcashRef = signup.gcashRef;
+    refEl.value = signup.gcashRef;
   }
-  if (needsRef && !_opSignupData.gcashRef) {
+  if (needsRef && !signup.gcashRef) {
     if (refEl) refEl.style.borderColor = 'var(--red)';
     toast('Please enter your payment reference number.', 'err');
     refEl?.focus();
     return;
   }
-  if (payMethod === 'gcash' && !isGcashRefValid(_opSignupData.gcashRef)) {
+  if (payMethod === 'gcash' && !isGcashRefValid(signup.gcashRef)) {
     if (refEl) refEl.style.borderColor = 'var(--red)';
     toast('GCash reference number must be exactly 13 digits.', 'err');
     refEl?.focus();
     return;
   }
-  if (needsRef && !_opReceiptFile) {
+  if (needsRef && !receiptFile) {
     const drop = $('opReceiptDrop'); if (drop) drop.style.borderColor = 'var(--red)';
     toast('Please upload your payment receipt screenshot.', 'err');
     return;
   }
-  const opTotal = openPlayFee + _serviceFeeRate;
-  const amt = _opSignupData.fullPay ? opTotal : opTotal / 2;
-  const payType = _opSignupData.fullPay ? '100%' : '50%';
+  const opTotal = Number(signup.sessionFee || 0) + systemFee;
+  const amt = signup.fullPay ? opTotal : opTotal / 2;
+  const payType = signup.fullPay ? '100%' : '50%';
   const btn = $('opSubmitBtn');
   if (btn) { btn.disabled = true; btn.textContent = 'Submitting…'; }
   try {
     // Re-check capacity at submit time to prevent race conditions
-    const currentCount = await DB.getOpenPlayCountForDate(_opSignupData.date, _opSignupData.courtId);
-    if (currentCount >= openPlayMaxPlayers) {
+    const currentCount = await DB.getOpenPlayCountForDate(signup.date, signup.courtId, signup.hour);
+    if (submitToken !== _opSignupRequestToken) return;
+    if (currentCount >= signup.sessionMaxPlayers) {
       $('opModalBody').innerHTML = `
         <div style="text-align:center;padding:28px 0">
           <div style="font-size:3rem;margin-bottom:12px">😔</div>
@@ -4739,29 +4904,36 @@ async function submitOpenPlay() {
     // Inline bookingData makes the edge function verify-only (no bookings write).
     let regPayStatus = 'pending';
     let receiptResult = null;
-    if (needsRef && _opReceiptFile) {
+    if (needsRef && receiptFile) {
       const opRef = 'OP-' + Date.now().toString(36).toUpperCase();
       receiptResult = await verifyOpReceipt(opRef, payMethod, {
         ref: opRef,
         total: opTotal,
         downpayment: amt,
-        gcash_ref: _opSignupData.gcashRef,
-        date: _opSignupData.date,
+        gcash_ref: signup.gcashRef,
+        date: signup.date,
         full_name: name,
-        created_at: _opSignupData.startedAt,
-      });
+        created_at: signup.startedAt,
+      }, receiptFile);
+      if (submitToken !== _opSignupRequestToken) return;
       if (receiptResult.status === 'rejected') {
-        const timeLabel = _opSignupData.sessionLabel || `${fmtT(_opSignupData.hour)} – ${fmtT(_opSignupData.hour + 1)}`;
+        const timeLabel = `${signup.sessionName || 'Open Play'} · ${signup.sessionLabel || `${fmtT(signup.hour)} – ${fmtT(signup.hour + 1)}`}`;
         await DB.addOpenPlayRegistration({
           fullName: name,
-          courtId: _opSignupData.courtId,
-          courtName: _opSignupData.courtName,
-          date: _opSignupData.date,
-          hour: _opSignupData.hour,
+          courtId: signup.courtId,
+          courtName: signup.courtName,
+          date: signup.date,
+          hour: signup.hour,
           timeLabel,
+          sessionKey: signup.sessionKey,
+          sessionStart: signup.hour,
+          sessionEnd: signup.sessionEnd,
+          baseFee: signup.sessionFee,
+          systemFee,
+          totalDue: opTotal,
           paymentType: payType,
-          paymentMethod: _opSignupData.payMethod,
-          gcashRef: _opSignupData.gcashRef || null,
+          paymentMethod: signup.payMethod,
+          gcashRef: signup.gcashRef || null,
           paymentStatus: 'rejected',
           amount: amt,
           receiptImageUrl: receiptResult.receiptImageUrl,
@@ -4773,23 +4945,30 @@ async function submitOpenPlay() {
           receiptConfidence: receiptResult.confidence,
           receiptVerifiedAt: receiptResult.receiptVerifiedAt,
         });
+        if (submitToken !== _opSignupRequestToken) return;
         toast('Receipt could not be verified: ' + receiptResult.message, 'err');
         if (btn) { btn.disabled = false; btn.textContent = '🏓 Join Open Play'; }
         return;
       }
       regPayStatus = receiptResult.status === 'auto_approved' ? 'paid' : 'pending';
     }
-    const timeLabel = _opSignupData.sessionLabel || `${fmtT(_opSignupData.hour)} – ${fmtT(_opSignupData.hour + 1)}`;
+    const timeLabel = `${signup.sessionName || 'Open Play'} · ${signup.sessionLabel || `${fmtT(signup.hour)} – ${fmtT(signup.hour + 1)}`}`;
     await DB.addOpenPlayRegistration({
       fullName: name,
-      courtId: _opSignupData.courtId,
-      courtName: _opSignupData.courtName,
-      date: _opSignupData.date,
-      hour: _opSignupData.hour,
+      courtId: signup.courtId,
+      courtName: signup.courtName,
+      date: signup.date,
+      hour: signup.hour,
       timeLabel,
+      sessionKey: signup.sessionKey,
+      sessionStart: signup.hour,
+      sessionEnd: signup.sessionEnd,
+      baseFee: signup.sessionFee,
+      systemFee,
+      totalDue: opTotal,
       paymentType: payType,
-      paymentMethod: _opSignupData.payMethod,
-      gcashRef: _opSignupData.gcashRef || null,
+      paymentMethod: signup.payMethod,
+      gcashRef: signup.gcashRef || null,
       paymentStatus: regPayStatus,
       amount: amt,
       receiptImageUrl: receiptResult?.receiptImageUrl || null,
@@ -4806,16 +4985,17 @@ async function submitOpenPlay() {
     fetch(`${SUPABASE_URL}/functions/v1/send-telegram-notification`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
-      body: JSON.stringify({ type: 'open_play', fullName: name, courtName: _opSignupData.courtName, date: _opSignupData.date, timeLabel, paymentType: payType, amount: amt }),
+      body: JSON.stringify({ type: 'open_play', fullName: name, courtName: signup.courtName, date: signup.date, timeLabel, paymentType: payType, amount: amt }),
     }).catch(() => {});
 
+    if (submitToken !== _opSignupRequestToken) return;
     $('opModalBody').innerHTML = `
       <div style="text-align:center;padding:28px 0">
         <div style="font-size:3rem;margin-bottom:12px">🏓</div>
         <div style="font-size:1.2rem;font-weight:700;margin-bottom:8px">You're in!</div>
         <div style="color:var(--muted);font-size:.88rem;line-height:1.65">
           Thanks, <strong>${name}</strong>!<br/>
-          ${_opSignupData.payMethod === 'cash'
+          ${signup.payMethod === 'cash'
             ? `Pay <strong>${fmt(amt)}</strong> at the front desk upon arrival.`
             : regPayStatus === 'paid'
               ? `✅ Your <strong>${fmt(amt)}</strong> payment was verified. Your spot is confirmed — see you on the court!`
@@ -4825,6 +5005,7 @@ async function submitOpenPlay() {
       </div>`;
     $('opModalFt').innerHTML = `<button class="btn btn-g" style="width:100%;justify-content:center" onclick="closeOpModal()">Done ✓</button>`;
   } catch(err) {
+    if (submitToken !== _opSignupRequestToken) return;
     const msg = err instanceof Error ? err.message : JSON.stringify(err);
     console.error('submitOpenPlay error:', err);
     toast('Error: ' + msg, 'err');

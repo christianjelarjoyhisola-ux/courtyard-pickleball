@@ -132,9 +132,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const params = new URLSearchParams(window.location.search);
   const comingFromAdmin = !!params.get('next');
   if (!comingFromAdmin && Auth.getSession()) window.location.href = 'admin.html';
-  // Check if redirected here from a password reset email
+  // Password-recovery and first-owner invitation links both establish a
+  // temporary Supabase session before redirecting back to this page.
   const hash = window.location.hash;
-  if (hash.includes('type=recovery')) {
+  if (hash.includes('type=recovery') || hash.includes('type=invite')) {
     document.getElementById('loginPanel').style.display = 'none';
     document.getElementById('newPassPanel').classList.add('show');
   }
@@ -156,7 +157,7 @@ async function doReset() {
   const email = document.getElementById('resetEmail').value.trim();
   if (!email) { alert('Please enter your email.'); return; }
   const { error } = await _sb.auth.resetPasswordForEmail(email, {
-    redirectTo: window.location.origin + '/login.html'
+    redirectTo: new URL('login.html', window.location.href).href
   });
   if (error) {
     alert('Error: ' + error.message);

@@ -2440,6 +2440,30 @@ function opSafeText(value) {
     .replace(/'/g, '&#039;');
 }
 
+// Settings and court records are rendered on the public page. Only accept
+// image sources that cannot execute script; SVG/data:text and active schemes
+// are deliberately excluded. Attribute escaping is still required at render.
+function safePublicImageUrl(value) {
+  const raw = String(value ?? '').trim();
+  if (!raw) return '';
+  if (/^data:image\/(?:png|jpe?g|webp|gif);base64,[A-Za-z0-9+/=\s]+$/i.test(raw)) {
+    return raw.replace(/\s/g, '');
+  }
+  if (raw.startsWith('//')) return '';
+  // Permit ordinary same-site asset paths, but no scheme-relative or
+  // backslash/control-character variants.
+  if (
+    !/^[A-Za-z][A-Za-z0-9+.-]*:/.test(raw) &&
+    !/[\\\u0000-\u001F\u007F]/.test(raw)
+  ) return raw;
+  try {
+    const parsed = new URL(raw, location.href);
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:' ? parsed.href : '';
+  } catch (_) {
+    return '';
+  }
+}
+
 function opEncodedArg(value) {
   return encodeURIComponent(String(value ?? '')).replace(/'/g, '%27');
 }
@@ -2480,8 +2504,8 @@ function openPlaySessionHtml({ courtId, courtName, date, session, spotsLeft, com
         <span class="opb-icon">🏓</span>
         <span class="opb-main">
           <span class="opb-title">${opSafeText(session.name || 'Open Play Session')}</span>
-          <span class="opb-time">${session.label}</span>
-          <span class="opb-sub">${fmtD(date)}</span>
+          <span class="opb-time">${opSafeText(session.label)}</span>
+          <span class="opb-sub">${opSafeText(fmtD(date))}</span>
         </span>
         <span class="opb-price"><strong>${fmtOpenPlayPrice(session.fee)}</strong><small>per player</small></span>
       </span>
@@ -2551,7 +2575,12 @@ function toast(msg, type='ok') {
   const icons = {ok:'✅', err:'❌', inf:'ℹ️'};
   const el = document.createElement('div');
   el.className = `toast ${type}`;
-  el.innerHTML = `<span>${icons[type]}</span><span class="t-msg">${msg}</span>`;
+  const icon = document.createElement('span');
+  icon.textContent = icons[type] || icons.ok;
+  const text = document.createElement('span');
+  text.className = 't-msg';
+  text.textContent = String(msg ?? '');
+  el.append(icon, text);
   $('toasts').appendChild(el);
   setTimeout(() => el.remove(), 3800);
 }
@@ -2624,17 +2653,17 @@ function applyPaymentSettings(settings) {
     gcash: {
       number: settings.gcash_merchant_number || '0935 935 5010',
       name: settings.gcash_merchant_name || 'CourtYard Pickleball',
-      qrImage: settings.gcash_qr_image || '',
+      qrImage: safePublicImageUrl(settings.gcash_qr_image),
     },
     gotyme: {
       number: settings.gotyme_merchant_number || '',
       name: settings.gotyme_merchant_name || 'CourtYard Pickleball',
-      qrImage: settings.gotyme_qr_image || '',
+      qrImage: safePublicImageUrl(settings.gotyme_qr_image),
     },
     pnb: {
       number: settings.pnb_merchant_number || '',
       name: settings.pnb_merchant_name || 'CourtYard Pickleball',
-      qrImage: settings.pnb_qr_image || '',
+      qrImage: safePublicImageUrl(settings.pnb_qr_image),
     },
   };
   gcashSettings.checkoutEnabled = settings.gcash_checkout_enabled === '1';
@@ -2665,25 +2694,21 @@ function applyPaymentSettings(settings) {
   if ($('pnMerchantNumber')) $('pnMerchantNumber').textContent = paymentReceiverSettings.pnb.number || 'Scan QR';
   if ($('pnMerchantName')) $('pnMerchantName').textContent = paymentReceiverSettings.pnb.name;
 
-  // Load QR images from DB — show img and hide placeholder only when image exists
-  if (settings.gcash_qr_image) {
-    const img = $('gcashQrImg');
-    if (img) { img.src = settings.gcash_qr_image; img.style.display = ''; }
-    const ph = $('gcashQrPlaceholder');
-    if (ph) ph.style.display = 'none';
-  }
-  if (settings.gotyme_qr_image) {
-    const img = $('gotymeQrImg');
-    if (img) { img.src = settings.gotyme_qr_image; img.style.display = ''; }
-    const ph = $('gotymeQrPlaceholder');
-    if (ph) ph.style.display = 'none';
-  }
-  if (settings.pnb_qr_image) {
-    const img = $('pnbQrImg');
-    if (img) { img.src = settings.pnb_qr_image; img.style.display = ''; }
-    const ph = $('pnbQrPlaceholder');
-    if (ph) ph.style.display = 'none';
-  }
+  // Load only allowlisted QR images and clear any stale preview when a setting
+  // is removed or rejected by the URL policy.
+  [
+    ['gcashQrImg', 'gcashQrPlaceholder', paymentReceiverSettings.gcash.qrImage],
+    ['gotymeQrImg', 'gotymeQrPlaceholder', paymentReceiverSettings.gotyme.qrImage],
+    ['pnbQrImg', 'pnbQrPlaceholder', paymentReceiverSettings.pnb.qrImage],
+  ].forEach(([imageId, placeholderId, imageUrl]) => {
+    const img = $(imageId);
+    const placeholder = $(placeholderId);
+    if (img) {
+      img.src = imageUrl || '';
+      img.style.display = imageUrl ? '' : 'none';
+    }
+    if (placeholder) placeholder.style.display = imageUrl ? 'none' : '';
+  });
 
   applyPaymentMethodVisibility();
   updatePaymentAmountUI();
@@ -2767,6 +2792,23 @@ function extractErrMsg(err) {
   try { return JSON.stringify(err); } catch(_) { return 'Unknown error'; }
 }
 
+function authoritativePriceChanged(quotedTotal, quotedDue, totalDue, amountDue) {
+  const values = [quotedTotal, quotedDue, totalDue, amountDue].map(Number);
+  return values.some(value => !Number.isFinite(value))
+    || Math.abs(values[0] - values[2]) >= 0.005
+    || Math.abs(values[1] - values[3]) >= 0.005;
+}
+
+function confirmAuthoritativePriceChange(label, quotedTotal, quotedDue, totalDue, amountDue) {
+  if (!authoritativePriceChanged(quotedTotal, quotedDue, totalDue, amountDue)) return true;
+  return window.confirm(
+    `${label} pricing changed while you were completing payment.\n\n`
+    + `Previously shown: ${fmt(quotedTotal)} total · ${fmt(quotedDue)} due\n`
+    + `Current server price: ${fmt(totalDue)} total · ${fmt(amountDue)} due\n\n`
+    + 'The saved reservation uses the current server price. If you already paid, choose OK to submit your receipt for owner review. Choose Cancel to pause the receipt upload and contact the venue; do not pay again.',
+  );
+}
+
 function stopPaymentWatch() {
   if (paymentWatch.timer) clearInterval(paymentWatch.timer);
   paymentWatch = { ref: null, timer: null, tries: 0 };
@@ -2791,17 +2833,22 @@ function startPaymentWatch(ref) {
 }
 
 function getRateForHour(h) {
-  return getRateForHourFromTiers(h, pricingTiers, 0);
+  return getRateForHourFromTiers(h, pricingTiers, court?.rate || 0);
 }
 
 function getRateForHourFromTiers(h, tiers, fallbackRate = 0) {
   for (const t of (tiers || [])) {
-    const inRange = t.from < t.to
-      ? (h >= t.from && h < t.to)
-      : (h >= t.from || h < t.to);
-    if (inRange) return t.rate;
+    const from = Number(t?.from);
+    const to = Number(t?.to);
+    const rate = Number(t?.rate);
+    if (![from, to, rate].every(Number.isFinite) || rate < 0) continue;
+    const inRange = from < to
+      ? (h >= from && h < to)
+      : (h >= from || h < to);
+    if (inRange) return rate;
   }
-  return (tiers && tiers.length > 0) ? Math.min(...tiers.map(t => t.rate)) : fallbackRate;
+  const fallback = Number(fallbackRate);
+  return Number.isFinite(fallback) && fallback >= 0 ? fallback : 0;
 }
 
 function getPricingTiersForCourt(c) {
@@ -2886,7 +2933,9 @@ function updateCardUI(courtId) {
     if (mobileBar) {
       if (mobileSumEl) mobileSumEl.textContent = txt;
       if (mobileCtEl) {
-        const hdEl = document.querySelector(`[data-id="${courtId}"] .cc-mobile-hd span:first-child`);
+        const courtCard = Array.from(document.querySelectorAll('#courtsGrid .cc'))
+          .find(el => el.dataset.id === String(courtId));
+        const hdEl = courtCard?.querySelector('.cc-mobile-hd span:first-child');
         mobileCtEl.textContent = hdEl ? hdEl.textContent.replace('📍 ', '') : '';
       }
       mobileBar.style.display = 'flex';
@@ -2903,6 +2952,17 @@ let _reservedRef = null;
 let _countdownInterval = null;
 const RESERVATION_MINUTES = 15;
 
+async function cancelPublicReservation(ref) {
+  const receiptToken = PBReceiptTokens.get('booking', ref);
+  if (!receiptToken) {
+    console.warn(`Cannot cancel booking hold ${ref}: receipt capability token is unavailable.`);
+    return null;
+  }
+  const result = await DB.cancelPublicBookingHold(ref, receiptToken);
+  if (result?.booking_status === 'cancelled') PBReceiptTokens.forget('booking', ref);
+  return result;
+}
+
 // A `verifying` booking only HOLDS its slot for RESERVATION_MINUTES. After that
 // the reservation is considered expired and the slot is treated as free at
 // RENDER time — even if no cleanup write ever succeeded (browser closed, network
@@ -2911,7 +2971,9 @@ const RESERVATION_MINUTES = 15;
 function isHeldVerifying(b) {
   if (b.status !== 'verifying') return false;
   if (!b.createdAt) return true; // no timestamp → treat as fresh hold
-  return (Date.now() - new Date(b.createdAt).getTime()) < RESERVATION_MINUTES * 60 * 1000;
+  const createdAt = new Date(b.createdAt).getTime();
+  if (!Number.isFinite(createdAt)) return true;
+  return (Date.now() - createdAt) < RESERVATION_MINUTES * 60 * 1000;
 }
 
 // True if this booking currently occupies its slot (confirmed/pending always do;
@@ -2935,6 +2997,13 @@ async function proceedToBook(courtId) {
 
   // ── Lock the slot NOW before showing the form ─────────────────────────
   const reserveRef = genRef();
+  let receiptCredential;
+  try {
+    receiptCredential = await PBReceiptTokens.create('booking', reserveRef);
+  } catch (err) {
+    toast(err?.message || 'Could not securely authorize this reservation.', 'err');
+    return;
+  }
   const reserveData = {
     ref:           reserveRef,
     fullName:      'Reserving…',
@@ -2956,10 +3025,12 @@ async function proceedToBook(courtId) {
     createdAt:     new Date().toISOString(),
     downpayment:   null,
     gcashRef:      null,
+    receiptUploadTokenHash: receiptCredential.receiptTokenHash,
   };
   try {
     await DB.addBooking(reserveData);
   } catch (err) {
+    PBReceiptTokens.forget('booking', reserveRef);
     const msg = err?.message || '';
     if (msg.toLowerCase().includes('no longer available') || msg.toLowerCase().includes('already booked')) {
       toast('⚠️ Sorry, someone just reserved that slot! Please choose another time.', 'err');
@@ -2990,7 +3061,7 @@ function closeBookModal() {
   if (_reservedRef) {
     const ref = _reservedRef;
     _reservedRef = null;
-    DB.updateBooking(ref, { status: 'cancelled', paymentStatus: 'rejected' }).catch(() => {});
+    cancelPublicReservation(ref).catch(() => {});
   }
   const _mb = $('mobileBookBar');
   if (_mb) _mb.style.display = (cardSel.slots && cardSel.slots.length > 0) ? 'flex' : 'none';
@@ -3022,7 +3093,7 @@ function startSlotCountdown() {
       if (_reservedRef) {
         const ref = _reservedRef;
         _reservedRef = null;
-        DB.updateBooking(ref, { status: 'cancelled', paymentStatus: 'rejected' }).catch(() => {});
+        cancelPublicReservation(ref).catch(() => {});
       }
       closeBookModal();
       renderCourts();
@@ -3099,7 +3170,7 @@ function updateWiz3Summary() {
   const total = courtTotal + svcFee;
   const dateStr = $('bDate').value ? fmtD($('bDate').value) : '—';
   $('wiz3Summary').innerHTML = [
-    `🏟️ ${court ? court.name : '—'}`,
+    `🏟️ ${court ? opSafeText(court.name) : '—'}`,
     `📅 ${dateStr}`,
     mn !== null ? `⏰ ${fmtT(mn)} – ${fmtT(mx + 1)} &nbsp;(${hrs} hr${hrs !== 1 ? 's' : ''})` : '',
     `🎾 Court Fee: <strong style="color:var(--muted)">${fmt(courtTotal)}</strong>`,
@@ -3137,7 +3208,7 @@ async function onCardDate(courtId, date) {
     DB.getCourts(), DB.getBookings(), DB.getBlockedDates(), loadOperatingHours()
   ]);
 
-  const c = courts.find(x => x.id === courtId);
+  const c = courts.find(x => String(x.id) === String(courtId));
   if (!c || c.blocked) {
     grid.innerHTML = `<span class="cc-slots-empty">🔧 Under maintenance</span>`;
     return;
@@ -3152,7 +3223,7 @@ async function onCardDate(courtId, date) {
   // Build slot → name map for this date (verifying = yellow lock, others = red taken)
   const slotNameMap = {};
   const verifyingHrs = new Set();
-  bookings.filter(b => b.courtId === courtId && b.date === date && bookingHoldsSlot(b))
+  bookings.filter(b => String(b.courtId) === String(courtId) && b.date === date && bookingHoldsSlot(b))
           .forEach(b => b.slots.forEach(h => {
             slotNameMap[h] = b.fullName || '';
             if (b.status === 'verifying') verifyingHrs.add(Number(h));
@@ -3201,18 +3272,18 @@ async function onCardDate(courtId, date) {
     const timeRange = slotTimeLabel(h);
     if (isPast_)    return `<div class="cc-slot-btn past-slot"><div class="csl-time">${timeRange}</div><div class="csl-tag">${isPastDate_ ? 'Past' : 'Done'}</div></div>`;
     if (isBooked_ && verifyingHrs.has(h)) return `<div class="cc-slot-btn processing"><div class="csl-time">${timeRange}</div><div class="csl-tag">⏳ Processing…</div></div>`;
-    if (isBooked_) return `<div class="cc-slot-btn taken"><div class="csl-time">${timeRange}</div><div class="csl-name">${maskName(slotNameMap[h])}</div></div>`;
-    if (isMaint_)  { const _ml=getMaintenanceLabel(date,h,courtId); return `<div class="cc-slot-btn maintenance"><div class="csl-time">${timeRange}</div><div class="csl-tag">${_ml.icon} ${_ml.text}</div></div>`; }
+    if (isBooked_) return `<div class="cc-slot-btn taken"><div class="csl-time">${timeRange}</div><div class="csl-name">${opSafeText(maskName(slotNameMap[h]))}</div></div>`;
+    if (isMaint_)  { const _ml=getMaintenanceLabel(date,h,courtId); return `<div class="cc-slot-btn maintenance"><div class="csl-time">${timeRange}</div><div class="csl-tag">${opSafeText(_ml.icon)} ${opSafeText(_ml.text)}</div></div>`; }
     if (isOpenPlay_) return '';
-    return `<div class="cc-slot-btn" data-h="${h}" onclick="event.stopPropagation(); toggleCardSlot('${courtId}','${date}',${h})"><div class="csl-time">${timeRange}</div><div class="csl-price">₱${getRateForHourFromTiers(h, cTiers, c.rate)}</div></div>`;
+    return `<div class="cc-slot-btn" data-h="${h}" data-court-id="${opSafeText(courtId)}" data-date="${opSafeText(date)}" onclick="event.stopPropagation(); toggleCardSlot(this.dataset.courtId,this.dataset.date,Number(this.dataset.h))"><div class="csl-time">${timeRange}</div><div class="csl-price">₱${getRateForHourFromTiers(h, cTiers, c.rate)}</div></div>`;
   }).join('');
 }
 
 /* proceedToBook loads court data if needed */
 async function ensureCourt(courtId) {
-  if (court && court.id === courtId) return;
+  if (court && String(court.id) === String(courtId)) return;
   const courts = await DB.getCourts();
-  court = courts.find(c => c.id === courtId) || null;
+  court = courts.find(c => String(c.id) === String(courtId)) || null;
   if (court) pricingTiers = getPricingTiersForCourt(court);
 }
 
@@ -3232,6 +3303,15 @@ async function renderCourts() {
 
   courtsGrid.innerHTML = courts.map(c => {
     const blk = c.blocked;
+    const courtIdText = String(c.id ?? '');
+    const safeCourtId = opSafeText(courtIdText);
+    const safeCourtName = opSafeText(c.name || 'Court');
+    const safeCourtDescription = opSafeText(c.desc || '');
+    const safeCourtFeatures = (Array.isArray(c.feats) ? c.feats : [])
+      .map(feature => `<span class="cc-photo-feat">${opSafeText(feature)}</span>`)
+      .join('');
+    const courtPhotoUrl = safePublicImageUrl(c.photo);
+    const safeCourtRate = Number.isFinite(Number(c.rate)) ? Number(c.rate) : 0;
     const allSlots = Array.from({length: closeHour - openHour}, (_, i) => i + openHour);
 
     // Build slot → booking name map
@@ -3260,8 +3340,8 @@ async function renderCourts() {
       return r.length ? (Math.min(...r) === Math.max(...r) ? `₱${Math.min(...r)}/hr` : `₱${Math.min(...r)}–₱${Math.max(...r)}/hr`) : `${fmt(c.rate)}/hr`;
     })();
 
-    const courtPhotoHtml = c.photo
-      ? `<img src="${c.photo}" alt="${c.name}" style="width:100%;height:100%;object-fit:cover;display:block;position:absolute;inset:0"/>`
+    const courtPhotoHtml = courtPhotoUrl
+      ? `<img src="${opSafeText(courtPhotoUrl)}" alt="${safeCourtName}" style="width:100%;height:100%;object-fit:cover;display:block;position:absolute;inset:0"/>`
       : `<div style="width:100%;height:100%;background:linear-gradient(135deg,#0c1c0c,#091409);display:flex;align-items:center;justify-content:center;position:absolute;inset:0"><svg width="80" height="54" viewBox="0 0 110 74" fill="none"><rect x="2" y="2" width="106" height="70" rx="3" stroke="rgba(74,154,74,.5)" stroke-width="1.8"/><line x1="55" y1="2" x2="55" y2="72" stroke="rgba(74,154,74,.4)" stroke-width="1.4"/><line x1="2" y1="37" x2="108" y2="37" stroke="rgba(74,154,74,.3)" stroke-width="1"/><circle cx="55" cy="37" r="6" stroke="rgba(74,154,74,.35)" stroke-width="1.5"/></svg></div>`;
 
     const openPlayCardHtml = !blk
@@ -3284,29 +3364,29 @@ async function renderCourts() {
           const timeRange = slotTimeLabel(h);
           if (isPast_)    return `<div class="cc-slot-btn past-slot"><div class="csl-time">${timeRange}</div><div class="csl-tag">Done</div></div>`;
           if (isBooked_ && verifyingHoursSet.has(h)) return `<div class="cc-slot-btn processing"><div class="csl-time">${timeRange}</div><div class="csl-tag">⏳ Processing…</div></div>`;
-          if (isBooked_) return `<div class="cc-slot-btn taken"><div class="csl-time">${timeRange}</div><div class="csl-name">${maskName(slotNameMap[h])}</div></div>`;
-          if (isMaint_)  { const _ml=getMaintenanceLabel(today,h,c.id); return `<div class="cc-slot-btn maintenance"><div class="csl-time">${timeRange}</div><div class="csl-tag">${_ml.icon} ${_ml.text}</div></div>`; }
+          if (isBooked_) return `<div class="cc-slot-btn taken"><div class="csl-time">${timeRange}</div><div class="csl-name">${opSafeText(maskName(slotNameMap[h]))}</div></div>`;
+          if (isMaint_)  { const _ml=getMaintenanceLabel(today,h,c.id); return `<div class="cc-slot-btn maintenance"><div class="csl-time">${timeRange}</div><div class="csl-tag">${opSafeText(_ml.icon)} ${opSafeText(_ml.text)}</div></div>`; }
           if (isOpenPlay_) return '';
-          return `<div class="cc-slot-btn" data-h="${h}" onclick="event.stopPropagation(); toggleCardSlot('${c.id}','${today}',${h})"><div class="csl-time">${timeRange}</div><div class="csl-price">₱${_cRate(h)}</div></div>`;
+          return `<div class="cc-slot-btn" data-h="${h}" data-court-id="${safeCourtId}" data-date="${opSafeText(today)}" onclick="event.stopPropagation(); toggleCardSlot(this.dataset.courtId,this.dataset.date,Number(this.dataset.h))"><div class="csl-time">${timeRange}</div><div class="csl-price">₱${_cRate(h)}</div></div>`;
         }).join('');
 
     return `
-    <div class="cc${blk?' blk':''}" data-id="${c.id}" ${blk ? `onclick="toast('Court is under maintenance.','err')"` : ''}>
+    <div class="cc${blk?' blk':''}" data-id="${safeCourtId}" ${blk ? `onclick="toast('Court is under maintenance.','err')"` : ''}>
 
       <!-- MOBILE-ONLY HEADER -->
       <div class="cc-mobile-hd">
-        <span>📍 ${c.name}</span>
-        <span class="cc-mobile-hd-date" id="cMobDate_${c.id}">Today</span>
+        <span>📍 ${safeCourtName}</span>
+        <span class="cc-mobile-hd-date" id="cMobDate_${safeCourtId}">Today</span>
       </div>
 
       <!-- LEFT: Photo -->
       <div class="cc-photo">
         ${courtPhotoHtml}
-        <div class="cc-photo-avail ${availBadgeCls}" id="cAvail_${c.id}">${availBadgeTxt}</div>
+        <div class="cc-photo-avail ${availBadgeCls}" id="cAvail_${safeCourtId}">${availBadgeTxt}</div>
         <div class="cc-photo-bar">
-          <span class="cc-photo-name">${c.name}</span>
-          <div class="cc-photo-rate">${rateRange} · ${c.desc}</div>
-          <div class="cc-photo-feats">${c.feats.map(f=>`<span class="cc-photo-feat">${f}</span>`).join('')}</div>
+          <span class="cc-photo-name">${safeCourtName}</span>
+          <div class="cc-photo-rate">${rateRange} · ${safeCourtDescription}</div>
+          <div class="cc-photo-feats">${safeCourtFeatures}</div>
         </div>
       </div>
 
@@ -3319,18 +3399,18 @@ async function renderCourts() {
           </div>
           <div class="cc-date-wrap">
             <span class="cc-date-lbl">Select Date</span>
-            <input type="date" class="cc-date-pick" id="cDate_${c.id}"
+            <input type="date" class="cc-date-pick" id="cDate_${safeCourtId}" data-court-id="${safeCourtId}"
               value="${today}" min="${today}"
               onclick="event.stopPropagation()"
-              onchange="event.stopPropagation(); onCardDate('${c.id}', this.value)" />
+              onchange="event.stopPropagation(); onCardDate(this.dataset.courtId, this.value)" />
           </div>
         </div>
 
-        <div class="cc-slots-grid" id="cSlots_${c.id}">${slotsHtml}</div>
+        <div class="cc-slots-grid" id="cSlots_${safeCourtId}">${slotsHtml}</div>
 
-        <div class="cc-book-bar" id="cBar_${c.id}" data-rate="${c.rate}" style="display:none">
-          <span class="cc-book-sum" id="cBarSum_${c.id}"></span>
-          <button class="btn btn-p btn-sm" onclick="event.stopPropagation(); proceedToBook('${c.id}')">Book Now →</button>
+        <div class="cc-book-bar" id="cBar_${safeCourtId}" data-rate="${safeCourtRate}" style="display:none">
+          <span class="cc-book-sum" id="cBarSum_${safeCourtId}"></span>
+          <button class="btn btn-p btn-sm" data-court-id="${safeCourtId}" onclick="event.stopPropagation(); proceedToBook(this.dataset.courtId)">Book Now →</button>
         </div>
       </div>
 
@@ -3355,6 +3435,8 @@ async function renderCourts() {
     const cur_   = nowHour();
     tabsEl.innerHTML = courts.map(c => {
       const blk = c.blocked;
+      const courtIdText = String(c.id ?? '');
+      const safeCourtId = opSafeText(courtIdText);
       const allSl_ = Array.from({length: closeHour - openHour}, (_, i) => i + openHour);
       const booked_ = new Set(
         bookings.filter(b => b.courtId === c.id && b.date === today_ && b.status !== 'cancelled')
@@ -3362,9 +3444,9 @@ async function renderCourts() {
       );
       const avail_ = blk ? 0 : allSl_.filter(h => h > cur_ && !booked_.has(h) && !isOpenPlayHour(today_, h, c.id) && !isMaintenanceHour(today_, h, c.id)).length;
       const dotCls  = blk ? 'tab-dot-mnt' : avail_ > 0 ? 'tab-dot-av' : 'tab-dot-full';
-      const shortName = c.name.replace(/^SMASH\s*/i, '');
-      return `<button class="court-tab" data-court="${c.id}" onclick="switchCourtTab('${c.id}')" title="${c.name}">
-        <span class="tab-dot ${dotCls}"></span>${shortName}
+      const shortName = String(c.name || 'Court').replace(/^SMASH\s*/i, '');
+      return `<button class="court-tab" data-court="${safeCourtId}" onclick="switchCourtTab(this.dataset.court)" title="${opSafeText(c.name || 'Court')}">
+        <span class="tab-dot ${dotCls}"></span>${opSafeText(shortName)}
       </button>`;
     }).join('');
     if (courts.length > 0) switchCourtTab(courts[0].id);
@@ -3452,7 +3534,7 @@ async function renderSlots() {
     g.innerHTML = `
       <div style="background:rgba(255,152,0,.08);border:1.5px solid rgba(255,152,0,.5);border-radius:12px;padding:20px 18px;text-align:center;margin:4px 0">
         <div style="font-size:1.8rem;margin-bottom:8px">🚧</div>
-        <div style="font-weight:800;font-size:.95rem;color:#ff9800;margin-bottom:6px">${court.name} — Temporarily Closed</div>
+        <div style="font-weight:800;font-size:.95rem;color:#ff9800;margin-bottom:6px">${opSafeText(court.name)} — Temporarily Closed</div>
         <div style="font-size:.84rem;color:var(--text);margin-bottom:10px">${_repair.reason}</div>
         <div style="font-size:.78rem;color:var(--muted)">
           Closed from <strong style="color:#ff9800">April 27</strong> to <strong style="color:#ff9800">April 29, 2026</strong>.<br/>
@@ -3698,26 +3780,38 @@ function copyMerchantNum() {
 }
 
 function paymentRefMaxLength(method) {
-  return method === 'gcash' ? 13 : 30;
+  return method === 'gcash' ? 13 : 40;
 }
 
 function normalizePaymentRef(value, method) {
-  return String(value || '').replace(/\D/g, '').slice(0, paymentRefMaxLength(method));
+  const raw = String(value || '');
+  const normalized = method === 'gcash'
+    ? raw.replace(/\D/g, '')
+    : raw.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  return normalized.slice(0, paymentRefMaxLength(method));
 }
 
 function isGcashRefValid(ref) {
   return /^\d{13}$/.test(String(ref || ''));
 }
 
+function isPaymentRefValid(ref, method) {
+  const normalized = normalizePaymentRef(ref, method);
+  return method === 'gcash'
+    ? isGcashRefValid(normalized)
+    : /^[A-Z0-9]{6,40}$/.test(normalized);
+}
+
 function paymentRefHelpText(method) {
   if (method === 'gcash') return 'GCash reference must be exactly 13 digits.';
-  return 'Must match the reference number on the uploaded receipt.';
+  return 'Use the 6–40 letter/number reference exactly as shown on the receipt.';
 }
 
 function syncBookingRefUi(method = $('bPay')?.value || 'gcash') {
   const input = $('bGcashRef');
   if (input) {
     input.maxLength = paymentRefMaxLength(method);
+    input.inputMode = method === 'gcash' ? 'numeric' : 'text';
     input.placeholder = method === 'gcash' ? 'e.g. 1234567890123' : 'Enter payment reference number';
     const clean = normalizePaymentRef(input.value, method);
     if (input.value !== clean) input.value = clean;
@@ -3732,7 +3826,7 @@ function pasteRef() {
       const method = $('bPay')?.value || 'gcash';
       const clean = normalizePaymentRef(text, method);
       if (clean) { $('bGcashRef').value = clean; updateRefCount(); toast('Reference pasted!', 'ok'); }
-      else toast('No number found in clipboard.', 'inf');
+      else toast('No valid reference found in clipboard.', 'inf');
     }).catch(() => toast('Tap the input field and long-press to paste.', 'inf'));
   } else { toast('Tap the input field and long-press to paste.', 'inf'); }
 }
@@ -3751,8 +3845,8 @@ function updateRefCount() {
     el.textContent = `${len}/13 digits`;
     el.style.color = len === 13 ? 'var(--accent)' : 'var(--muted)';
   } else {
-    el.textContent = len + (len === 1 ? ' digit' : ' digits');
-    el.style.color = len > 0 ? 'var(--accent)' : 'var(--muted)';
+    el.textContent = len + (len === 1 ? ' character' : ' characters');
+    el.style.color = len >= 6 ? 'var(--accent)' : 'var(--muted)';
   }
 }
 
@@ -3826,7 +3920,9 @@ async function submitBooking(e) {
   }
   ensurePaymentStepReady();
   const payMethod = $('bPay').value;
-  const gcashRef  = $('bGcashRef')?.value?.trim() || '';
+  const gcashRef = normalizePaymentRef($('bGcashRef')?.value || '', payMethod);
+  if ($('bGcashRef')) $('bGcashRef').value = gcashRef;
+  const digitalPay = payMethod === 'gcash' || payMethod === 'gotyme' || payMethod === 'pnb';
   const hasPaymentMethod = paymentMethods.cash || paymentMethods.gcash || paymentMethods.gotyme || paymentMethods.pnb;
   const gcashNeedsCheckout = false; // Manual QR flow: customer pays via QR and enters ref number
   const checks = [
@@ -3843,7 +3939,7 @@ async function submitBooking(e) {
     [!payMethod, 'Please select a payment method.'],
     [!!payMethod && !paymentMethods[payMethod], 'Selected payment method is no longer available.'],
     [(payMethod === 'gcash' || payMethod === 'gotyme' || payMethod === 'pnb') && !gcashRef, 'Please enter your GCash/GoTyme/PNB reference number after paying.'],
-    [payMethod === 'gcash' && !isGcashRefValid(gcashRef), 'GCash reference number must be exactly 13 digits.'],
+    [digitalPay && gcashRef && !isPaymentRefValid(gcashRef, payMethod), paymentRefHelpText(payMethod)],
     [(payMethod === 'gcash' || payMethod === 'gotyme' || payMethod === 'pnb') && !_receiptFile, () => {
       // Scroll to and flash the upload zone so the user knows exactly what's missing.
       const drop = $('bReceiptDrop');
@@ -3894,7 +3990,7 @@ async function submitBooking(e) {
     paymentFlow: payMethod,
     downpayment,
     paymentStatus: payMethod === 'cash' ? 'unpaid' : 'for_verification',
-    status: (payMethod === 'gcash' || payMethod === 'gotyme' || payMethod === 'pnb') ? 'verifying' : 'pending',
+    status: digitalPay ? 'verifying' : 'pending',
     createdAt: new Date().toISOString(),
   };
 
@@ -3904,29 +4000,91 @@ async function submitBooking(e) {
   let bookingSaved = false;
   let checkoutOpened = false;
   try {
+    let receiptToken = PBReceiptTokens.get('booking', booking.ref);
     if (_reservedRef) {
-      // Slot was already reserved at Book Now — just fill in the details.
-      await DB.updateBooking(_reservedRef, {
-        fullName:      booking.fullName,
-        contactNumber: booking.contactNumber,
-        email:         booking.email,
-        paymentMethod: booking.paymentMethod,
-        paymentFlow:   booking.paymentFlow,
-        gcashRef:      booking.gcashRef,
-        downpayment:   booking.downpayment,
-        total:         booking.total,
-        paymentStatus: booking.paymentStatus,
-        status:        booking.status,
-      });
-      _reservedRef = null;
+      bookingSaved = true;
+      if (!receiptToken) {
+        throw new Error('This reservation can no longer be securely finalized. Please close it and select the slot again.');
+      }
     } else {
-      // Fallback: no prior reservation (e.g. wizard flow) — insert fresh.
-      await DB.addBooking(booking);
+      // Fallback wizard path: create the same token-bound verifying hold before
+      // finalizing customer/payment details through the capability RPC.
+      const receiptCredential = await PBReceiptTokens.create('booking', booking.ref);
+      receiptToken = receiptCredential.receiptToken;
+      await DB.addBooking({
+        ...booking,
+        // Anonymous INSERT is only a short-lived, non-PII hold. Customer and
+        // payment details are written later by the token-authorized RPC.
+        fullName: 'Reserving…',
+        contactNumber: '00000000000',
+        email: 'reserve@hold.internal',
+        paymentMethod: 'gcash',
+        paymentFlow: null,
+        gcashRef: null,
+        status: 'verifying',
+        paymentStatus: 'for_verification',
+        downpayment: null,
+        receiptUploadTokenHash: receiptCredential.receiptTokenHash,
+      });
+      _reservedRef = booking.ref;
+      bookingSaved = true;
     }
-    bookingSaved = true;
+
+    // Detach the hold from modal-close/countdown cancellation before yielding
+    // to the RPC. A timeout is ambiguous: finalization may already have
+    // committed, so this browser must not race it with a cancellation request.
+    _reservedRef = null;
+    const finalized = await DB.finalizePublicBookingHold(booking.ref, {
+      receiptToken,
+      fullName: booking.fullName,
+      contactNumber: booking.contactNumber,
+      email: booking.email,
+      paymentMethod: booking.paymentMethod,
+      paymentChoice: payFull ? 'full' : 'downpayment',
+      paymentReference: booking.gcashRef,
+    });
+    if (!finalized?.bookingRef) {
+      throw new Error('Booking finalization returned an incomplete response. Keep any payment screenshot and do not pay again.');
+    }
+    const quotedTotal = booking.total;
+    const quotedAmountDue = booking.downpayment;
+    booking.status = finalized.bookingStatus || booking.status;
+    booking.paymentStatus = finalized.bookingPaymentStatus || booking.paymentStatus;
+    booking.total = finalized.totalDue;
+    booking.downpayment = finalized.amountDue;
+    if (finalized.courtName) booking.courtName = finalized.courtName;
+    if (finalized.startTime) booking.startTime = finalized.startTime;
+    if (finalized.endTime) booking.endTime = finalized.endTime;
+    if (Number.isInteger(finalized.duration) && finalized.duration > 0) booking.duration = finalized.duration;
+    if (finalized.slots.length) booking.slots = finalized.slots.map(Number);
+    const priceChanged = authoritativePriceChanged(
+      quotedTotal,
+      quotedAmountDue,
+      booking.total,
+      booking.downpayment,
+    );
+    if (digitalPay && priceChanged && !confirmAuthoritativePriceChange(
+      'Booking',
+      quotedTotal,
+      quotedAmountDue,
+      booking.total,
+      booking.downpayment,
+    )) {
+      booking._receiptResult = {
+        status: 'receipt_not_uploaded',
+        noReceiptUploaded: true,
+        quoteChanged: true,
+        flags: ['authoritative_price_changed'],
+        message: `The current amount due is ${fmt(booking.downpayment)}. Your receipt was not uploaded; keep it and contact the venue. Do not pay again.`,
+      };
+    }
+    if (!digitalPay) {
+      PBReceiptTokens.forget('booking', booking.ref);
+      receiptToken = '';
+    }
 
     // Notify owner via Telegram (fire-and-forget — never blocks booking flow)
-    if (!window.PB_USE_LOCAL_DATA) fetch('https://ikeujqaqmwmvkyhjqdmv.functions.supabase.co/send-telegram-notification', {
+    if (!window.PB_USE_LOCAL_DATA) fetch(`${SUPABASE_URL.replace(/\/+$/, '')}/functions/v1/send-telegram-notification`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'apikey': SUPABASE_ANON_KEY },
       body: JSON.stringify({
@@ -3945,10 +4103,34 @@ async function submitBooking(e) {
       }),
     }).catch(() => {}); // Silent fail — never interrupt booking
 
+    if (booking._receiptResult?.noReceiptUploaded) {
+      showInvoice(booking);
+      resetForm();
+      toast('Price changed. Booking saved, but receipt upload was paused. Do not pay again.', 'inf');
+      return;
+    }
+
     // ── Run OCR against the saved booking ────────────────────────────────
-    if (_receiptFile && (payMethod === 'gcash' || payMethod === 'gotyme' || payMethod === 'pnb')) {
-      try { booking._receiptResult = await verifyUploadedReceipt(booking.ref, payMethod); } catch(_) {}
+    if (_receiptFile && digitalPay) {
+      try {
+        booking._receiptResult = await verifyUploadedReceipt(
+          booking.ref,
+          payMethod,
+          receiptToken,
+        );
+      } catch (err) {
+        console.warn('Receipt verification result is uncertain:', err);
+        booking._receiptResult = {
+          status: 'manual_review',
+          uncertain: true,
+          flags: [],
+          message: `Booking ${booking.ref} is saved, but receipt verification could not be confirmed. Keep your screenshot and do not pay again.`,
+        };
+      }
       const ocrStatus = booking._receiptResult?.status;
+      if (ocrStatus && !booking._receiptResult?.uncertain) {
+        PBReceiptTokens.forget('booking', booking.ref);
+      }
       if (ocrStatus === 'rejected') {
         // Edge fn already set status=cancelled on the booking. Show rejection
         // screen then refresh the grid so the slot turns free immediately.
@@ -3961,14 +4143,19 @@ async function submitBooking(e) {
         if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '🎾 Confirm Booking'; }
         return;
       } else if (ocrStatus === 'auto_approved') {
-        booking.status = 'confirmed';
-        booking.paymentStatus = (booking.downpayment >= booking.total - 1) ? 'paid' : 'downpayment_paid';
-      } else {
-        // manual_review or OCR error — downgrade from verifying to pending so
-        // slot shows as taken (red) while admin reviews it, not yellow forever.
+        // OCR is only a document-screening result. It never confirms that
+        // funds settled, so the owner remains the payment authority.
         booking.status = 'pending';
         booking.paymentStatus = 'for_verification';
-        await DB.updateBooking(booking.ref, { status: 'pending', paymentStatus: 'for_verification' }).catch(() => {});
+      } else {
+        // A definite manual-review response is persisted by the verifier.
+        // An uncertain network result must not overwrite a server result that
+        // may finish after the browser disconnects.
+        booking.status = 'pending';
+        booking.paymentStatus = 'for_verification';
+        if (window.PB_USE_LOCAL_DATA && !booking._receiptResult?.uncertain) {
+          await DB.updateBooking(booking.ref, { status: 'pending', paymentStatus: 'for_verification' }).catch(() => {});
+        }
         onCardDate(booking.courtId, booking.date).catch(() => {});
       }
     }
@@ -4014,6 +4201,7 @@ async function submitBooking(e) {
     if (bookingSaved) {
       toast(`Booking saved, but post-processing failed: ${extractErrMsg(err)}`, 'err');
     } else {
+      PBReceiptTokens.forget('booking', booking.ref);
       toast(`Failed to save booking: ${extractErrMsg(err)}`, 'err');
     }
   } finally {
@@ -4049,32 +4237,26 @@ function clearReceipt() {
   const st = $('bReceiptStatus'); if (st) st.style.display = 'none';
 }
 
-function _fileToBase64(file) {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(String(r.result));
-    r.onerror = () => reject(new Error('Could not read file'));
-    r.readAsDataURL(file);
-  });
-}
-
-async function verifyUploadedReceipt(bookingRef, method, inlineData = null) {
+async function verifyUploadedReceipt(bookingRef, method, receiptToken = '') {
   const st = $('bReceiptStatus');
   if (st) { st.style.display = ''; st.style.background = 'rgba(74,154,220,.1)'; st.style.color = '#3b82f6'; st.textContent = '🔎 Verifying your receipt…'; }
   try {
-    const dataUrl = await _fileToBase64(_receiptFile);
-    const payload = {
+    const token = receiptToken || PBReceiptTokens.get('booking', bookingRef);
+    const res = await DB.verifyGcashReceipt({
+      targetType: 'booking',
       bookingRef,
       provider: method,
-      imageBase64: dataUrl,
+      receiptToken: token,
+      imageFile: _receiptFile,
       contentType: _receiptFile.type || 'image/jpeg',
-    };
-    if (inlineData) payload.bookingData = inlineData;
-    const res = await DB.verifyGcashReceipt(payload);
+    });
     const status = res?.status || 'manual_review';
-    const msg = res?.message || 'Receipt received.';
+    const serverMsg = res?.publicReason || res?.message || 'Receipt received.';
+    const msg = status === 'auto_approved'
+      ? 'Receipt screening passed. The owner still needs to confirm the funds.'
+      : serverMsg;
     if (st) {
-      if (status === 'auto_approved') { st.style.background = 'rgba(74,154,74,.12)'; st.style.color = '#2a8a4a'; st.textContent = '✅ ' + msg; }
+      if (status === 'auto_approved') { st.style.background = 'rgba(184,126,0,.12)'; st.style.color = '#b87e00'; st.textContent = '🕓 ' + msg; }
       else if (status === 'rejected') { st.style.background = 'rgba(229,57,53,.1)'; st.style.color = '#e53935'; st.textContent = '⚠️ ' + msg; }
       else { st.style.background = 'rgba(184,126,0,.12)'; st.style.color = '#b87e00'; st.textContent = '🕓 ' + msg; }
     }
@@ -4090,8 +4272,12 @@ async function verifyUploadedReceipt(bookingRef, method, inlineData = null) {
       receiptVerifiedAt: res?.receiptVerifiedAt || new Date().toISOString(),
     };
   } catch (err) {
-    if (st) { st.style.background = 'rgba(184,126,0,.12)'; st.style.color = '#b87e00'; st.textContent = '🕓 Receipt uploaded — the owner will verify it manually.'; }
-    return { status: 'manual_review', message: 'Receipt uploaded — pending manual verification.', flags: [], extracted: null, confidence: null, receiptImageUrl: null, receiptImageHash: null, receiptPhash: null, receiptVerifiedAt: new Date().toISOString() };
+    if (st) {
+      st.style.background = 'rgba(184,126,0,.12)';
+      st.style.color = '#b87e00';
+      st.textContent = '🕓 Booking saved; receipt verification is uncertain. Keep your screenshot and do not pay again.';
+    }
+    throw err;
   }
 }
 
@@ -4138,7 +4324,12 @@ function showInvoice(b) {
   const set = (id, value) => { const el = $(id); if (el) el.textContent = value; };
   const isConfirmed = b.status === 'confirmed';
   const isFullPay = b.downpayment >= b.total;
-  const payLabel = b.paymentMethod === 'gcash' ? 'GCash' : b.paymentMethod === 'gotyme' ? 'GoTyme Bank' : 'Cash';
+  const payLabel = b.paymentMethod === 'gcash' ? 'GCash'
+    : b.paymentMethod === 'gotyme' ? 'GoTyme Bank'
+    : b.paymentMethod === 'pnb' ? 'PNB'
+    : 'Cash';
+  const receiptNotUploaded = Boolean(b._receiptResult?.noReceiptUploaded);
+  const receiptWasUploaded = Boolean(b.gcashRef && !receiptNotUploaded);
 
   // Hero — base state (may be overridden by receipt result below)
   const heroEl = $('invModal') && $('invModal').querySelector('.inv-hero');
@@ -4176,17 +4367,27 @@ function showInvoice(b) {
   // Amount
   set('iTot', fmt(b.total));
   set('iDown', fmt(b.downpayment));
-  set('iDownLabel', isFullPay ? 'Full Payment' : '50% Downpayment Due');
-  set('iDownNote', isFullPay ? '✅ Fully paid — no balance due on arrival.' :
-    b.gcashRef ? `${payLabel} ref submitted ✓ — owner will verify shortly.` :
-    'Pay downpayment at the front desk before your session.');
+  set('iDownLabel', isFullPay ? 'Full Amount' : '50% Downpayment');
+  set('iDownNote', receiptNotUploaded
+    ? b._receiptResult.message
+    : receiptWasUploaded
+    ? `${payLabel} receipt submitted — the owner still needs to confirm the funds.`
+    : `Pay the ${isFullPay ? 'full amount' : 'downpayment'} at the front desk before your session.`);
 
   if (b._receiptResult) {
     const s = b._receiptResult.status;
     const flags = b._receiptResult.flags || [];
     const noteEl = $('iDownNote');
 
-    if (s === 'rejected') {
+    if (receiptNotUploaded) {
+      set('iTitle', 'Price Updated — Receipt Paused');
+      set('iHeroSub', 'The booking was saved at the current server price, but your receipt was not uploaded.');
+      if (statusEl) {
+        statusEl.textContent = '⚠️ Contact the Venue';
+        statusEl.className = 'inv-status-bdg inv-status-review';
+      }
+      if (noteEl) noteEl.textContent = b._receiptResult.message;
+    } else if (s === 'rejected') {
       // Red hero
       if (heroEl) heroEl.classList.add('inv-hero--rejected');
       if (checkIconEl) checkIconEl.textContent = '✕';
@@ -4201,28 +4402,35 @@ function showInvoice(b) {
         noteEl.textContent = '❌ Your booking has been cancelled. Please make a new booking and upload a valid GCash receipt.' + flagText;
       }
     } else if (s === 'auto_approved') {
-      if (heroEl) heroEl.classList.add('inv-hero--approved');
-      set('iTitle', 'Payment Verified!');
-      set('iHeroSub', 'Your receipt is verified — your slot is being confirmed.');
+      set('iTitle', 'Receipt Screening Passed');
+      set('iHeroSub', 'OCR checks passed. Your booking remains pending while the owner confirms the funds.');
       if (statusEl) {
-        statusEl.textContent = '✅ Payment Verified';
-        statusEl.className = 'inv-status-bdg inv-status-confirmed';
+        statusEl.textContent = '🕓 Pending Owner Confirmation';
+        statusEl.className = 'inv-status-bdg inv-status-review';
       }
-      if (noteEl) noteEl.textContent = '✅ Payment auto-verified from your receipt! Your slot is being confirmed.';
+      if (noteEl) noteEl.textContent = '🕓 Receipt screening passed, but this is not payment confirmation. The owner will confirm the funds.';
     } else {
       // manual_review
       if (statusEl) {
         statusEl.textContent = '🕓 Pending Verification';
         statusEl.className = 'inv-status-bdg inv-status-review';
       }
-      if (noteEl) noteEl.textContent = '🕓 Receipt received — the owner will verify your payment shortly.';
+      if (noteEl) {
+        noteEl.textContent = b._receiptResult.uncertain
+          ? `🕓 ${b._receiptResult.message}`
+          : '🕓 Receipt received — the owner will verify your payment shortly.';
+      }
     }
   }
 
   // What's next steps
   const nextEl = $('iNext');
   if (nextEl) {
-    const steps = b.gcashRef ? [
+    const steps = receiptNotUploaded ? [
+      ['Keep your payment screenshot; do not send another payment.', '1'],
+      [`Tell the venue your booking ref and the current amount due of <strong>${fmt(b.downpayment)}</strong>.`, '2'],
+      ['The owner will advise how to submit or review the receipt.', '3'],
+    ] : receiptWasUploaded ? [
       ['Show this booking ref to the front desk.', '1'],
       [`Your ${payLabel} ref # has been submitted for verification.`, '2'],
       ['You\'ll receive a confirmation once the owner verifies payment.', '3'],
@@ -4239,7 +4447,7 @@ function showInvoice(b) {
   }
 
   // Email note
-  set('iEmailNote', b.email ? `📧 Confirmation details sent to ${b.email}` : '');
+  set('iEmailNote', b.email ? `📧 Booking details sent to ${b.email}` : '');
 
   if ($('invModal')) $('invModal').classList.add('show');
 }
@@ -4263,6 +4471,7 @@ function closeModal() {
    REAL-TIME — Supabase live updates
    ============================================= */
 let _rtDebounce = null;
+let _availabilityPoll = null;
 async function refreshLiveViews() {
   // Capture any date-pickers the user navigated away from "today" so a live
   // re-render doesn't snap their view back to today.
@@ -4304,6 +4513,16 @@ function startRealtime() {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'blocked_dates' }, onChange)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'open_play_registrations' }, onChange)
     .subscribe();
+
+  // Privacy RLS intentionally hides the booking/Open Play base tables from
+  // anonymous Realtime. Poll the safe availability RPC/view while the visitor
+  // is idle so another customer's reservation still appears promptly.
+  if (!_availabilityPoll) {
+    _availabilityPoll = setInterval(() => {
+      if (document.hidden || _reservedRef || cardSel?.slots?.length || selSlots?.length) return;
+      refreshLiveViews().catch(() => {});
+    }, 15000);
+  }
 }
 
 /* =============================================
@@ -4410,10 +4629,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   initScrollReveal();
 });
 
-// Cancel any booking stuck in 'verifying' for more than 10 minutes.
-// These are slots where the user paid but closed the tab / lost connection
-// before OCR finished — slot must be freed so others can book it.
+// Local-data housekeeping only. In Supabase mode, stale public holds are
+// ignored after RESERVATION_MINUTES and are never mutated by an anonymous
+// browser; the capability RPCs/database own those state transitions.
 async function expireStaleVerifyingBookings() {
+  if (!window.PB_USE_LOCAL_DATA) return;
   try {
     const all = await DB.getBookings();
     const cutoff = Date.now() - RESERVATION_MINUTES * 60 * 1000; // align with render-time hold
@@ -4575,7 +4795,7 @@ async function openPlaySignup(courtId, date, sessionRef, courtName) {
         <div style="font-size:3rem;margin-bottom:12px">😔</div>
         <div style="font-size:1.1rem;font-weight:700;margin-bottom:8px">Session Full</div>
         <div style="color:var(--muted);font-size:.88rem;line-height:1.65">
-          <strong>${opSafeText(session.name)}</strong> (${session.label}) has reached its limit of <strong>${session.maxPlayers} players</strong>.<br/>Please choose another session or ask about walk-in availability.
+          <strong>${opSafeText(session.name)}</strong> (${opSafeText(session.label)}) has reached its limit of <strong>${Number(session.maxPlayers) || 0} players</strong>.<br/>Please choose another session or ask about walk-in availability.
         </div>
       </div>`;
     $('opModalFt').innerHTML = `<button class="btn btn-g" style="width:100%;justify-content:center" onclick="closeOpModal()">Got it</button>`;
@@ -4673,14 +4893,14 @@ function opPickPay(method) {
   _opSignupData.gcashRef = cleanRef;
   const refCountText = method === 'gcash'
     ? `${cleanRef.length}/13 digits`
-    : cleanRef.length + (cleanRef.length === 1 ? ' digit' : ' digits');
+    : cleanRef.length + (cleanRef.length === 1 ? ' character' : ' characters');
   const refHtml = `
     <div class="op-ref-block">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
         <label>Reference # (after sending) *</label>
         <span id="opRefCount" style="font-size:.65rem;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap">${refCountText}</span>
       </div>
-      <input type="text" class="fi" id="opGcashRef" placeholder="${method === 'gcash' ? 'e.g. 1234567890123' : 'Enter payment reference number'}" inputmode="numeric"
+      <input type="text" class="fi" id="opGcashRef" placeholder="${method === 'gcash' ? 'e.g. 1234567890123' : 'Enter payment reference number'}" inputmode="${method === 'gcash' ? 'numeric' : 'text'}"
         maxlength="${paymentRefMaxLength(method)}"
         style="margin:0;font-family:monospace;letter-spacing:1px"
         oninput="syncOpenPlayRefInput('${method}')"
@@ -4694,9 +4914,11 @@ function opPickPay(method) {
       pnb: { icon: '🏛️', label: 'PNB', receiver: paymentReceiverSettings.pnb },
     }[method];
     const receiver = meta.receiver;
-    const copyValue = (receiver.number || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-    const qrDisplay = receiver.qrImage
-      ? `<img class="op-qr-img" src="${receiver.qrImage}" alt="${meta.label} QR" />`
+    const receiverNumber = String(receiver.number || '');
+    const receiverName = String(receiver.name || 'Court owner account');
+    const receiverQrUrl = safePublicImageUrl(receiver.qrImage);
+    const qrDisplay = receiverQrUrl
+      ? `<img class="op-qr-img" src="${opSafeText(receiverQrUrl)}" alt="${meta.label} QR" />`
       : `<div class="op-qr-placeholder">📸<br>No QR</div>`;
     info.innerHTML = `
       <div class="op-pay-card">
@@ -4706,11 +4928,11 @@ function opPickPay(method) {
           </div>
           <div>
             <div class="op-send-title">${meta.icon} Send ${meta.label} Payment To</div>
-            ${receiver.number ? `<div class="op-number-row">
-              <span class="op-number">${receiver.number}</span>
-              <button type="button" class="op-mini-btn" onclick="copyToClipboard('${copyValue}')">📋 Copy</button>
+            ${receiverNumber ? `<div class="op-number-row">
+              <span class="op-number">${opSafeText(receiverNumber)}</span>
+              <button type="button" class="op-mini-btn" data-copy-text="${opSafeText(receiverNumber)}" onclick="copyToClipboard(this.dataset.copyText || '')">📋 Copy</button>
             </div>` : ''}
-            <div class="op-send-name">${receiver.name || 'Court owner account'}</div>
+            <div class="op-send-name">${opSafeText(receiverName)}</div>
           </div>
         </div>
         <div class="op-pay-fields">
@@ -4752,10 +4974,10 @@ function syncOpenPlayRefInput(method = _opSignupData.payMethod || 'gcash') {
   if (count) {
     count.textContent = method === 'gcash'
       ? `${clean.length}/13 digits`
-      : clean.length + (clean.length === 1 ? ' digit' : ' digits');
+      : clean.length + (clean.length === 1 ? ' character' : ' characters');
     count.style.color = method === 'gcash' && clean.length === 13
       ? 'var(--accent)'
-      : clean.length > 0 && method !== 'gcash'
+      : clean.length >= 6 && method !== 'gcash'
         ? 'var(--accent)'
         : 'var(--muted)';
   }
@@ -4804,22 +5026,26 @@ function clearOpReceipt() {
   const st = $('opReceiptStatus'); if (st) st.style.display = 'none';
 }
 
-async function verifyOpReceipt(ref, method, inlineData, receiptFile = _opReceiptFile) {
+async function verifyOpReceipt(registrationId, method, receiptToken = '', receiptFile = _opReceiptFile) {
   const st = $('opReceiptStatus');
   if (st) { st.style.display = ''; st.style.background = 'rgba(74,154,220,.1)'; st.style.color = '#3b82f6'; st.textContent = '🔎 Verifying your receipt…'; }
   try {
-    const dataUrl = await _fileToBase64(receiptFile);
+    const token = receiptToken || PBReceiptTokens.get('open_play', registrationId);
     const res = await DB.verifyGcashReceipt({
-      bookingRef: ref,
+      targetType: 'open_play',
+      openPlayRegistrationId: registrationId,
       provider: method,
-      imageBase64: dataUrl,
+      receiptToken: token,
+      imageFile: receiptFile,
       contentType: receiptFile?.type || 'image/jpeg',
-      bookingData: inlineData,
     });
     const status = res?.status || 'manual_review';
-    const msg = res?.message || 'Receipt received.';
+    const serverMsg = res?.publicReason || res?.message || 'Receipt received.';
+    const msg = status === 'auto_approved'
+      ? 'Receipt screening passed. The owner still needs to confirm the funds.'
+      : serverMsg;
     if (st) {
-      if (status === 'auto_approved') { st.style.background = 'rgba(74,154,74,.12)'; st.style.color = '#2a8a4a'; st.textContent = '✅ ' + msg; }
+      if (status === 'auto_approved') { st.style.background = 'rgba(184,126,0,.12)'; st.style.color = '#b87e00'; st.textContent = '🕓 ' + msg; }
       else if (status === 'rejected') { st.style.background = 'rgba(229,57,53,.1)'; st.style.color = '#e53935'; st.textContent = '⚠️ ' + msg; }
       else { st.style.background = 'rgba(184,126,0,.12)'; st.style.color = '#b87e00'; st.textContent = '🕓 ' + msg; }
     }
@@ -4835,8 +5061,12 @@ async function verifyOpReceipt(ref, method, inlineData, receiptFile = _opReceipt
       receiptVerifiedAt: res?.receiptVerifiedAt || new Date().toISOString(),
     };
   } catch (err) {
-    if (st) { st.style.background = 'rgba(184,126,0,.12)'; st.style.color = '#b87e00'; st.textContent = '🕓 Receipt uploaded — the owner will verify it manually.'; }
-    return { status: 'manual_review', message: 'Receipt uploaded — pending manual verification.', flags: [], extracted: null, confidence: null, receiptImageUrl: null, receiptImageHash: null, receiptPhash: null, receiptVerifiedAt: new Date().toISOString() };
+    if (st) {
+      st.style.background = 'rgba(184,126,0,.12)';
+      st.style.color = '#b87e00';
+      st.textContent = '🕓 Registration saved; receipt verification is uncertain. Keep your screenshot and do not pay again.';
+    }
+    throw err;
   }
 }
 
@@ -4844,7 +5074,7 @@ async function submitOpenPlay() {
   const submitToken = _opSignupRequestToken;
   const signup = { ..._opSignupData };
   const receiptFile = _opReceiptFile;
-  const systemFee = Number(_serviceFeeRate || 0);
+  const quotedSystemFee = Number(_serviceFeeRate || 0);
   const nameEl = $('opFullName');
   const name = (nameEl?.value || '').trim();
   if (!name) {
@@ -4874,13 +5104,19 @@ async function submitOpenPlay() {
     refEl?.focus();
     return;
   }
+  if (needsRef && payMethod !== 'gcash' && !isPaymentRefValid(signup.gcashRef, payMethod)) {
+    if (refEl) refEl.style.borderColor = 'var(--red)';
+    toast(paymentRefHelpText(payMethod), 'err');
+    refEl?.focus();
+    return;
+  }
   if (needsRef && !receiptFile) {
     const drop = $('opReceiptDrop'); if (drop) drop.style.borderColor = 'var(--red)';
     toast('Please upload your payment receipt screenshot.', 'err');
     return;
   }
-  const opTotal = Number(signup.sessionFee || 0) + systemFee;
-  const amt = signup.fullPay ? opTotal : opTotal / 2;
+  const quotedOpTotal = Number(signup.sessionFee || 0) + quotedSystemFee;
+  const quotedAmountDue = signup.fullPay ? quotedOpTotal : quotedOpTotal / 2;
   const payType = signup.fullPay ? '100%' : '50%';
   const btn = $('opSubmitBtn');
   if (btn) { btn.disabled = true; btn.textContent = 'Submitting…'; }
@@ -4900,86 +5136,93 @@ async function submitOpenPlay() {
       $('opModalFt').innerHTML = `<button class="btn btn-g" style="width:100%;justify-content:center" onclick="closeOpModal()">Got it</button>`;
       return;
     }
-    // Auto-verify the uploaded receipt BEFORE saving (digital payments only).
-    // Inline bookingData makes the edge function verify-only (no bookings write).
-    let regPayStatus = 'pending';
-    let receiptResult = null;
-    if (needsRef && receiptFile) {
-      const opRef = 'OP-' + Date.now().toString(36).toUpperCase();
-      receiptResult = await verifyOpReceipt(opRef, payMethod, {
-        ref: opRef,
-        total: opTotal,
-        downpayment: amt,
-        gcash_ref: signup.gcashRef,
-        date: signup.date,
-        full_name: name,
-        created_at: signup.startedAt,
-      }, receiptFile);
-      if (submitToken !== _opSignupRequestToken) return;
-      if (receiptResult.status === 'rejected') {
-        const timeLabel = `${signup.sessionName || 'Open Play'} · ${signup.sessionLabel || `${fmtT(signup.hour)} – ${fmtT(signup.hour + 1)}`}`;
-        await DB.addOpenPlayRegistration({
-          fullName: name,
-          courtId: signup.courtId,
-          courtName: signup.courtName,
-          date: signup.date,
-          hour: signup.hour,
-          timeLabel,
-          sessionKey: signup.sessionKey,
-          sessionStart: signup.hour,
-          sessionEnd: signup.sessionEnd,
-          baseFee: signup.sessionFee,
-          systemFee,
-          totalDue: opTotal,
-          paymentType: payType,
-          paymentMethod: signup.payMethod,
-          gcashRef: signup.gcashRef || null,
-          paymentStatus: 'rejected',
-          amount: amt,
-          receiptImageUrl: receiptResult.receiptImageUrl,
-          receiptImageHash: receiptResult.receiptImageHash,
-          receiptPhash: receiptResult.receiptPhash,
-          receiptStatus: 'rejected',
-          receiptFlags: receiptResult.flags || [],
-          receiptExtracted: receiptResult.extracted || null,
-          receiptConfidence: receiptResult.confidence,
-          receiptVerifiedAt: receiptResult.receiptVerifiedAt,
-        });
-        if (submitToken !== _opSignupRequestToken) return;
-        toast('Receipt could not be verified: ' + receiptResult.message, 'err');
-        if (btn) { btn.disabled = false; btn.textContent = '🏓 Join Open Play'; }
-        return;
-      }
-      regPayStatus = receiptResult.status === 'auto_approved' ? 'paid' : 'pending';
-    }
-    const timeLabel = `${signup.sessionName || 'Open Play'} · ${signup.sessionLabel || `${fmtT(signup.hour)} – ${fmtT(signup.hour + 1)}`}`;
-    await DB.addOpenPlayRegistration({
+    // Persist an unverified registration first. The token hash binds the later
+    // multipart upload to this exact row; the raw token never enters the DB.
+    const quotedTimeLabel = `${signup.sessionName || 'Open Play'} · ${signup.sessionLabel || `${fmtT(signup.hour)} – ${fmtT(signup.hour + 1)}`}`;
+    const receiptCredential = needsRef ? await PBReceiptTokens.create() : null;
+    const created = await DB.addOpenPlayRegistration({
       fullName: name,
       courtId: signup.courtId,
       courtName: signup.courtName,
       date: signup.date,
       hour: signup.hour,
-      timeLabel,
+      timeLabel: quotedTimeLabel,
       sessionKey: signup.sessionKey,
       sessionStart: signup.hour,
       sessionEnd: signup.sessionEnd,
       baseFee: signup.sessionFee,
-      systemFee,
-      totalDue: opTotal,
+      systemFee: quotedSystemFee,
+      totalDue: quotedOpTotal,
       paymentType: payType,
       paymentMethod: signup.payMethod,
       gcashRef: signup.gcashRef || null,
-      paymentStatus: regPayStatus,
-      amount: amt,
-      receiptImageUrl: receiptResult?.receiptImageUrl || null,
-      receiptImageHash: receiptResult?.receiptImageHash || null,
-      receiptPhash: receiptResult?.receiptPhash || null,
-      receiptStatus: receiptResult?.status || 'none',
-      receiptFlags: receiptResult?.flags || [],
-      receiptExtracted: receiptResult?.extracted || null,
-      receiptConfidence: receiptResult?.confidence ?? null,
-      receiptVerifiedAt: receiptResult?.receiptVerifiedAt || null,
+      paymentStatus: 'pending',
+      amount: quotedAmountDue,
+      receiptStatus: 'none',
+      receiptUploadTokenHash: receiptCredential?.receiptTokenHash || null,
     });
+    const registrationId = created.registrationId;
+    const opTotal = created.totalDue;
+    const amt = created.amountDue;
+    signup.hour = created.sessionStart;
+    signup.sessionEnd = created.sessionEnd;
+    signup.sessionFee = created.baseFee;
+    const timeLabel = `${signup.sessionName || 'Open Play'} · ${fmtT(created.sessionStart)} – ${fmtT(created.sessionEnd)}`;
+    if (receiptCredential) {
+      PBReceiptTokens.remember('open_play', registrationId, receiptCredential.receiptToken);
+    }
+    if (submitToken !== _opSignupRequestToken) return;
+
+    const priceChanged = authoritativePriceChanged(
+      quotedOpTotal,
+      quotedAmountDue,
+      opTotal,
+      amt,
+    );
+    let receiptUploadPaused = false;
+    if (needsRef && priceChanged) {
+      receiptUploadPaused = !confirmAuthoritativePriceChange(
+        'Open Play',
+        quotedOpTotal,
+        quotedAmountDue,
+        opTotal,
+        amt,
+      );
+    }
+
+    let receiptResult = null;
+    let verificationUncertain = false;
+    if (needsRef && receiptFile && !receiptUploadPaused) {
+      try {
+        receiptResult = await verifyOpReceipt(
+          registrationId,
+          payMethod,
+          receiptCredential.receiptToken,
+          receiptFile,
+        );
+        if (receiptResult?.status) {
+          PBReceiptTokens.forget('open_play', registrationId);
+        }
+      } catch (err) {
+        verificationUncertain = true;
+        console.warn('Open Play receipt verification result is uncertain:', err);
+        receiptResult = {
+          status: 'manual_review',
+          uncertain: true,
+          message: `Registration ${registrationId} is saved, but receipt verification could not be confirmed. Keep your screenshot and do not pay again.`,
+        };
+      }
+      if (submitToken !== _opSignupRequestToken) return;
+      if (receiptResult.status === 'rejected') {
+        toast('Receipt could not be verified: ' + receiptResult.message, 'err');
+        if (btn) { btn.disabled = false; btn.textContent = '🏓 Join Open Play'; }
+        return;
+      }
+    }
+    // OCR can screen the document, but only the owner confirms settled funds.
+    // The displayed registration therefore stays pending even when screening
+    // passes, and the browser never writes an approved payment state.
+    const screeningPassed = receiptResult?.status === 'auto_approved';
 
     // Fire-and-forget Telegram notification
     fetch(`${SUPABASE_URL}/functions/v1/send-telegram-notification`, {
@@ -4992,14 +5235,18 @@ async function submitOpenPlay() {
     $('opModalBody').innerHTML = `
       <div style="text-align:center;padding:28px 0">
         <div style="font-size:3rem;margin-bottom:12px">🏓</div>
-        <div style="font-size:1.2rem;font-weight:700;margin-bottom:8px">You're in!</div>
+        <div style="font-size:1.2rem;font-weight:700;margin-bottom:8px">${receiptUploadPaused ? 'Price Updated — Receipt Paused' : verificationUncertain ? 'Spot Saved — Verification Pending' : 'Registration Received'}</div>
         <div style="color:var(--muted);font-size:.88rem;line-height:1.65">
-          Thanks, <strong>${name}</strong>!<br/>
-          ${signup.payMethod === 'cash'
+          Thanks, <strong>${opSafeText(name)}</strong>!<br/>
+          ${receiptUploadPaused
+            ? `Registration <strong>${opSafeText(registrationId)}</strong> is saved at the current amount due of <strong>${fmt(amt)}</strong>, but your receipt was not uploaded. Keep your screenshot, contact the venue, and do not pay again.`
+            : signup.payMethod === 'cash'
             ? `Pay <strong>${fmt(amt)}</strong> at the front desk upon arrival.`
-            : regPayStatus === 'paid'
-              ? `✅ Your <strong>${fmt(amt)}</strong> payment was verified. Your spot is confirmed — see you on the court!`
-              : `We received your <strong>${fmt(amt)}</strong> receipt. The owner will verify it shortly — just show your receipt at the front desk.`
+            : verificationUncertain
+              ? `Registration <strong>${opSafeText(registrationId)}</strong> is saved, but we could not confirm the receipt upload. Keep your screenshot and do not pay again; the owner can review your pending registration.`
+            : screeningPassed
+              ? `Receipt screening passed for the submitted <strong>${fmt(amt)}</strong> receipt. Your registration remains pending until the owner confirms the funds — please do not pay again.`
+              : `We received your receipt for review. The current amount due is <strong>${fmt(amt)}</strong>; the owner will verify the receipt shortly.`
           }
         </div>
       </div>`;
@@ -5014,7 +5261,7 @@ async function submitOpenPlay() {
 }
 </script>
 <script src="supabase.min.js"></script>
-<script src="supabase-config.js"></script>
+<script src="supabase-config.js?v=20260714-authoritative-price-v2"></script>
 
 <!-- MOBILE STICKY BOOK NOW BAR -->
 <div id="mobileBookBar" class="mobile-book-bar" style="display:none">

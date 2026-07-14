@@ -1,0 +1,85 @@
+import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import {
+  checkRecipient,
+  extractReceiptAmount,
+  extractReference,
+  normalizeReference,
+  parseReceiptDateTime,
+  providerEvidence,
+} from "./receipt-parser.ts";
+
+Deno.test("GCash reference is normalized and extracted from labelled OCR", () => {
+  const text =
+    "GCash Receipt\nReference No. 8041 8559 17375\nTotal Amount Sent PHP 500.00";
+  assertEquals(
+    extractReference(text, "gcash", "8041855917375"),
+    "8041855917375",
+  );
+  assertEquals(normalizeReference("8041-8559-17375", "gcash"), "8041855917375");
+});
+
+Deno.test("bank reference preserves alphanumeric characters", () => {
+  const text =
+    "GoTyme Transfer Successful\nTransaction Reference: GT-AB12-9087";
+  assertEquals(extractReference(text, "gotyme", "GTAB129087"), "GTAB129087");
+});
+
+Deno.test("labelled principal amount is reliable and fee is ignored", () => {
+  const result = extractReceiptAmount(
+    "Transfer successful\nAmount sent: PHP 1,250.00\nService fee PHP 15.00",
+  );
+  assertEquals(result.amount, 1250);
+  assertEquals(result.reliable, true);
+  assertEquals(result.ambiguous, false);
+});
+
+Deno.test("currency-only amount remains manual-review quality", () => {
+  const result = extractReceiptAmount("GCash receipt\nPHP 600.00");
+  assertEquals(result.amount, 600);
+  assertEquals(result.reliable, false);
+});
+
+Deno.test("date-only OCR does not invent midnight time", () => {
+  const parsed = parseReceiptDateTime("Paid on Jul 13, 2026");
+  assertEquals(parsed.date, "2026-07-13");
+  assertEquals(parsed.shifted, null);
+});
+
+Deno.test("receipt timestamp is parsed as Philippine wall clock", () => {
+  const parsed = parseReceiptDateTime("Jul 13, 2026 9:42 PM");
+  assertEquals(parsed.date, "2026-07-13");
+  assertEquals(parsed.shifted?.toISOString(), "2026-07-13T21:42:00.000Z");
+});
+
+Deno.test("recipient last four only matches inside a labelled recipient field", () => {
+  const unrelated = checkRecipient(
+    "Reference 1234567895766\nSent to AN**** A.",
+    "0952 482 5766",
+    "Annaliza Acero",
+  );
+  assertEquals(unrelated.numberStatus, "unreadable");
+
+  const labelled = checkRecipient(
+    "Recipient mobile: 09** *** 5766",
+    "0952 482 5766",
+    "Annaliza Acero",
+  );
+  assertEquals(labelled.numberStatus, "match");
+});
+
+Deno.test("different complete labelled recipient is deterministic", () => {
+  const result = checkRecipient(
+    "Sent to: 09171234567",
+    "09524825766",
+    "CourtYard Pickleball",
+  );
+  assertEquals(result.status, "wrong");
+  assertEquals(result.numberStatus, "wrong");
+});
+
+Deno.test("provider evidence detects an explicitly different bank", () => {
+  assertEquals(providerEvidence("GoTyme transfer successful", "gcash"), {
+    expected: false,
+    conflicting: "gotyme",
+  });
+});

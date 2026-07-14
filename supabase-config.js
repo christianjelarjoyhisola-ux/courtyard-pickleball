@@ -3,8 +3,183 @@
 // Replace these with your actual project credentials.
 // Find them at: Supabase Dashboard → Project Settings → API
 // =============================================
-const SUPABASE_URL  = 'https://ruoyywzehhgkkxswicoa.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ1b3l5d3plaGhna2t4c3dpY29hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExOTUwNjMsImV4cCI6MjA5Njc3MTA2M30.BpzsmRUjcd0IVpwZplZLFqDokbzQKF03SJ2SXaEi5RI';
+const SUPABASE_URL  = 'https://jlowekvmzkvljqcjolqf.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_xfeJ6GwlRkVy79Osc8kvJg_SkYbQ-YC';
+
+const PB_RECEIPT_TIMEOUT_MS = 90000;
+const PB_PUBLIC_HOLD_MINUTES = 15;
+const PB_RECEIPT_TOKEN_STORAGE_PREFIX = 'pb_receipt_token_v1';
+const _pbReceiptTokenMemory = new Map();
+
+async function _pbFetchWithTimeout(input, init = {}, timeoutMs = PB_RECEIPT_TIMEOUT_MS) {
+  const controller = typeof AbortController === 'function' && !init.signal ? new AbortController() : null;
+  let timer = null;
+  let timedOut = false;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      timedOut = true;
+      controller?.abort();
+      reject(new Error('Receipt verification timed out. Your reservation is saved; do not pay again.'));
+    }, timeoutMs);
+  });
+  try {
+    return await Promise.race([
+      fetch(input, controller ? { ...init, signal: controller.signal } : init),
+      timeout,
+    ]);
+  } catch (err) {
+    if (timedOut || controller?.signal.aborted) {
+      throw new Error('Receipt verification timed out. Your reservation is saved; do not pay again.');
+    }
+    throw err;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+function _pbBytesToBase64Url(bytes) {
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 1) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+function _pbBytesToHex(bytes) {
+  return Array.from(bytes, value => value.toString(16).padStart(2, '0')).join('');
+}
+
+function _pbReceiptTokenStorageKey(targetType, targetId) {
+  return `${PB_RECEIPT_TOKEN_STORAGE_PREFIX}:${String(targetType || '')}:${String(targetId || '')}`;
+}
+
+function _pbRememberReceiptToken(targetType, targetId, receiptToken) {
+  if (!targetType || !targetId || !receiptToken) throw new Error('Receipt token target is incomplete.');
+  const key = _pbReceiptTokenStorageKey(targetType, targetId);
+  _pbReceiptTokenMemory.set(key, receiptToken);
+  try { sessionStorage.setItem(key, receiptToken); } catch (_) {}
+  return receiptToken;
+}
+
+function _pbGetReceiptToken(targetType, targetId) {
+  const key = _pbReceiptTokenStorageKey(targetType, targetId);
+  if (_pbReceiptTokenMemory.has(key)) return _pbReceiptTokenMemory.get(key);
+  let token = '';
+  try { token = sessionStorage.getItem(key) || ''; } catch (_) {}
+  if (token) _pbReceiptTokenMemory.set(key, token);
+  return token;
+}
+
+function _pbForgetReceiptToken(targetType, targetId) {
+  if (!targetType || !targetId) return false;
+  const key = _pbReceiptTokenStorageKey(targetType, targetId);
+  const existed = _pbReceiptTokenMemory.delete(key);
+  try {
+    const stored = sessionStorage.getItem(key) != null;
+    sessionStorage.removeItem(key);
+    return existed || stored;
+  } catch (_) {
+    return existed;
+  }
+}
+
+async function _pbCreateReceiptCredential(targetType = '', targetId = '') {
+  if (!globalThis.crypto?.getRandomValues || !globalThis.crypto?.subtle) {
+    throw new Error('This browser cannot securely authorize a receipt upload. Please use an updated browser.');
+  }
+  const random = new Uint8Array(32);
+  globalThis.crypto.getRandomValues(random);
+  const receiptToken = _pbBytesToBase64Url(random);
+  // The server hashes the exact UTF-8 token string received in multipart form.
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(receiptToken));
+  const receiptTokenHash = _pbBytesToHex(new Uint8Array(digest));
+  if (targetType && targetId) _pbRememberReceiptToken(targetType, targetId, receiptToken);
+  return { receiptToken, receiptTokenHash };
+}
+
+window.PBReceiptTokens = Object.freeze({
+  create: _pbCreateReceiptCredential,
+  remember: _pbRememberReceiptToken,
+  get: _pbGetReceiptToken,
+  forget: _pbForgetReceiptToken,
+});
+
+async function _pbPrepareReceiptImage(file) {
+  if (!file) throw new Error('Receipt screenshot is required.');
+  const rawType = String(file.type || '').toLowerCase();
+  const type = rawType === 'image/jpg' ? 'image/jpeg' : rawType;
+  const directlySupported = ['image/jpeg', 'image/png', 'image/webp'].includes(type);
+  const targetBytes = 1250 * 1024;
+
+  if (Number(file.size || 0) <= targetBytes && directlySupported) {
+    if (rawType === type) return file;
+    try { return file.slice(0, file.size, type); } catch (_) { return file; }
+  }
+
+  if (typeof document === 'undefined' || typeof URL === 'undefined' || typeof URL.createObjectURL !== 'function') return file;
+  let objectUrl = '';
+  try {
+    objectUrl = URL.createObjectURL(file);
+    const image = await new Promise((resolve, reject) => {
+      const element = new Image();
+      element.onload = () => resolve(element);
+      element.onerror = () => reject(new Error('The selected receipt image could not be decoded.'));
+      element.src = objectUrl;
+    });
+    const maxDimension = 1800;
+    const scale = Math.min(1, maxDimension / Math.max(image.naturalWidth || image.width, image.naturalHeight || image.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round((image.naturalWidth || image.width) * scale));
+    canvas.height = Math.max(1, Math.round((image.naturalHeight || image.height) * scale));
+    const context = canvas.getContext('2d');
+    if (!context) return file;
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    const encode = quality => new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', quality));
+    let encoded = await encode(0.84);
+    if (encoded?.size > targetBytes) encoded = await encode(0.72);
+    return encoded?.size ? encoded : file;
+  } catch (_) {
+    return file;
+  } finally {
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+  }
+}
+
+function _pbFileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(reader.error || new Error('Could not read the selected receipt.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function _pbVerifyReceiptBase64Fallback(fnUrl, payload, imageFile, authHeader) {
+  const imageBase64 = await _pbFileToDataUrl(imageFile);
+  const fallbackPayload = {
+    action: 'verify',
+    targetType: payload.targetType,
+    provider: String(payload.provider || 'gcash'),
+    receiptToken: String(payload.receiptToken || ''),
+    contentType: imageFile.type || payload.contentType || 'image/jpeg',
+    imageBase64,
+    ...(payload.targetType === 'booking'
+      ? { bookingRef: String(payload.bookingRef || '') }
+      : { openPlayRegistrationId: String(payload.openPlayRegistrationId || '') }),
+  };
+  const response = await _pbFetchWithTimeout(fnUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': authHeader,
+    },
+    body: JSON.stringify(fallbackPayload),
+  }, PB_RECEIPT_TIMEOUT_MS);
+  const text = await response.text();
+  const json = _safeJsonParse(text);
+  if (!response.ok) throw new Error(json?.error || text || `Receipt verification HTTP ${response.status}`);
+  if (!json || json.ok !== true) throw new Error(json?.error || 'Receipt verification returned an invalid response.');
+  return json;
+}
 
 // Initialize Supabase client (uses UMD global loaded from CDN)
 const _sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -43,6 +218,18 @@ function _extractFnError(err, fallback = 'Edge Function request failed') {
     if (typeof err.context === 'string') return err.context;
   }
   try { return JSON.stringify(err); } catch(_) { return fallback; }
+}
+
+async function _pbAuthenticatedRestHeaders(extraHeaders = {}) {
+  const { data, error } = await _sb.auth.getSession();
+  if (error) throw error;
+  const accessToken = data?.session?.access_token;
+  if (!accessToken) throw new Error('Authentication required. Please sign in again.');
+  return {
+    apikey: SUPABASE_ANON_KEY,
+    Authorization: `Bearer ${accessToken}`,
+    ...extraHeaders,
+  };
 }
 
 async function _invokePaymentSessionFallback(payload) {
@@ -112,6 +299,7 @@ function rowToBooking(r) {
     receiptConfidence: r.receipt_confidence != null ? Number(r.receipt_confidence) : null,
     receiptImageUrl:   r.receipt_image_url || null,
     receiptVerifiedAt: r.receipt_verified_at || null,
+    receiptUploadTokenHash: r.receipt_upload_token_hash || null,
     billedAt:      r.billed_at || null,
     weeklyFeeId:   r.weekly_fee_id || null,
     status:        r.status,
@@ -143,6 +331,9 @@ function bookingToRow(b) {
     paid_at:        b.paidAt || null,
     gcash_ref:      b.gcashRef || null,
     downpayment:    b.downpayment || null,
+    ...(b.receiptUploadTokenHash !== undefined
+      ? { receipt_upload_token_hash: b.receiptUploadTokenHash || null }
+      : {}),
     status:         b.status,
     created_at:     b.createdAt,
   };
@@ -171,6 +362,20 @@ function courtToRow(c) {
     feats:         c.feats || [],
     photo:         c.photo || null,
     rate_schedule: c.rateSchedule || null,
+  };
+}
+
+// Privacy-safe public availability rows deliberately contain no customer,
+// payment, receipt, or booking-reference fields.
+function rowToBookingAvailability(r) {
+  return {
+    ref:       null,
+    fullName:  null,
+    courtId:   r.court_id,
+    date:      r.date,
+    slots:     r.slots || [],
+    status:    r.status,
+    createdAt: r.created_at,
   };
 }
 
@@ -267,23 +472,43 @@ window.DB = {
 
   // ---- BOOKINGS ----
   async getBookings() {
-    const { data, error } = await _sb.from('bookings').select('*').order('created_at', { ascending: false });
-    if (error) { console.error('getBookings:', error); return []; }
-    return data.map(rowToBooking);
+    // Dashboard sessions need complete operational rows. Anonymous visitors
+    // only receive the non-PII availability projection.
+    let authenticated = false;
+    try {
+      const { data } = await _sb.auth.getSession();
+      authenticated = Boolean(data?.session);
+    } catch (_) {}
+    const source = authenticated ? 'bookings' : 'booking_availability';
+    const columns = authenticated ? '*' : 'court_id,date,slots,status,created_at';
+    const { data, error } = await _sb.from(source).select(columns).order('created_at', { ascending: false });
+    if (error) { console.error(`getBookings(${source}):`, error); return []; }
+    return data.map(authenticated ? rowToBooking : rowToBookingAvailability);
   },
 
   async addBooking(booking) {
-    // Check for slot conflicts before inserting
+    // Check the privacy-safe projection for a friendly conflict message. The
+    // database trigger remains the race-safe source of truth for the insert.
     const { data: existing } = await _sb
-      .from('bookings')
-      .select('ref, slots')
+      .from('booking_availability')
+      .select('court_id,date,slots,status,created_at')
       .eq('court_id', booking.courtId)
       .eq('date', booking.date)
       .neq('status', 'cancelled');
 
     if (existing) {
-      const bookedSlots = existing.flatMap(b => b.slots || []);
-      const conflict = (booking.slots || []).some(s => bookedSlots.includes(s));
+      const freshHoldCutoff = Date.now() - PB_PUBLIC_HOLD_MINUTES * 60 * 1000;
+      const bookedSlots = new Set(existing
+        // A verifying row is only a temporary public hold. Ignore it after the
+        // same 15-minute window enforced by the database expiry trigger.
+        .filter(b => {
+          if (b.status !== 'verifying') return true;
+          const createdAt = new Date(b.created_at || '').getTime();
+          return !Number.isFinite(createdAt) || createdAt >= freshHoldCutoff;
+        })
+        .flatMap(b => b.slots || [])
+        .map(String));
+      const conflict = (booking.slots || []).some(s => bookedSlots.has(String(s)));
       if (conflict) throw new Error('One or more time slots are no longer available. Please refresh and choose a different time.');
     }
 
@@ -325,6 +550,58 @@ window.DB = {
     if (error) { console.error('updateBooking:', error); throw error; }
   },
 
+  async finalizePublicBookingHold(ref, details) {
+    const { data, error } = await _sb.rpc('finalize_public_booking_hold', {
+      p_booking_ref: String(ref || ''),
+      p_raw_token: String(details?.receiptToken || ''),
+      p_full_name: String(details?.fullName || ''),
+      p_contact_number: String(details?.contactNumber || ''),
+      p_email: String(details?.email || ''),
+      p_payment_method: String(details?.paymentMethod || 'cash'),
+      p_payment_choice: details?.paymentChoice === 'full' ? 'full' : 'downpayment',
+      p_payment_reference: details?.paymentReference || null,
+    });
+    if (error) { console.error('finalizePublicBookingHold:', error); throw error; }
+    const finalized = Array.isArray(data) ? (data[0] || null) : data;
+    const numericFieldsPresent = ['total_due', 'amount_due', 'duration'].every(key => {
+      const value = finalized?.[key];
+      return value !== null && value !== undefined
+        && (typeof value !== 'string' || value.trim() !== '');
+    });
+    const totalDue = Number(finalized?.total_due);
+    const amountDue = Number(finalized?.amount_due);
+    const duration = Number(finalized?.duration);
+    const slots = Array.isArray(finalized?.slots) ? finalized.slots.map(String) : [];
+    if (!finalized?.booking_ref || !numericFieldsPresent
+        || !Number.isFinite(totalDue) || totalDue < 0
+        || !Number.isFinite(amountDue) || amountDue < 0 || amountDue > totalDue + 0.01
+        || !Number.isInteger(duration) || duration < 1 || slots.length !== duration
+        || !finalized?.court_name || !finalized?.start_time || !finalized?.end_time) {
+      throw new Error('Booking finalization returned an incomplete authoritative price.');
+    }
+    return {
+      bookingRef: finalized.booking_ref,
+      bookingStatus: finalized.booking_status,
+      bookingPaymentStatus: finalized.booking_payment_status,
+      courtName: finalized.court_name,
+      startTime: finalized.start_time,
+      endTime: finalized.end_time,
+      duration,
+      slots,
+      totalDue,
+      amountDue,
+    };
+  },
+
+  async cancelPublicBookingHold(ref, receiptToken) {
+    const { data, error } = await _sb.rpc('cancel_public_booking_hold', {
+      p_booking_ref: String(ref || ''),
+      p_raw_token: String(receiptToken || ''),
+    });
+    if (error) { console.error('cancelPublicBookingHold:', error); throw error; }
+    return Array.isArray(data) ? (data[0] || null) : data;
+  },
+
   // Stamp a set of bookings as billed on a given weekly statement (idempotent
   // audit trail; a booking is only ever billed once).
   async markBookingsBilled(refs, weeklyFeeId) {
@@ -348,41 +625,55 @@ window.DB = {
   },
 
   async addOpenPlayRegistration(reg) {
-    const legacyRow = {
-      full_name: reg.fullName,
-      court_id: String(reg.courtId),
-      court_name: reg.courtName,
-      date: reg.date,
-      hour: reg.hour ?? reg.sessionStart,
-      time_label: reg.timeLabel,
-      payment_type: reg.paymentType,
-      payment_method: reg.paymentMethod || 'cash',
-      gcash_ref: reg.gcashRef || null,
-      payment_status: reg.paymentStatus || 'pending',
-      amount: reg.amount,
-      receipt_image_url: reg.receiptImageUrl || null,
-      receipt_image_hash: reg.receiptImageHash || null,
-      receipt_phash: reg.receiptPhash || null,
-      receipt_status: reg.receiptStatus || 'none',
-      receipt_flags: reg.receiptFlags || [],
-      receipt_extracted: reg.receiptExtracted || null,
-      receipt_confidence: reg.receiptConfidence ?? null,
-      receipt_verified_at: reg.receiptVerifiedAt || null,
-      created_at: new Date().toISOString(),
-    };
-    const sessionSnapshot = _openPlaySessionSnapshot(reg);
-    let { error } = await _sb.from('open_play_registrations').insert({
-      ...legacyRow,
-      ...sessionSnapshot,
+    // The RPC resolves the enabled session, capacity, and authoritative fee
+    // snapshot server-side. Public browsers cannot manufacture price rows.
+    const { data, error } = await _sb.rpc('create_public_open_play_registration', {
+      p_full_name: String(reg.fullName || ''),
+      p_court_id: String(reg.courtId || ''),
+      p_date: reg.date,
+      p_session_key: String(reg.sessionKey || ''),
+      p_payment_type: String(reg.paymentType || ''),
+      p_payment_method: String(reg.paymentMethod || 'cash'),
+      p_payment_reference: reg.gcashRef || null,
+      p_receipt_upload_token_hash: reg.receiptUploadTokenHash || null,
     });
-
-    // Keep registration working during a staggered rollout where the frontend
-    // is deployed just before the additive migration reaches Supabase.
-    if (error && Object.keys(sessionSnapshot).length && _isMissingOpenPlaySessionColumn(error)) {
-      console.warn('Open Play session snapshot columns are not available yet; saving the legacy registration fields only.');
-      ({ error } = await _sb.from('open_play_registrations').insert(legacyRow));
-    }
     if (error) { console.error('addOpenPlayRegistration:', error); throw error; }
+    const created = Array.isArray(data) ? (data[0] || null) : data;
+    const numericFieldsPresent = [
+      'total_due', 'amount_due', 'base_fee', 'system_fee',
+      'session_start', 'session_end',
+    ].every(key => {
+      const value = created?.[key];
+      return value !== null && value !== undefined
+        && (typeof value !== 'string' || value.trim() !== '');
+    });
+    const totalDue = Number(created?.total_due);
+    const amountDue = Number(created?.amount_due);
+    const baseFee = Number(created?.base_fee);
+    const systemFee = Number(created?.system_fee);
+    const sessionStart = Number(created?.session_start);
+    const sessionEnd = Number(created?.session_end);
+    if (!created?.registration_id || !numericFieldsPresent
+        || !Number.isFinite(totalDue) || totalDue < 0
+        || !Number.isFinite(amountDue) || amountDue < 0 || amountDue > totalDue + 0.01
+        || !Number.isFinite(baseFee) || baseFee < 0
+        || !Number.isFinite(systemFee) || systemFee < 0
+        || !Number.isInteger(sessionStart) || !Number.isInteger(sessionEnd)
+        || sessionStart < 0 || sessionEnd > 24 || sessionEnd <= sessionStart) {
+      throw new Error('Open Play registration returned an incomplete authoritative price.');
+    }
+    return {
+      registrationId: created.registration_id,
+      sessionKey: created.session_key,
+      sessionStart,
+      sessionEnd,
+      baseFee,
+      systemFee,
+      totalDue,
+      amountDue,
+      paymentStatus: created.payment_status,
+      receiptStatus: created.receipt_status,
+    };
   },
 
   async updateOpenPlayRegistration(id, updates) {
@@ -402,29 +693,20 @@ window.DB = {
   },
 
   async getOpenPlayCountForDate(date, courtId = null, sessionKeyOrStart = null) {
-    let query = _sb.from('open_play_registrations')
-      .select('*', { count: 'exact', head: true })
-      .eq('date', date)
-      .or('payment_status.is.null,payment_status.neq.rejected');
-    if (courtId) query = query.eq('court_id', String(courtId));
-
     const sessionStart = _openPlaySessionStart(sessionKeyOrStart);
     const sessionKey = typeof sessionKeyOrStart === 'string' ? sessionKeyOrStart.trim() : '';
-    // `hour` is the legacy session-start field and is still written on every
-    // registration, so numeric starts work before and after the migration.
-    if (sessionStart !== null) query = query.eq('hour', sessionStart);
-    else if (sessionKey) query = query.eq('session_key', sessionKey);
-
-    const { count, error } = await query;
+    const { data, error } = await _sb.rpc('get_public_open_play_count', {
+      p_date: date,
+      p_court_id: courtId == null ? null : String(courtId),
+      p_session_key: sessionKey || null,
+      p_session_start: sessionStart,
+    });
     if (error) {
-      if (sessionKey && _isMissingOpenPlaySessionColumn(error)) {
-        console.warn('Cannot count this Open Play session by key until the session snapshot migration is applied.');
-        return 0;
-      }
       console.error('getOpenPlayCountForDate:', error);
       return 0;
     }
-    return count || 0;
+    const count = Number(data ?? 0);
+    return Number.isFinite(count) ? count : 0;
   },
 
   async deleteOpenPlayRegistration(id) {
@@ -500,27 +782,77 @@ window.DB = {
     }
   },
 
-  // Verify an uploaded GCash/GoTyme/PNB receipt image via the Edge Function.
-  // payload: { bookingRef, provider, imageBase64, contentType }
+  // Verify a receipt already bound to a persisted booking/registration.
+  // payload: { targetType, bookingRef|openPlayRegistrationId, provider,
+  //            receiptToken, imageFile }
   // Returns: { ok, status, flags, extracted, confidence, message }
   async verifyGcashReceipt(payload) {
-    const { data, error } = await _sb.functions.invoke('verify-gcash-receipt', { body: payload });
-    if (!error && data) return data;
+    const targetType = String(payload?.targetType || '');
+    if (!['booking', 'open_play'].includes(targetType)) throw new Error('Invalid receipt target type.');
+    if (targetType === 'booking' && !payload?.bookingRef) throw new Error('Booking reference is required.');
+    if (targetType === 'open_play' && !payload?.openPlayRegistrationId) throw new Error('Open Play registration id is required.');
+    if (!payload?.receiptToken) throw new Error('Receipt upload authorization is missing. Please restart the booking.');
 
-    // Fallback: direct HTTP call (mirrors createPaymentSession fallback).
+    const imageFile = await _pbPrepareReceiptImage(payload.imageFile);
+    if (!imageFile || Number(imageFile.size || 0) === 0) throw new Error('Receipt image is empty.');
+    if (Number(imageFile.size || 0) > 5 * 1024 * 1024) throw new Error('Receipt image is too large (max 5 MB).');
+
     const fnUrl = `${SUPABASE_URL.replace(/\/+$/, '')}/functions/v1/verify-gcash-receipt`;
     const sess = await _sb.auth.getSession();
     const accessToken = sess?.data?.session?.access_token || '';
     const authHeader = accessToken ? `Bearer ${accessToken}` : `Bearer ${SUPABASE_ANON_KEY}`;
-    const res = await fetch(fnUrl, {
+
+    const form = new FormData();
+    form.append('action', 'verify');
+    form.append('targetType', targetType);
+    form.append('provider', String(payload.provider || 'gcash'));
+    form.append('receiptToken', String(payload.receiptToken));
+    form.append('contentType', String(imageFile.type || payload.contentType || 'image/jpeg'));
+    if (targetType === 'booking') form.append('bookingRef', String(payload.bookingRef));
+    else form.append('openPlayRegistrationId', String(payload.openPlayRegistrationId));
+    try {
+      form.append('receipt', imageFile, imageFile.name || 'receipt.jpg');
+    } catch (_) {
+      // Compatibility-only fallback for embedded browsers that reject a
+      // file-like object in FormData. It reuses the same target and token.
+      return _pbVerifyReceiptBase64Fallback(fnUrl, payload, imageFile, authHeader);
+    }
+
+    const res = await _pbFetchWithTimeout(fnUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': authHeader },
-      body: JSON.stringify(payload),
-    });
+      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': authHeader },
+      body: form,
+    }, PB_RECEIPT_TIMEOUT_MS);
     const txt = await res.text();
     const json = _safeJsonParse(txt);
-    if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
+    if (!res.ok) {
+      const reason = String(json?.error || txt || `Receipt verification HTTP ${res.status}`);
+      const multipartDroppedImage = [400, 415, 422].includes(res.status) &&
+        /receipt file|multipart body|empty image|image (?:is )?required/i.test(reason);
+      if (multipartDroppedImage) {
+        return _pbVerifyReceiptBase64Fallback(fnUrl, payload, imageFile, authHeader);
+      }
+      throw new Error(reason);
+    }
+    if (!json || json.ok !== true) throw new Error(json?.error || 'Receipt verification returned an invalid response.');
     return json;
+  },
+
+  // Authenticated dashboard confirmation. This atomically claims the
+  // provider-scoped reference ledger and advances the payment/receipt state.
+  async manualApproveReceipt(targetType, targetKey, provider, paymentReference) {
+    const type = String(targetType || '');
+    if (!['booking', 'open_play'].includes(type)) throw new Error('Invalid receipt target type.');
+    const { data, error } = await _sb.rpc('manual_approve_receipt', {
+      p_target_type: type,
+      p_target_key: String(targetKey || ''),
+      p_provider: String(provider || ''),
+      p_payment_reference: String(paymentReference || ''),
+    });
+    if (error) { console.error('manualApproveReceipt:', error); throw error; }
+    const approved = Array.isArray(data) ? (data[0] || null) : data;
+    if (!approved?.target_key) throw new Error('Payment confirmation returned an incomplete response.');
+    return approved;
   },
 
   // Request a short-lived signed URL to view a stored receipt (admin only).
@@ -580,10 +912,7 @@ window.DB = {
     try {
       // Use REST API directly to bypass schema cache
       const res = await fetch(`${SUPABASE_URL}/rest/v1/weekly_fees?order=week_start.desc,created_at.desc`, {
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        }
+        headers: await _pbAuthenticatedRestHeaders(),
       });
       if (!res.ok) {
         console.error('getWeeklyFees REST error:', res.status, res.statusText);
@@ -620,12 +949,10 @@ window.DB = {
       // Use REST API directly to bypass schema cache
       const res = await fetch(`${SUPABASE_URL}/rest/v1/weekly_fees`, {
         method: 'POST',
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        headers: await _pbAuthenticatedRestHeaders({
           'Content-Type': 'application/json',
           Prefer: 'return=representation',
-        },
+        }),
         body: JSON.stringify(row),
       });
       if (!res.ok) {
@@ -660,11 +987,9 @@ window.DB = {
       // Use REST API directly to bypass schema cache
       const res = await fetch(`${SUPABASE_URL}/rest/v1/weekly_fees?id=eq.${id}`, {
         method: 'PATCH',
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        headers: await _pbAuthenticatedRestHeaders({
           'Content-Type': 'application/json',
-        },
+        }),
         body: JSON.stringify(row),
       });
       if (!res.ok) {
@@ -680,28 +1005,17 @@ window.DB = {
 
   // Court owner submits a payment proof for their statement
   async submitWeeklyFeePayment(id, { submittedRef, submittedNote, submittedProofUrl }) {
-    const row = {
-      status: 'submitted',
-      submitted_at: new Date().toISOString(),
-      submitted_ref: submittedRef || null,
-      submitted_note: submittedNote || null,
-      submitted_proof_url: submittedProofUrl || null,
-    };
     try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/weekly_fees?id=eq.${id}`, {
-        method: 'PATCH',
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(row),
+      const { data, error } = await _sb.rpc('submit_weekly_fee_payment', {
+        p_fee_id: id,
+        p_submitted_ref: submittedRef || '',
+        p_submitted_note: submittedNote || null,
+        p_submitted_proof_url: submittedProofUrl || null,
       });
-      if (!res.ok) {
-        const errText = await res.text();
-        console.error('submitWeeklyFeePayment error:', res.status, errText);
-        throw new Error(`HTTP ${res.status}: ${errText}`);
-      }
+      if (error) throw error;
+      const submitted = Array.isArray(data) ? (data[0] || null) : data;
+      if (!submitted?.fee_id) throw new Error('Payment submission returned an incomplete response.');
+      return submitted;
     } catch (err) {
       console.error('submitWeeklyFeePayment:', err);
       throw err;
@@ -840,10 +1154,17 @@ window.DB = {
     },
     async addBooking(booking) {
       const db = readDb();
-      const bookedSlots = db.bookings
-        .filter(b => String(b.courtId) === String(booking.courtId) && b.date === booking.date && b.status !== 'cancelled')
-        .flatMap(b => b.slots || []);
-      const conflict = (booking.slots || []).some(s => bookedSlots.includes(s));
+      const freshHoldCutoff = Date.now() - PB_PUBLIC_HOLD_MINUTES * 60 * 1000;
+      const bookedSlots = new Set(db.bookings
+        .filter(b => {
+          if (String(b.courtId) !== String(booking.courtId) || b.date !== booking.date || b.status === 'cancelled') return false;
+          if (b.status !== 'verifying') return true;
+          const createdAt = new Date(b.createdAt || '').getTime();
+          return !Number.isFinite(createdAt) || createdAt >= freshHoldCutoff;
+        })
+        .flatMap(b => b.slots || [])
+        .map(String));
+      const conflict = (booking.slots || []).some(s => bookedSlots.has(String(s)));
       if (conflict) throw new Error('One or more time slots are no longer available. Please refresh and choose a different time.');
       db.bookings.push({ ...booking, ref: booking.ref || localRef('PB'), createdAt: booking.createdAt || nowIso() });
       writeDb(db);
@@ -853,6 +1174,59 @@ window.DB = {
       const db = readDb();
       db.bookings = db.bookings.map(b => String(b.ref) === String(ref) ? { ...b, ...updates } : b);
       writeDb(db);
+    },
+    async finalizePublicBookingHold(ref, details) {
+      const db = readDb();
+      let result = null;
+      db.bookings = db.bookings.map(booking => {
+        if (String(booking.ref) !== String(ref)) return booking;
+        const paymentMethod = details?.paymentMethod || 'cash';
+        const total = Number(booking.total || 0);
+        const downpayment = details?.paymentChoice === 'full' ? total : total / 2;
+        const updated = {
+          ...booking,
+          fullName: details?.fullName || booking.fullName,
+          contactNumber: details?.contactNumber || booking.contactNumber,
+          email: details?.email || booking.email,
+          paymentMethod,
+          paymentFlow: paymentMethod,
+          gcashRef: details?.paymentReference || null,
+          downpayment,
+          paymentStatus: paymentMethod === 'cash' ? 'unpaid' : 'for_verification',
+          status: paymentMethod === 'cash' ? 'pending' : 'verifying',
+        };
+        result = {
+          bookingRef: updated.ref,
+          bookingStatus: updated.status,
+          bookingPaymentStatus: updated.paymentStatus,
+          courtName: updated.courtName,
+          startTime: updated.startTime,
+          endTime: updated.endTime,
+          duration: Number(updated.duration || 0),
+          slots: Array.isArray(updated.slots) ? updated.slots.map(String) : [],
+          totalDue: total,
+          amountDue: downpayment,
+        };
+        return updated;
+      });
+      writeDb(db);
+      return result;
+    },
+    async cancelPublicBookingHold(ref) {
+      const db = readDb();
+      let result = null;
+      db.bookings = db.bookings.map(booking => {
+        if (String(booking.ref) !== String(ref)) return booking;
+        const updated = { ...booking, status: 'cancelled', paymentStatus: 'rejected' };
+        result = {
+          booking_ref: updated.ref,
+          booking_status: updated.status,
+          booking_payment_status: updated.paymentStatus,
+        };
+        return updated;
+      });
+      writeDb(db);
+      return result;
     },
     async markBookingsBilled(refs, weeklyFeeId) {
       if (!Array.isArray(refs) || refs.length === 0) return;
@@ -871,8 +1245,9 @@ window.DB = {
     },
     async addOpenPlayRegistration(reg) {
       const db = readDb();
+      const id = localRef('op');
       db.openPlayRegistrations.push({
-        id: localRef('op'),
+        id,
         full_name: reg.fullName,
         court_id: String(reg.courtId),
         court_name: reg.courtName,
@@ -882,20 +1257,26 @@ window.DB = {
         payment_type: reg.paymentType,
         payment_method: reg.paymentMethod || 'cash',
         gcash_ref: reg.gcashRef || null,
-        payment_status: reg.paymentStatus || 'pending',
+        payment_status: 'pending',
         amount: reg.amount,
-        receipt_image_url: reg.receiptImageUrl || null,
-        receipt_image_hash: reg.receiptImageHash || null,
-        receipt_phash: reg.receiptPhash || null,
-        receipt_status: reg.receiptStatus || 'none',
-        receipt_flags: reg.receiptFlags || [],
-        receipt_extracted: reg.receiptExtracted || null,
-        receipt_confidence: reg.receiptConfidence ?? null,
-        receipt_verified_at: reg.receiptVerifiedAt || null,
+        receipt_status: 'none',
+        receipt_upload_token_hash: reg.receiptUploadTokenHash || null,
         ..._openPlaySessionSnapshot(reg),
         created_at: nowIso(),
       });
       writeDb(db);
+      return {
+        registrationId: id,
+        sessionKey: reg.sessionKey,
+        sessionStart: Number(reg.sessionStart ?? reg.hour),
+        sessionEnd: Number(reg.sessionEnd),
+        baseFee: Number(reg.baseFee || 0),
+        systemFee: Number(reg.systemFee || 0),
+        totalDue: Number(reg.totalDue || 0),
+        amountDue: Number(reg.amount || 0),
+        paymentStatus: 'pending',
+        receiptStatus: 'none',
+      };
     },
     async updateOpenPlayRegistration(id, updates) {
       const db = readDb();
@@ -916,6 +1297,82 @@ window.DB = {
         };
       });
       writeDb(db);
+    },
+    async manualApproveReceipt(targetType, targetKey, provider, paymentReference) {
+      const type = String(targetType || '');
+      const providerKey = String(provider || '').trim().toLowerCase();
+      const normalizeReference = value => providerKey === 'gcash'
+        ? String(value || '').replace(/\D/g, '')
+        : String(value || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+      const normalizedReference = normalizeReference(paymentReference);
+      if (!['booking', 'open_play'].includes(type) || !providerKey || !normalizedReference) {
+        throw new Error('A valid receipt target, provider, and payment reference are required.');
+      }
+
+      const db = readDb();
+      const claims = [
+        ...db.bookings.map(b => ({
+          owner: `booking:${b.ref}`,
+          provider: String(b.paymentProvider || b.paymentMethod || '').trim().toLowerCase(),
+          reference: b.gcashRef,
+          status: b.receiptStatus,
+        })),
+        ...db.openPlayRegistrations.map(r => ({
+          owner: `open_play:${r.id}`,
+          provider: String(r.payment_provider || r.payment_method || '').trim().toLowerCase(),
+          reference: r.gcash_ref,
+          status: r.receipt_status,
+        })),
+      ];
+      const owner = `${type}:${targetKey}`;
+      const duplicate = claims.some(claim => {
+        if (claim.owner === owner || claim.status !== 'manual_approved' || claim.provider !== providerKey) return false;
+        return normalizeReference(claim.reference) === normalizedReference;
+      });
+      if (duplicate) throw new Error('This payment reference is already confirmed for another registration.');
+
+      let paymentStatus = 'paid';
+      let bookingStatus = null;
+      if (type === 'booking') {
+        const index = db.bookings.findIndex(b => String(b.ref) === String(targetKey));
+        if (index < 0) throw new Error('Booking not found.');
+        const booking = db.bookings[index];
+        paymentStatus = Number(booking.downpayment || 0) >= Number(booking.total || 0)
+          ? 'paid'
+          : 'downpayment_paid';
+        bookingStatus = 'confirmed';
+        db.bookings[index] = {
+          ...booking,
+          status: bookingStatus,
+          paymentStatus,
+          paymentProvider: providerKey,
+          gcashRef: paymentReference,
+          receiptStatus: 'manual_approved',
+          receiptVerifiedAt: nowIso(),
+        };
+      } else {
+        const index = db.openPlayRegistrations.findIndex(r => String(r.id) === String(targetKey));
+        if (index < 0) throw new Error('Open Play registration not found.');
+        db.openPlayRegistrations[index] = {
+          ...db.openPlayRegistrations[index],
+          payment_status: 'paid',
+          payment_provider: providerKey,
+          gcash_ref: paymentReference,
+          receipt_status: 'manual_approved',
+          receipt_verified_at: nowIso(),
+        };
+      }
+      writeDb(db);
+      return {
+        target_type: type,
+        target_key: String(targetKey),
+        payment_status: paymentStatus,
+        booking_status: bookingStatus,
+        receipt_status: 'manual_approved',
+        provider: providerKey,
+        normalized_reference: normalizedReference,
+        ledger_key: `${providerKey}:${normalizedReference}`,
+      };
     },
     async getOpenPlayCountForDate(date, courtId = null, sessionKeyOrStart = null) {
       const sessionStart = _openPlaySessionStart(sessionKeyOrStart);
@@ -1050,13 +1507,32 @@ window.Auth = {
     const { data, error } = await _sb.auth.signInWithPassword({ email, password });
     if (error || !data.user) return { ok: false };
 
-    // Fetch role/name from accounts table (now accessible as authenticated user)
-    const { data: acc } = await _sb.from('accounts').select('*').eq('email', email).single();
-    const session = acc
-      ? { ...rowToAccount(acc), loginAt: new Date().toISOString() }
-      : { id: data.user.id, email: data.user.email, role: 'staff', fullName: 'Court Staff', loginAt: new Date().toISOString() };
+    // The Auth identity is not authorization by itself. It must be linked to
+    // the exact accounts row owned by that auth UUID; never synthesize a staff
+    // profile for an unprovisioned Supabase user.
+    const { data: acc, error: profileError } = await _sb
+      .from('accounts')
+      .select('*')
+      .eq('id', data.user.id)
+      .maybeSingle();
+    if (profileError || !acc || !this.ROLES.includes(acc.role)) {
+      try { await _sb.auth.signOut(); } catch (_) {}
+      sessionStorage.removeItem('pb_session');
+      localStorage.removeItem('pb_session');
+      localStorage.removeItem('pb_remember');
+      return {
+        ok: false,
+        msg: profileError
+          ? 'Could not verify your account profile. Please try again.'
+          : 'This login is not linked to an authorized staff account.',
+      };
+    }
+    const session = { ...rowToAccount(acc), loginAt: new Date().toISOString() };
 
     // Use localStorage when "remember me" is checked so session survives browser close
+    sessionStorage.removeItem('pb_session');
+    localStorage.removeItem('pb_session');
+    localStorage.removeItem('pb_remember');
     const store = remember ? localStorage : sessionStorage;
     store.setItem('pb_session', JSON.stringify(session));
     if (remember) localStorage.setItem('pb_remember', '1');
@@ -1092,21 +1568,53 @@ window.Auth = {
     const all = await DB.getAccounts();
     if (all.find(x => x.username === d.username)) return { ok: false, msg: 'Username taken.' };
 
-    // Create a real Supabase Auth user so the account can actually log in
-    const { data, error } = await _sb.auth.signUp({ email: d.email, password: d.password });
-    if (error) return { ok: false, msg: error.message };
-    if (!data.user) return { ok: false, msg: 'Signup failed — no user returned.' };
+    // Provision through a separate, in-memory auth client. Calling signUp on
+    // the main `_sb` client would replace the currently signed-in owner's
+    // session when email confirmation is disabled.
+    let provisioningClient = null;
+    try {
+      provisioningClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+          detectSessionInUrl: false,
+          storageKey: `pb_account_provisioning_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+        },
+      });
+      const { data, error } = await provisioningClient.auth.signUp({
+        email: d.email,
+        password: d.password,
+      });
+      if (error) return { ok: false, msg: error.message };
+      if (!data.user) return { ok: false, msg: 'Signup failed — no user returned.' };
 
-    const acc = {
-      id: data.user.id,
-      fullName: d.fullName,
-      username: d.username,
-      email: d.email,
-      role: this.ROLES.includes(d.role) ? d.role : 'staff',
-      createdAt: new Date().toISOString(),
-    };
-    try { await DB.saveAccount(acc); return { ok: true }; }
-    catch(e) { return { ok: false, msg: 'Auth user created but profile save failed.' }; }
+      const acc = {
+        id: data.user.id,
+        fullName: d.fullName,
+        username: d.username,
+        email: d.email,
+        role: this.ROLES.includes(d.role) ? d.role : 'staff',
+        createdAt: new Date().toISOString(),
+      };
+      // DB.saveAccount deliberately uses the owner's main `_sb` client and its
+      // authorization; the newly created user's session cannot write roles.
+      try {
+        await DB.saveAccount(acc);
+        return { ok: true };
+      } catch (error) {
+        console.error('Auth.add profile save failed:', error);
+        return { ok: false, msg: 'Auth user created but profile save failed. Ask the system owner to reconcile this account.' };
+      }
+    } catch (error) {
+      console.error('Auth.add provisioning failed:', error);
+      return { ok: false, msg: error?.message || 'Could not create the authentication user.' };
+    } finally {
+      // Discard any new-user session held by the isolated client. With
+      // persistSession disabled, no provisioning credentials reach storage.
+      if (provisioningClient) {
+        try { await provisioningClient.auth.signOut(); } catch (_) {}
+      }
+    }
   },
 
   async update(id, d) {

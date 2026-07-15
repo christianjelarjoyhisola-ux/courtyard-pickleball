@@ -552,6 +552,7 @@ alter table public.bookings
 create or replace function public.prevent_double_booking()
 returns trigger
 language plpgsql
+security definer
 set search_path = pg_catalog, public
 as $$
 begin
@@ -2306,6 +2307,9 @@ grant select on table
   public.settings,
   public.blocked_dates
 to anon, authenticated;
+
+-- The restrictive bookings_insert_anon_hold RLS policy validates public holds.
+grant insert on table public.bookings to anon;
 
 grant insert, update, delete on table
   public.courts,

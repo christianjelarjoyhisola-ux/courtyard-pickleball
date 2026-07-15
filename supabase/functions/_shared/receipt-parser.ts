@@ -126,20 +126,84 @@ function isFeeContext(context: string): boolean {
 
 export function extractReceiptAmount(text: string): AmountExtraction {
   const evidence: string[] = [];
-  const reliable: number[] = [];
+  const principal: number[] = [];
+  const generic: number[] = [];
   const weak: number[] = [];
-  const labelled =
-    /(?:total\s+amount\s+sent|amount\s+sent|transfer(?:red)?\s+amount|payment\s+amount|total|amount)\s*[:=-]?\s*(?:PHP|P|₱)?\s*((?:\d{1,3}(?:[ ,]\d{3})+|\d+)(?:\.\d{2})?)(?![\d,.])/gi;
+  // Prefer the final/principal labels used by payment providers. OCR from a
+  // photo of another phone can flatten the status bar before the receipt and
+  // produce text such as "Amount\n68" from a battery percentage. A value next
+  // to "Total Amount Sent" is authoritative over generic "Amount".
+  const principalLabel =
+    /(?:total\s+amount\s+sent|amount\s+sent|total\s+sent|transfer(?:red)?\s+amount|payment\s+amount|total\s+paid)[ \t]*[:=-]?[ \t]*(?:\r?\n[ \t]*)?(?:PHP|P|₱)?[ \t]*((?:\d{1,3}(?:[ ,]\d{3})+|\d+)(?:\.\d{2})?)(?![\d,.])/gi;
   let match: RegExpExecArray | null;
-  while ((match = labelled.exec(text)) !== null) {
+  while ((match = principalLabel.exec(text)) !== null) {
     const context = text.slice(
       Math.max(0, match.index - 28),
       match.index + match[0].length + 8,
     );
     const amount = parseMoneyToken(match[1]);
     if (amount == null || isFeeContext(context)) continue;
-    reliable.push(amount);
+    principal.push(amount);
     evidence.push(match[0].trim().slice(0, 100));
+  }
+
+  const uniquePrincipal = [...new Set(principal)];
+  if (uniquePrincipal.length === 1) {
+    return {
+      amount: uniquePrincipal[0],
+      reliable: true,
+      ambiguous: false,
+      reason: "principal_total_label",
+      evidence,
+    };
+  }
+  if (uniquePrincipal.length > 1) {
+    return {
+      amount: null,
+      reliable: false,
+      ambiguous: true,
+      reason: "conflicting_principal_amounts",
+      evidence,
+    };
+  }
+
+  // Generic "Amount" remains supported for older receipts, but it is strong
+  // only when OCR retained cents or a currency marker. A bare integer on the
+  // following line may be a battery percentage and must not auto-approve.
+  const genericLabel =
+    /\bamount\b[ \t]*[:=-]?[ \t]*(?:\r?\n[ \t]*)?((?:PHP|P|₱)?)[ \t]*((?:\d{1,3}(?:[ ,]\d{3})+|\d+)(?:\.\d{2})?)(?![\d,.])/gi;
+  while ((match = genericLabel.exec(text)) !== null) {
+    const context = text.slice(
+      Math.max(0, match.index - 28),
+      match.index + match[0].length + 8,
+    );
+    const amount = parseMoneyToken(match[2]);
+    if (amount == null || isFeeContext(context)) continue;
+    const hasCurrency = Boolean(match[1]);
+    const hasCents = /\.\d{2}$/.test(match[2].replace(/[\s,]/g, ""));
+    if (!hasCurrency && !hasCents) continue;
+    generic.push(amount);
+    evidence.push(match[0].trim().slice(0, 100));
+  }
+
+  const uniqueGeneric = [...new Set(generic)];
+  if (uniqueGeneric.length === 1) {
+    return {
+      amount: uniqueGeneric[0],
+      reliable: true,
+      ambiguous: false,
+      reason: "generic_amount_with_money_format",
+      evidence,
+    };
+  }
+  if (uniqueGeneric.length > 1) {
+    return {
+      amount: null,
+      reliable: false,
+      ambiguous: true,
+      reason: "conflicting_labelled_amounts",
+      evidence,
+    };
   }
 
   const currency =
@@ -153,26 +217,6 @@ export function extractReceiptAmount(text: string): AmountExtraction {
     if (amount == null || isFeeContext(context)) continue;
     weak.push(amount);
     evidence.push(match[0].trim().slice(0, 100));
-  }
-
-  const uniqueReliable = [...new Set(reliable)];
-  if (uniqueReliable.length === 1) {
-    return {
-      amount: uniqueReliable[0],
-      reliable: true,
-      ambiguous: false,
-      reason: "labelled_principal",
-      evidence,
-    };
-  }
-  if (uniqueReliable.length > 1) {
-    return {
-      amount: null,
-      reliable: false,
-      ambiguous: true,
-      reason: "conflicting_labelled_amounts",
-      evidence,
-    };
   }
 
   const uniqueWeak = [...new Set(weak)];
@@ -217,7 +261,9 @@ function buildShiftedDate(
   const shifted = new Date(Date.UTC(year, month, day, hour, minute, 0));
   return {
     date,
-    wallTime: `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`,
+    wallTime: `${String(hour).padStart(2, "0")}:${
+      String(minute).padStart(2, "0")
+    }`,
     instant: new Date(shifted.getTime() - 8 * 60 * 60 * 1000),
     shifted,
   };
@@ -295,6 +341,16 @@ function labelledRecipientFragments(text: string): string[] {
   while ((match = gcashHeader.exec(text)) !== null) {
     fragments.push(`${match[1]} ${match[2]}`);
   }
+
+  // Photos and newer GCash layouts often place the masked recipient header
+  // before the Amount section. Capture the same name/number/provider block
+  // without requiring "Amount" to appear above it. The provider line keeps an
+  // unrelated number elsewhere in the photo from becoming recipient evidence.
+  const flexibleGcashHeader =
+    /(?:^|\n)[ \t]*([^\r\n|]{2,80})[ \t]*\r?\n[ \t]*((?:\+?63|0)?[\d*Xx#.\s\-\u2022]{6,32}\d{4})[ \t]*\r?\n[ \t]*sent[ \t]+via[ \t]+gcash\b/gim;
+  while ((match = flexibleGcashHeader.exec(text)) !== null) {
+    fragments.push(`${match[1]} ${match[2]}`);
+  }
   return fragments;
 }
 
@@ -321,7 +377,9 @@ export function checkRecipient(
         if (normalized.length >= 8) fullCandidates.push(normalized);
       }
       const lastFour = expectedDigits.slice(-4);
-      if (new RegExp(`(?:[*xX•#\\s-]{2,})${lastFour}\\b`).test(fragment)) {
+      if (
+        new RegExp(`(?:[*xX#.\\s\\-\\u2022]{2,})${lastFour}\\b`).test(fragment)
+      ) {
         numberStatus = "match";
         evidence.push(`masked recipient ending ${lastFour}`);
       }

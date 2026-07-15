@@ -33,6 +33,37 @@ Deno.test("labelled principal amount is reliable and fee is ignored", () => {
   assertEquals(result.ambiguous, false);
 });
 
+Deno.test("GCash total amount outranks a photographed phone battery value", () => {
+  const text =
+    "1:13\n68\nExpress Send\nAmount\n68\nAN.....A A.\n+63 9... ... 5766\n" +
+    "Sent via GCash\nAmount\n45.00\nTotal Amount Sent\n₱45.00\n" +
+    "Ref No. 6042908270278\nJul 15, 2026 1:13 PM";
+  const result = extractReceiptAmount(text);
+  assertEquals(result.amount, 45);
+  assertEquals(result.reliable, true);
+  assertEquals(result.ambiguous, false);
+  assertEquals(result.reason, "principal_total_label");
+  assertEquals(
+    extractReference(text, "gcash", "6042908270278"),
+    "6042908270278",
+  );
+  assertEquals(parseReceiptDateTime(text).wallTime, "13:13");
+  assertEquals(providerEvidence(text, "gcash").expected, true);
+  assertEquals(
+    checkRecipient(text, "09524825766", "ANNALIZA ACERO").numberStatus,
+    "match",
+  );
+});
+
+Deno.test("bare integer after generic Amount cannot become a strong amount", () => {
+  const result = extractReceiptAmount(
+    "GCash\nAmount\n68\nReceipt total shown elsewhere as ₱45.00",
+  );
+  assertEquals(result.amount, 45);
+  assertEquals(result.reliable, false);
+  assertEquals(result.reason, "currency_only");
+});
+
 Deno.test("currency-only amount remains manual-review quality", () => {
   const result = extractReceiptAmount("GCash receipt\nPHP 600.00");
   assertEquals(result.amount, 600);
@@ -56,7 +87,9 @@ Deno.test("receipt timestamp is parsed as Philippine wall clock", () => {
 });
 
 Deno.test("GCash morning receipt preserves 11:50 AM Philippine time", () => {
-  const parsed = parseReceiptDateTime("Ref No. 2042905298438 Jul 15, 2026 11:50 AM");
+  const parsed = parseReceiptDateTime(
+    "Ref No. 2042905298438 Jul 15, 2026 11:50 AM",
+  );
   assertEquals(parsed.date, "2026-07-15");
   assertEquals(parsed.wallTime, "11:50");
   assertEquals(parsed.instant?.toISOString(), "2026-07-15T03:50:00.000Z");
@@ -92,6 +125,18 @@ Deno.test("different complete labelled recipient is deterministic", () => {
 Deno.test("GCash masked receipt header matches the configured full number", () => {
   const result = checkRecipient(
     "Amount\nAN.....A A.\n+63 952 482 5766\nSent via GCash\nTotal Amount Sent\n1.00",
+    "09524825766",
+    "ANNALIZA ACERO",
+  );
+  assertEquals(result.status, "match");
+  assertEquals(result.numberStatus, "match");
+  assertEquals(result.nameStatus, "unreadable");
+});
+
+Deno.test("GCash masked recipient header is recognized before Amount", () => {
+  const result = checkRecipient(
+    "AN.....A A.\n+63 9... ... 5766\nSent via GCash\nAmount\n45.00\n" +
+      "Total Amount Sent\n₱45.00",
     "09524825766",
     "ANNALIZA ACERO",
   );

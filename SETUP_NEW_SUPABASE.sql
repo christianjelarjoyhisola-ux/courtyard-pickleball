@@ -2293,6 +2293,57 @@ grant execute on function public.create_public_open_play_registration(
 ) to anon, authenticated;
 
 
+-- --------------------------------------------------------------------------
+-- 13. API role privileges
+-- --------------------------------------------------------------------------
+-- RLS policies control row access, but PostgREST callers also require the
+-- underlying table privileges. Keep this list aligned with
+-- 20260715_fix_api_role_privileges.sql.
+grant usage on schema public to anon, authenticated, service_role;
+
+grant select on table
+  public.courts,
+  public.settings,
+  public.blocked_dates
+to anon, authenticated;
+
+grant insert, update, delete on table
+  public.courts,
+  public.settings
+to authenticated;
+grant insert, delete on table public.blocked_dates to authenticated;
+
+grant select, insert, update, delete on table
+  public.accounts,
+  public.agreements,
+  public.bookings,
+  public.open_play_registrations,
+  public.weekly_fees
+to authenticated;
+grant select on table public.receipt_verifications to authenticated;
+
+grant select, insert, update, delete on table
+  public.accounts,
+  public.agreements,
+  public.blocked_dates,
+  public.bookings,
+  public.courts,
+  public.open_play_registrations,
+  public.payment_sessions,
+  public.receipt_verification_attempts,
+  public.receipt_verifications,
+  public.settings,
+  public.used_gcash_refs,
+  public.weekly_fees
+to service_role;
+
+grant usage, select on sequence
+  public.open_play_registrations_id_seq,
+  public.receipt_verification_attempts_id_seq,
+  public.receipt_verifications_id_seq
+to authenticated, service_role;
+
+
 -- Reload PostgREST so the new columns and capability RPCs are immediately
 -- visible to supabase-js after this migration is applied.
 notify pgrst, 'reload schema';

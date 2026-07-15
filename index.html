@@ -1795,6 +1795,17 @@ body.light #splashScreen { background: var(--bg); }
 @keyframes openPlayGlow { 0%,100% { box-shadow: 0 0 20px rgba(244,168,37,.3), inset 0 0 20px rgba(244,168,37,.08); } 50% { box-shadow: 0 0 30px rgba(244,168,37,.5), inset 0 0 30px rgba(244,168,37,.12); } }
 @keyframes openPlayBorderPulse { 0%,100% { border-color: rgba(244,168,37,.5); } 50% { border-color: rgba(244,168,37,.8); } }
 @keyframes openPlayFloatFire { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+.inapp-browser-notice {
+  display:none;align-items:flex-start;gap:10px;margin:14px auto 0;padding:12px 14px;
+  width:min(920px,calc(100% - 28px));border:1px solid rgba(59,130,246,.45);
+  border-radius:12px;background:rgba(59,130,246,.11);color:var(--text);font-size:.8rem;line-height:1.5;
+}
+.inapp-browser-notice.show { display:flex; }
+.inapp-browser-notice strong { color:#60a5fa; }
+.inapp-browser-notice button { margin-left:auto;flex:0 0 auto;border:0;background:transparent;color:#60a5fa;font-weight:800;cursor:pointer;padding:2px 4px; }
+.inapp-payment-note { display:none;margin:0 0 12px;padding:10px 12px;border-radius:10px;border:1px solid rgba(244,168,37,.38);background:rgba(244,168,37,.09);color:var(--muted);font-size:.76rem;line-height:1.5; }
+.inapp-payment-note.show { display:block; }
+@media (max-width:600px) { .inapp-browser-notice { font-size:.75rem; } }
 </style>
 
 <nav class="nav">
@@ -1816,6 +1827,12 @@ body.light #splashScreen { background: var(--bg); }
     </div>
   </div>
 </nav>
+
+<aside id="inAppBrowserNotice" class="inapp-browser-notice" role="status">
+  <span aria-hidden="true">🌐</span>
+  <div><strong>Facebook/Messenger browser detected.</strong> Booking works here. For the most reliable GCash payment and receipt upload, tap <strong>⋯</strong> and choose <strong>Open in Chrome</strong> or <strong>Open in Safari</strong>. Your unfinished details are saved briefly if you switch apps.</div>
+  <button type="button" onclick="dismissInAppBrowserNotice()" aria-label="Dismiss browser notice">Continue here</button>
+</aside>
 
 <!-- COURTS -->
 <div class="sec" id="courts" style="padding-top:24px">
@@ -1913,6 +1930,7 @@ body.light #splashScreen { background: var(--bg); }
         <!-- ── STEP 4: PAYMENT ── -->
         <div class="wiz-panel" id="wizPanel4">
           <div class="wiz-sec-title">💳 Payment</div>
+          <div id="inAppPaymentNotice" class="inapp-payment-note">🌐 For GCash, tap <strong>⋯</strong> and open this page in Chrome or Safari for the most reliable app switching and receipt upload. Your unfinished details are saved for 30 minutes.</div>
 
           <!-- Payment Method -->
           <div class="fg bpay-method-block" id="payMethodBlock">
@@ -2327,6 +2345,160 @@ const nowHour = () => new Date().getHours();
 const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
 const isToday = d => d === todayStr();
 const dayOfWeek = d => new Date(`${d}T00:00:00`).getDay();
+const INAPP_DRAFT_TTL_MS = 30 * 60 * 1000;
+const INAPP_BOOKING_DRAFT_KEY = 'pb_inapp_booking_draft_v1';
+const INAPP_OPEN_PLAY_DRAFT_KEY = 'pb_inapp_open_play_draft_v1';
+let _reservedStartedAt = 0;
+let _inAppSupportReady = false;
+let _inAppSplashDismissed = false;
+let _inAppRestoreStarted = false;
+
+function isFacebookMessengerBrowser() {
+  return /FBAN|FBAV|FB_IAB|FB4A|FBIOS|MessengerFor/i.test(String(navigator.userAgent || ''));
+}
+
+function dismissInAppBrowserNotice() {
+  $('inAppBrowserNotice')?.classList.remove('show');
+}
+
+function writeInAppDraft(key, draft) {
+  if (!isFacebookMessengerBrowser()) return;
+  try { localStorage.setItem(key, JSON.stringify({ ...draft, savedAt: Date.now() })); } catch (_) {}
+}
+
+function readInAppDraft(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const draft = JSON.parse(raw);
+    if (!draft?.savedAt || Date.now() - Number(draft.savedAt) > INAPP_DRAFT_TTL_MS) {
+      localStorage.removeItem(key);
+      return null;
+    }
+    return draft;
+  } catch (_) {
+    try { localStorage.removeItem(key); } catch (_) {}
+    return null;
+  }
+}
+
+function clearInAppDraft(type) {
+  const key = type === 'open_play' ? INAPP_OPEN_PLAY_DRAFT_KEY : INAPP_BOOKING_DRAFT_KEY;
+  try { localStorage.removeItem(key); } catch (_) {}
+}
+
+function saveBookingInAppDraft() {
+  if (!$('bookModal')?.classList.contains('active') || !court || !$('bDate')?.value || !selSlots.length) return;
+  writeInAppDraft(INAPP_BOOKING_DRAFT_KEY, {
+    courtId: String(court.id),
+    date: $('bDate').value,
+    slots: [...selSlots],
+    fullName: $('bName')?.value || '',
+    contactNumber: $('bPhone')?.value || '',
+    email: $('bEmail')?.value || '',
+    paymentMethod: $('bPay')?.value || 'gcash',
+    paymentReference: $('bGcashRef')?.value || '',
+    payFull,
+    wizardStep: wizStep,
+    reservedRef: _reservedRef,
+    reservedStartedAt: _reservedStartedAt,
+    hadReceipt: Boolean(_receiptFile),
+  });
+}
+
+function saveOpenPlayInAppDraft() {
+  if (!$('opModal')?.classList.contains('active') || !_opSignupData?.courtId) return;
+  writeInAppDraft(INAPP_OPEN_PLAY_DRAFT_KEY, {
+    ..._opSignupData,
+    fullName: $('opFullName')?.value || '',
+    gcashRef: $('opGcashRef')?.value || _opSignupData.gcashRef || '',
+    hadReceipt: Boolean(_opReceiptFile),
+  });
+}
+
+async function restoreBookingInAppDraft(draft) {
+  const slots = Array.isArray(draft?.slots) ? draft.slots.map(Number).filter(Number.isInteger) : [];
+  const startedAt = Number(draft?.reservedStartedAt || 0);
+  const remainingSeconds = Math.floor((RESERVATION_MINUTES * 60 * 1000 - (Date.now() - startedAt)) / 1000);
+  const token = draft?.reservedRef ? PBReceiptTokens.get('booking', draft.reservedRef) : '';
+  if (!draft?.courtId || !draft?.date || draft.date < todayStr() || !slots.length || !token || remainingSeconds <= 0) {
+    clearInAppDraft('booking');
+    if (draft?.reservedRef) PBReceiptTokens.forget('booking', draft.reservedRef);
+    toast('Your previous slot hold expired. Please select a time again.', 'inf');
+    return false;
+  }
+
+  await ensureCourt(draft.courtId);
+  if (!court) {
+    clearInAppDraft('booking');
+    return false;
+  }
+  cardSel = { courtId: String(court.id), date: draft.date, slots: [...slots], rate: Number(court.rate || 0) };
+  selSlots = [...slots];
+  _reservedRef = String(draft.reservedRef);
+  _reservedStartedAt = startedAt;
+  $('bDate').value = draft.date;
+  $('bName').value = String(draft.fullName || '');
+  $('bPhone').value = String(draft.contactNumber || '');
+  $('bEmail').value = String(draft.email || '');
+  const method = paymentMethods[draft.paymentMethod] ? draft.paymentMethod : firstEnabledPaymentMethod();
+  if (method) pickPay(method);
+  setPayAmount(draft.payFull ? 'full' : 'half');
+  if ($('bGcashRef')) $('bGcashRef').value = normalizePaymentRef(draft.paymentReference || '', method);
+  updateRefCount();
+  updatePrice();
+  wizStartStep = 3;
+  $('bookModal').classList.add('active');
+  document.body.style.overflow = 'hidden';
+  $('mobileBookBar')?.style.setProperty('display', 'none');
+  wizGoTo(Number(draft.wizardStep) >= 4 ? 4 : 3);
+  startSlotCountdown(remainingSeconds);
+  toast('Your unfinished booking was restored.', 'ok');
+  if (draft.hadReceipt) toast('For security, please select the receipt screenshot again.', 'inf');
+  return true;
+}
+
+async function restoreOpenPlayInAppDraft(draft) {
+  if (!draft?.courtId || !draft?.date || draft.date < todayStr() || !draft?.sessionKey) {
+    clearInAppDraft('open_play');
+    return false;
+  }
+  await openPlaySignup(draft.courtId, draft.date, draft.sessionKey, draft.courtName || 'Court');
+  if (!$('opModal')?.classList.contains('active') || !$('opFullName')) {
+    clearInAppDraft('open_play');
+    return false;
+  }
+  $('opFullName').value = String(draft.fullName || '');
+  _opSignupData.gcashRef = normalizePaymentRef(draft.gcashRef || '', draft.payMethod || 'gcash');
+  opSetDP(Boolean(draft.fullPay));
+  opPickPay(paymentMethods[draft.payMethod] ? draft.payMethod : firstEnabledPaymentMethod());
+  toast('Your unfinished Open Play registration was restored.', 'ok');
+  if (draft.hadReceipt) toast('For security, please select the receipt screenshot again.', 'inf');
+  return true;
+}
+
+async function restoreInAppDraft() {
+  if (_inAppRestoreStarted || !isFacebookMessengerBrowser()) return;
+  _inAppRestoreStarted = true;
+  const bookingDraft = readInAppDraft(INAPP_BOOKING_DRAFT_KEY);
+  if (bookingDraft && await restoreBookingInAppDraft(bookingDraft)) return;
+  const openPlayDraft = readInAppDraft(INAPP_OPEN_PLAY_DRAFT_KEY);
+  if (openPlayDraft) await restoreOpenPlayInAppDraft(openPlayDraft);
+}
+
+async function initInAppBrowserSupport() {
+  if (!isFacebookMessengerBrowser()) return;
+  $('inAppBrowserNotice')?.classList.add('show');
+  $('inAppPaymentNotice')?.classList.add('show');
+  const persist = () => { saveBookingInAppDraft(); saveOpenPlayInAppDraft(); };
+  document.addEventListener('visibilitychange', () => { if (document.hidden) persist(); });
+  window.addEventListener('pagehide', persist);
+  $('bookForm')?.addEventListener('input', saveBookingInAppDraft);
+  $('opModal')?.addEventListener('input', saveOpenPlayInAppDraft);
+  _inAppSupportReady = true;
+  if (_inAppSplashDismissed) await restoreInAppDraft();
+}
+
 function maskName(fullName) {
   if (!fullName) return '🔒 Booked';
   const parts = fullName.trim().split(/\s+/);
@@ -3049,6 +3221,7 @@ async function proceedToBook(courtId) {
     return;
   }
   _reservedRef = reserveRef;
+  _reservedStartedAt = Date.now();
 
   selSlots = [...cardSel.slots];
   $('bDate').value = cardSel.date;
@@ -3059,9 +3232,11 @@ async function proceedToBook(courtId) {
   const _mb1 = $('mobileBookBar'); if (_mb1) _mb1.style.display = 'none';
   wizGoTo(3);
   startSlotCountdown();
+  saveBookingInAppDraft();
 }
 
 function closeBookModal() {
+  clearInAppDraft('booking');
   $('bookModal').classList.remove('active');
   document.body.style.overflow = '';
   stopSlotCountdown();
@@ -3069,13 +3244,14 @@ function closeBookModal() {
   if (_reservedRef) {
     const ref = _reservedRef;
     _reservedRef = null;
+    _reservedStartedAt = 0;
     cancelPublicReservation(ref).catch(() => {});
   }
   const _mb = $('mobileBookBar');
   if (_mb) _mb.style.display = (cardSel.slots && cardSel.slots.length > 0) ? 'flex' : 'none';
 }
 
-function startSlotCountdown() {
+function startSlotCountdown(initialSeconds = RESERVATION_MINUTES * 60) {
   stopSlotCountdown();
   const banner = $('slotCountdown');
   const timeEl = $('scdTime');
@@ -3083,7 +3259,7 @@ function startSlotCountdown() {
   if (!banner) return;
   banner.style.display = 'flex';
   banner.classList.remove('urgent');
-  let secsLeft = RESERVATION_MINUTES * 60;
+  let secsLeft = Math.max(0, Math.floor(Number(initialSeconds) || 0));
   function fmt(s) {
     const m = Math.floor(s / 60), sec = s % 60;
     return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
@@ -3101,6 +3277,8 @@ function startSlotCountdown() {
       if (_reservedRef) {
         const ref = _reservedRef;
         _reservedRef = null;
+        _reservedStartedAt = 0;
+        clearInAppDraft('booking');
         cancelPublicReservation(ref).catch(() => {});
       }
       closeBookModal();
@@ -3141,6 +3319,7 @@ function wizGoTo(n) {
   }
   const body = document.querySelector('.bk-modal-body');
   if (body) body.scrollTop = 0;
+  setTimeout(saveBookingInAppDraft, 0);
 }
 
 function wizNext() {
@@ -3755,6 +3934,7 @@ function pickPay(m) {
   else $('bGcashRef')?.removeAttribute('required');
   syncBookingRefUi(m);
   updatePaymentAmountUI();
+  saveBookingInAppDraft();
 }
 
 function copyPaymentNumber(method = 'gcash') {
@@ -3904,6 +4084,7 @@ function setPayAmount(mode) {
     if (btn100) btn100.classList.toggle('on',  payFull);
   });
   updatePrice();
+  saveBookingInAppDraft();
 }
 
 /* =============================================
@@ -4041,7 +4222,9 @@ async function submitBooking(e) {
     // Detach the hold from modal-close/countdown cancellation before yielding
     // to the RPC. A timeout is ambiguous: finalization may already have
     // committed, so this browser must not race it with a cancellation request.
+    clearInAppDraft('booking');
     _reservedRef = null;
+    _reservedStartedAt = 0;
     const finalized = await DB.finalizePublicBookingHold(booking.ref, {
       receiptToken,
       fullName: booking.fullName,
@@ -4236,6 +4419,7 @@ function onReceiptPicked(e) {
   if ($('bReceiptName')) $('bReceiptName').textContent = f.name;
   if ($('bReceiptPreviewWrap')) $('bReceiptPreviewWrap').style.display = 'flex';
   const drop = $('bReceiptDrop'); if (drop) drop.style.display = 'none';
+  saveBookingInAppDraft();
 }
 
 function clearReceipt() {
@@ -4244,6 +4428,7 @@ function clearReceipt() {
   if ($('bReceiptPreviewWrap')) $('bReceiptPreviewWrap').style.display = 'none';
   const drop = $('bReceiptDrop'); if (drop) drop.style.display = '';
   const st = $('bReceiptStatus'); if (st) st.style.display = 'none';
+  saveBookingInAppDraft();
 }
 
 async function verifyUploadedReceipt(bookingRef, method, receiptToken = '') {
@@ -4299,10 +4484,12 @@ async function verifyUploadedReceipt(bookingRef, method, receiptToken = '') {
 }
 
 function resetForm() {
+  clearInAppDraft('booking');
   $('bookForm').reset();
   clearReceipt();
   stopSlotCountdown();
   _reservedRef = null;
+  _reservedStartedAt = 0;
   court = null;
   selSlots = [];
   cardSel = { courtId: null, date: null, slots: [], rate: 0 };
@@ -4641,6 +4828,8 @@ function dismissSplash() {
   const sp = document.getElementById('splashScreen');
   sp.classList.add('dismissed');
   document.body.style.overflow = '';
+  _inAppSplashDismissed = true;
+  if (_inAppSupportReady) restoreInAppDraft().catch(() => {});
   sp.addEventListener('transitionend', () => { sp.style.display = 'none'; }, { once: true });
 }
 // Lock scroll while splash is showing
@@ -4660,6 +4849,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   initOpAnnounceSplash();
   initEasterSplash();
   initGrandSplash();
+  await initInAppBrowserSupport();
   document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeBookModal(); closeOpModal(); } });
   initScrollReveal();
 });
@@ -4881,6 +5071,7 @@ async function openPlaySignup(courtId, date, sessionRef, courtName) {
     </div>`;
 
   $('opModalBody').innerHTML = `
+    <div class="inapp-payment-note ${isFacebookMessengerBrowser() ? 'show' : ''}">🌐 For GCash, tap <strong>⋯</strong> and open this page in Chrome or Safari for the most reliable app switching and receipt upload. Your unfinished details are saved for 30 minutes.</div>
     <div class="op-form-grid">
       <div class="fg">
         <label class="fl">Full Name *</label>
@@ -4914,6 +5105,7 @@ async function openPlaySignup(courtId, date, sessionRef, courtName) {
     opSetDP(_opSignupData.fullPay);
   }
   setTimeout(() => $('opFullName')?.focus(), 80);
+  saveOpenPlayInAppDraft();
 }
 
 function opPickPay(method) {
@@ -4996,6 +5188,7 @@ function opPickPay(method) {
       <div style="margin-top:4px">Pay <strong style="color:#f4a825">${fmt(amt)}</strong> at the front desk upon arrival.</div>
     </div>`;
   }
+  saveOpenPlayInAppDraft();
 }
 
 function syncOpenPlayRefInput(method = _opSignupData.payMethod || 'gcash') {
@@ -5016,6 +5209,7 @@ function syncOpenPlayRefInput(method = _opSignupData.payMethod || 'gcash') {
         ? 'var(--accent)'
         : 'var(--muted)';
   }
+  saveOpenPlayInAppDraft();
 }
 
 function opSetDP(full) {
@@ -5025,9 +5219,11 @@ function opSetDP(full) {
   const opTotal = selectedOpenPlayTotal();
   if ($('opAmtDue')) $('opAmtDue').textContent = fmt(full ? opTotal : opTotal / 2);
   opPickPay(_opSignupData.payMethod);
+  saveOpenPlayInAppDraft();
 }
 
 function closeOpModal() {
+  clearInAppDraft('open_play');
   _opSignupRequestToken++;
   $('opModal').classList.remove('active');
   clearOpReceipt();
@@ -5043,6 +5239,7 @@ function onOpReceiptPicked(e) {
   if (f.size > 5 * 1024 * 1024) { toast('Image too large (max 5 MB).', 'err'); e.target.value = ''; return; }
   _opReceiptFile = f;
   syncOpReceiptPreview();
+  saveOpenPlayInAppDraft();
 }
 
 function syncOpReceiptPreview() {
@@ -5059,6 +5256,7 @@ function clearOpReceipt() {
   if ($('opReceiptPreviewWrap')) $('opReceiptPreviewWrap').style.display = 'none';
   const drop = $('opReceiptDrop'); if (drop) drop.style.display = '';
   const st = $('opReceiptStatus'); if (st) st.style.display = 'none';
+  saveOpenPlayInAppDraft();
 }
 
 async function verifyOpReceipt(registrationId, method, receiptToken = '', receiptFile = _opReceiptFile) {
@@ -5162,6 +5360,7 @@ async function submitOpenPlay() {
   const payType = signup.fullPay ? '100%' : '50%';
   const btn = $('opSubmitBtn');
   if (btn) { btn.disabled = true; btn.textContent = 'Submitting…'; }
+  clearInAppDraft('open_play');
   try {
     // Re-check capacity at submit time to prevent race conditions
     const currentCount = await DB.getOpenPlayCountForDate(signup.date, signup.courtId, signup.hour);

@@ -2007,6 +2007,8 @@ const RECEIPT_FLAG_LABELS = {
   EDITED_METADATA:'Edited image', SUSPECTED_FAKE:'Looks fake', REF_FORMAT_INVALID:'Bad ref format',
   LOW_OCR_CONFIDENCE:'Blurry', OCR_UNAVAILABLE:'No OCR', AMOUNT_UNREADABLE:'Amount unreadable',
   DATE_UNREADABLE:'Date unreadable', TIME_UNREADABLE:'Time unreadable', NUMBER_UNREADABLE:'Number unreadable',
+  RECIPIENT_UNREADABLE:'Recipient unreadable', WRONG_RECIPIENT:'Wrong recipient',
+  RECIPIENT_CONFIG_MISSING:'Recipient not configured',
 };
 function receiptBadge(b){
   const receiptState = b.receiptStatus || 'none';

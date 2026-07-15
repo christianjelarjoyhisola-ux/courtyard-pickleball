@@ -267,9 +267,23 @@ function normalizeAccountNumber(value: string): string {
 function labelledRecipientFragments(text: string): string[] {
   const fragments: string[] = [];
   const pattern =
-    /(?:sent\s+to|recipient|receiver|beneficiary|account\s+name|account\s+(?:no|number)|mobile\s+(?:no|number)|to)\s*[:=-]?\s*([^\n|]{2,80})/gi;
+    /(?:^|\n)[ \t]*(?:sent[ \t]+to|recipient|receiver|beneficiary|account[ \t]+name|account[ \t]+(?:no|number)|mobile[ \t]+(?:no|number)|to)\b[ \t]*[:=-]?[ \t]*([^\r\n|]{2,80})/gim;
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(text)) !== null) fragments.push(match[1]);
+
+  // Current GCash receipts use an unlabelled header block:
+  //   Amount
+  //   AN.....A A.
+  //   +63 952 482 5766
+  //   Sent via GCash
+  // Capture the masked name and number together. Requiring the surrounding
+  // header/provider lines prevents an unrelated phone number from being used
+  // as recipient evidence.
+  const gcashHeader =
+    /(?:^|\n)[ \t]*amount[ \t]*\r?\n[ \t]*([^\r\n|]{2,80})[ \t]*\r?\n[ \t]*((?:\+?63|0)?[\d \t-]{10,18})[ \t]*\r?\n[ \t]*sent[ \t]+via[ \t]+gcash\b/gim;
+  while ((match = gcashHeader.exec(text)) !== null) {
+    fragments.push(`${match[1]} ${match[2]}`);
+  }
   return fragments;
 }
 
@@ -288,7 +302,9 @@ export function checkRecipient(
   if (expectedDigits.length >= 4) {
     const fullCandidates: string[] = [];
     for (const fragment of fragments) {
-      const candidates = fragment.match(/(?:\+?63|0)?9\d{9}|\d{8,18}/g) || [];
+      const candidates = fragment.match(
+        /(?:(?:\+?63|0)[ \t-]*)?9(?:[ \t-]*\d){9}|\d{8,18}/g,
+      ) || [];
       for (const candidate of candidates) {
         const normalized = normalizeAccountNumber(candidate);
         if (normalized.length >= 8) fullCandidates.push(normalized);

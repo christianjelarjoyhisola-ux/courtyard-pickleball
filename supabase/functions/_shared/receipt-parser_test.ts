@@ -77,6 +77,27 @@ Deno.test("different complete labelled recipient is deterministic", () => {
   assertEquals(result.numberStatus, "wrong");
 });
 
+Deno.test("GCash masked receipt header matches the configured full number", () => {
+  const result = checkRecipient(
+    "Amount\nAN.....A A.\n+63 952 482 5766\nSent via GCash\nTotal Amount Sent\n1.00",
+    "09524825766",
+    "ANNALIZA ACERO",
+  );
+  assertEquals(result.status, "match");
+  assertEquals(result.numberStatus, "match");
+  assertEquals(result.nameStatus, "unreadable");
+});
+
+Deno.test("GCash masked receipt header still rejects a different full number", () => {
+  const result = checkRecipient(
+    "Amount\nAN.....A A.\n+63 917 123 4567\nSent via GCash\nTotal Amount Sent\n1.00",
+    "09524825766",
+    "ANNALIZA ACERO",
+  );
+  assertEquals(result.status, "wrong");
+  assertEquals(result.numberStatus, "wrong");
+});
+
 Deno.test("provider evidence detects an explicitly different bank", () => {
   assertEquals(providerEvidence("GoTyme transfer successful", "gcash"), {
     expected: false,

@@ -1352,7 +1352,10 @@ Deno.serve(async (req) => {
       amountReason: amount.reason,
       amountEvidence: amount.evidence,
       date: receiptDateTime.date,
-      time: receiptDateTime.shifted?.toISOString() || null,
+      time: receiptDateTime.instant?.toISOString() || null,
+      timePh: receiptDateTime.wallTime,
+      timeZone: "Asia/Manila",
+      timeEncoding: "instant_utc_v2",
       targetStartedAt: startedAt?.toISOString() || null,
       receiptAgeMinutes,
       allowedEarlyMinutes: earlyToleranceMinutes,
@@ -1366,6 +1369,9 @@ Deno.serve(async (req) => {
       recipientStatus: recipient.status,
       recipientNumberStatus: recipient.numberStatus,
       recipientNameStatus: recipient.nameStatus,
+      recipientNameMaskedByProvider: provider === "gcash" &&
+        recipient.numberStatus === "match" &&
+        recipient.nameStatus === "unreadable",
       recipientEvidence: recipient.evidence,
       ocrProvider: ocr.provider,
       ocrConfidence: ocr.confidence,

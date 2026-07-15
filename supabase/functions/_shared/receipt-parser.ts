@@ -2,6 +2,10 @@ export type PaymentProvider = "gcash" | "gotyme" | "pnb";
 
 export type ReceiptDateTime = {
   date: string | null;
+  wallTime: string | null;
+  instant: Date | null;
+  // A UTC-backed representation of the Philippine wall clock used only for
+  // comparing it with the similarly shifted booking creation timestamp.
   shifted: Date | null;
 };
 
@@ -196,21 +200,26 @@ function buildShiftedDate(
   const date = `${year}-${String(month + 1).padStart(2, "0")}-${
     String(day).padStart(2, "0")
   }`;
-  if (!hourText || minuteText == null) return { date, shifted: null };
+  if (!hourText || minuteText == null) {
+    return { date, wallTime: null, instant: null, shifted: null };
+  }
   let hour = Number(hourText);
   const minute = Number(minuteText);
   if (
     !Number.isInteger(hour) || !Number.isInteger(minute) || hour > 23 ||
     minute > 59
   ) {
-    return { date, shifted: null };
+    return { date, wallTime: null, instant: null, shifted: null };
   }
   const ap = String(meridiem || "").toLowerCase().replace(/[^ap]/g, "");
   if (ap === "p" && hour < 12) hour += 12;
   if (ap === "a" && hour === 12) hour = 0;
+  const shifted = new Date(Date.UTC(year, month, day, hour, minute, 0));
   return {
     date,
-    shifted: new Date(Date.UTC(year, month, day, hour, minute, 0)),
+    wallTime: `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`,
+    instant: new Date(shifted.getTime() - 8 * 60 * 60 * 1000),
+    shifted,
   };
 }
 
@@ -236,7 +245,9 @@ export function parseReceiptDateTime(text: string): ReceiptDateTime {
   const numeric = normalized.match(
     /\b(\d{1,2})[/-](\d{1,2})[/-](\d{4})(?:\s+(\d{1,2})\s*[:;.]\s*(\d{2})\s*([ap](?:\.?m\.?)?)?)?\b/i,
   );
-  if (!numeric) return { date: null, shifted: null };
+  if (!numeric) {
+    return { date: null, wallTime: null, instant: null, shifted: null };
+  }
   const first = Number(numeric[1]);
   const second = Number(numeric[2]);
   // Philippine receipts generally use month/day. A first component above 12

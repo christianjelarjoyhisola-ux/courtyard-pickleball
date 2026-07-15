@@ -42,13 +42,25 @@ Deno.test("currency-only amount remains manual-review quality", () => {
 Deno.test("date-only OCR does not invent midnight time", () => {
   const parsed = parseReceiptDateTime("Paid on Jul 13, 2026");
   assertEquals(parsed.date, "2026-07-13");
+  assertEquals(parsed.wallTime, null);
+  assertEquals(parsed.instant, null);
   assertEquals(parsed.shifted, null);
 });
 
 Deno.test("receipt timestamp is parsed as Philippine wall clock", () => {
   const parsed = parseReceiptDateTime("Jul 13, 2026 9:42 PM");
   assertEquals(parsed.date, "2026-07-13");
+  assertEquals(parsed.wallTime, "21:42");
+  assertEquals(parsed.instant?.toISOString(), "2026-07-13T13:42:00.000Z");
   assertEquals(parsed.shifted?.toISOString(), "2026-07-13T21:42:00.000Z");
+});
+
+Deno.test("GCash morning receipt preserves 11:50 AM Philippine time", () => {
+  const parsed = parseReceiptDateTime("Ref No. 2042905298438 Jul 15, 2026 11:50 AM");
+  assertEquals(parsed.date, "2026-07-15");
+  assertEquals(parsed.wallTime, "11:50");
+  assertEquals(parsed.instant?.toISOString(), "2026-07-15T03:50:00.000Z");
+  assertEquals(parsed.shifted?.toISOString(), "2026-07-15T11:50:00.000Z");
 });
 
 Deno.test("recipient last four only matches inside a labelled recipient field", () => {

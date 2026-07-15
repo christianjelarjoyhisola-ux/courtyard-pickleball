@@ -2064,7 +2064,28 @@ function receiptTimeValue(value){
   if (!value) return '--';
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return receiptDetailValue(value);
-  return esc(d.toLocaleString('en-PH', { month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit', hour12:true }));
+  return esc(d.toLocaleString('en-PH', { timeZone:'Asia/Manila', month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit', hour12:true }));
+}
+function formatWallTime(hour, minute){
+  const h = Number(hour), m = Number(minute);
+  if (!Number.isInteger(h) || !Number.isInteger(m) || h < 0 || h > 23 || m < 0 || m > 59) return '--';
+  const suffix = h >= 12 ? 'PM' : 'AM';
+  return `${h % 12 || 12}:${String(m).padStart(2,'0')} ${suffix} PHT`;
+}
+function receiptWallClockValue(extracted){
+  const ex = extracted || {};
+  const wall = String(ex.timePh || '');
+  const wallMatch = wall.match(/^(\d{2}):(\d{2})$/);
+  if (wallMatch) return formatWallTime(Number(wallMatch[1]), Number(wallMatch[2]));
+  if (!ex.time) return '--';
+  const d = new Date(ex.time);
+  if (Number.isNaN(d.getTime())) return receiptDetailValue(ex.time);
+  if (ex.timeEncoding === 'instant_utc_v2') {
+    return esc(d.toLocaleTimeString('en-PH', { timeZone:'Asia/Manila', hour:'numeric', minute:'2-digit', hour12:true }) + ' PHT');
+  }
+  // Legacy verifier versions stored the Philippine wall clock in UTC-shaped
+  // form for comparison. Read UTC components to avoid adding eight hours.
+  return formatWallTime(d.getUTCHours(), d.getUTCMinutes());
 }
 function receiptStatusLabel(value){
   const v = String(value || '').toLowerCase();
@@ -2081,18 +2102,20 @@ function receiptDetailsHtml(b){
   const approval = ex.autoApproval || {};
   const reason = flags.length ? flags.map(flag => RECEIPT_FLAG_LABELS[flag] || flag).join(', ') : 'All strict checks passed';
   const recipient = [ex.expectedRecipientName, ex.expectedRecipientNumber].filter(Boolean).join(' / ');
+  const gcashNameMasked = provider === 'GCASH' && ex.recipientNumberStatus === 'match' && ex.recipientNameStatus === 'unreadable';
+  const nameCheck = gcashNameMasked ? 'Masked by GCash — number matched' : receiptStatusLabel(ex.recipientNameStatus);
   const rows = [
     ['Provider', receiptDetailValue(provider)],
     ['OCR Reference', receiptDetailValue(ex.ref || b.gcashRef)],
     ['Amount Read', ex.amount != null ? fmt(ex.amount) : '--'],
     ['Expected Amount', ex.expectedAmount != null ? fmt(ex.expectedAmount) : '--'],
     ['Receipt Date', receiptDetailValue(ex.date)],
-    ['Receipt Time', receiptTimeValue(ex.time)],
+    ['Receipt Time', receiptWallClockValue(ex)],
     ['Payment Timing', receiptDetailValue(age)],
     ['Allowed Window', ex.allowedPaymentWindowMinutes != null ? `${esc(ex.allowedPaymentWindowMinutes)} min` : '--'],
-    ['Recipient', receiptDetailValue(recipient), true],
+    ['Expected Recipient', receiptDetailValue(recipient), true],
     ['Number Check', receiptStatusLabel(ex.recipientNumberStatus)],
-    ['Name Check', receiptStatusLabel(ex.recipientNameStatus)],
+    ['Name Check', nameCheck],
     ['OCR Engine', receiptDetailValue(ex.ocrProvider)],
     ['OCR Confidence', receiptDetailValue(confidence)],
     ...(approval.rule ? [['Approval Rule', receiptDetailValue(approval.rule), true]] : []),

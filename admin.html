@@ -250,6 +250,21 @@ tr:hover td { background: var(--bg2); }
 .btn-d { background: var(--red-bg); border: 1px solid var(--red); color: var(--red); }
 .btn-d:hover { background: var(--red); color: #fff; }
 .btn-sm { padding: 5px 12px; font-size: 12px; }
+.receipt-detail-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  margin: 10px 0; padding: 10px; border: 1px solid var(--border);
+  border-radius: 8px; background: var(--input);
+}
+.receipt-detail-item { min-width: 0; }
+.receipt-detail-label {
+  font-size: .62rem; color: var(--text3); text-transform: uppercase;
+  letter-spacing: .6px; font-weight: 800; margin-bottom: 3px;
+}
+.receipt-detail-value {
+  font-size: .82rem; color: var(--text); font-weight: 700;
+  overflow-wrap: anywhere; line-height: 1.35;
+}
+.receipt-detail-full { grid-column: 1 / -1; }
 
 /* ── BADGES ────────────────────────────────────────────── */
 .bdg {
@@ -693,6 +708,7 @@ tr:hover td { background: var(--bg2); }
 }
 
 @media (max-width: 700px) {
+  .receipt-detail-grid { grid-template-columns: 1fr; }
   .op-session-grid { grid-template-columns: 1fr 1fr; }
   .op-session-grid .op-session-name { grid-column: 1 / -1; }
   .op-session-editor-hd { flex-direction: column; }
@@ -1681,9 +1697,9 @@ tr:hover td { background: var(--bg2); }
 
 <!-- VERIFY PAYMENT MODAL -->
 <div class="overlay" id="verifyModal">
-  <div class="modal" style="max-width:400px">
+  <div class="modal" style="max-width:520px">
     <div class="m-hd" style="background:linear-gradient(135deg,rgba(200,160,96,.1),transparent)">
-      <h2 style="color:var(--yellow)">🔍 VERIFY PAYMENT</h2>
+      <h2 id="vmTitle" style="color:var(--yellow)">🔍 VERIFY PAYMENT</h2>
       <button class="m-x" onclick="closeModal('verifyModal')">✕</button>
     </div>
     <div class="m-body">
@@ -1698,27 +1714,33 @@ tr:hover td { background: var(--bg2); }
       <div style="font-size:.82rem;color:var(--muted)">
         <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>Customer</span><strong style="color:var(--text)" id="vmName">—</strong></div>
         <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>Contact</span><span id="vmContact">—</span></div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);gap:12px"><span>Email</span><span id="vmEmail" style="text-align:right;overflow-wrap:anywhere">—</span></div>
         <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>Booking Ref</span><code style="color:var(--green)" id="vmRef">—</code></div>
         <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>Court</span><span id="vmCourt">—</span></div>
         <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>Schedule</span><span id="vmDate">—</span></div>
-        <div style="display:flex;justify-content:space-between;padding:6px 0"><span>Downpayment</span><strong style="color:var(--yellow)" id="vmAmount">—</strong></div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>Booked On</span><span id="vmBookedOn">—</span></div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>Payment Amount</span><strong style="color:var(--yellow)" id="vmAmount">—</strong></div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>Pay State</span><strong id="vmPayState">—</strong></div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0"><span>Booking Status</span><strong id="vmBookingStatus">—</strong></div>
       </div>
       <div id="vmReceiptWrap" style="display:none;margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
         <div style="font-size:.66rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px">Auto-Verification</div>
         <div id="vmReceiptStatus" style="font-size:.82rem;font-weight:700;border-radius:8px;padding:8px 10px;margin-bottom:8px"></div>
         <div id="vmReceiptFlags" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px"></div>
+        <div id="vmReceiptDetails" class="receipt-detail-grid" style="display:none"></div>
         <a id="vmReceiptLink" href="#" target="_blank" rel="noopener" style="display:none">
           <img id="vmReceiptImg" alt="Receipt" style="width:100%;max-height:320px;object-fit:contain;border-radius:8px;border:1px solid var(--border);background:#fff"/>
         </a>
         <div id="vmReceiptNoImg" style="display:none;font-size:.76rem;color:var(--muted)">No receipt image was uploaded for this booking.</div>
       </div>
-      <p style="font-size:.78rem;color:var(--muted);text-align:center;margin-top:12px;line-height:1.6">
+      <p id="vmActionNote" style="font-size:.78rem;color:var(--muted);text-align:center;margin-top:12px;line-height:1.6">
         Open your GCash inbox and match the reference above, then mark as received to confirm the booking and send an email to the customer.
       </p>
     </div>
-    <div class="m-foot">
-      <button class="btn btn-d" onclick="rejectPayment()">❌ Not Received</button>
-      <button class="btn btn-p" onclick="verifyAndConfirm()">✅ Received — Confirm</button>
+    <div class="m-foot" id="vmFooter">
+      <button class="btn btn-d" id="vmRejectBtn" onclick="rejectPayment()">❌ Not Received</button>
+      <button class="btn btn-p" id="vmConfirmBtn" onclick="verifyAndConfirm()">✅ Received — Confirm</button>
+      <button class="btn btn-g" id="vmCloseBtn" style="display:none" onclick="closeModal('verifyModal')">Close</button>
     </div>
   </div>
 </div>
@@ -2002,13 +2024,13 @@ function shortDateTime(v){
 }
 const RECEIPT_FLAG_LABELS = {
   DUPLICATE_REF:'Duplicate ref', DUPLICATE_IMAGE:'Duplicate image', WRONG_GCASH_NUMBER:'Wrong number',
-  AMOUNT_MISMATCH:'Amount mismatch', DATE_NOT_TODAY:'Wrong payment date', TIME_EXPIRED:'Over 15 min',
-  TIME_STALE:'Stale time', TIME_FUTURE:'Before booking', RECEIVER_NAME_MISMATCH:'Name mismatch',
-  EDITED_METADATA:'Edited image', SUSPECTED_FAKE:'Looks fake', REF_FORMAT_INVALID:'Bad ref format',
-  LOW_OCR_CONFIDENCE:'Blurry', OCR_UNAVAILABLE:'No OCR', AMOUNT_UNREADABLE:'Amount unreadable',
-  DATE_UNREADABLE:'Date unreadable', TIME_UNREADABLE:'Time unreadable', NUMBER_UNREADABLE:'Number unreadable',
+  AMOUNT_MISMATCH:'Amount mismatch', DATE_NOT_TODAY:'Wrong payment date', DATE_MISMATCH:'Wrong payment date', TIME_EXPIRED:'Over 15 min',
+  TIME_STALE:'Stale time', TIME_FUTURE:'Before booking', TIME_BEFORE_TARGET:'Paid before booking', TIME_OUTSIDE_WINDOW:'Outside payment window', RECEIVER_NAME_MISMATCH:'Name mismatch',
+  EDITED_METADATA:'Edited image', SUSPECTED_FAKE:'Looks fake', REF_FORMAT_INVALID:'Bad ref format', REF_UNREADABLE:'Reference unreadable',
+  LOW_OCR_CONFIDENCE:'Blurry', OCR_UNAVAILABLE:'No OCR', IMAGE_UNREADABLE:'Image unreadable', AMOUNT_UNREADABLE:'Amount unreadable',
+  DATE_UNREADABLE:'Date unreadable', TIME_UNREADABLE:'Time unreadable', NUMBER_UNREADABLE:'Number unreadable', METHOD_MISMATCH:'Wrong payment provider', PROVIDER_UNREADABLE:'Provider unreadable',
   RECIPIENT_UNREADABLE:'Recipient unreadable', WRONG_RECIPIENT:'Wrong recipient',
-  RECIPIENT_CONFIG_MISSING:'Recipient not configured', AUTO_APPROVAL_FAILED:'Auto-approval failed',
+  RECIPIENT_CONFIG_MISSING:'Recipient not configured', PRICING_ERROR:'Pricing check failed', AUTO_APPROVAL_FAILED:'Auto-approval failed',
 };
 function receiptBadge(b){
   const receiptState = b.receiptStatus || 'none';
@@ -2016,8 +2038,13 @@ function receiptBadge(b){
     ? 'rejected'
     : receiptState;
   if (s === 'none') return '';
+  const automaticallySettled = s === 'auto_approved' &&
+    ['paid','downpayment_paid'].includes(String(b.paymentStatus || '').toLowerCase()) &&
+    ['confirmed','completed'].includes(String(b.status || '').toLowerCase());
   const map = {
-    auto_approved: ['#b87e00','rgba(184,126,0,.15)','OCR passed - confirm funds'],
+    auto_approved: automaticallySettled
+      ? ['#2a8a4a','rgba(74,154,74,.15)','✅ Auto-verified']
+      : ['#b87e00','rgba(184,126,0,.15)','OCR passed - confirm funds'],
     manual_approved: ['#2a8a4a','rgba(74,154,74,.15)','Owner confirmed'],
     manual_review: ['#b87e00','rgba(184,126,0,.15)','🕓 Review receipt'],
     rejected:      ['#e53935','rgba(229,57,53,.12)','⚠️ Receipt flagged'],
@@ -2028,6 +2055,54 @@ function receiptBadge(b){
 function receiptFlagChips(flags){
   if (!flags || !flags.length) return '';
   return flags.map(f => `<span style="font-size:.66rem;font-weight:700;background:rgba(229,57,53,.1);color:#e53935;border:1px solid rgba(229,57,53,.25);border-radius:10px;padding:1px 8px">${esc(RECEIPT_FLAG_LABELS[f] || f)}</span>`).join(' ');
+}
+function receiptDetailValue(value, fallback = '--'){
+  if (value === null || value === undefined || value === '') return fallback;
+  return esc(value);
+}
+function receiptTimeValue(value){
+  if (!value) return '--';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return receiptDetailValue(value);
+  return esc(d.toLocaleString('en-PH', { month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit', hour12:true }));
+}
+function receiptStatusLabel(value){
+  const v = String(value || '').toLowerCase();
+  return ({ match:'Matched', mismatch:'Mismatch', unreadable:'Unreadable', partial:'Partial match' })[v] || (value ? esc(value) : '--');
+}
+function receiptDetailsHtml(b){
+  const ex = b.receiptExtracted || {};
+  const flags = Array.isArray(b.receiptFlags) ? b.receiptFlags : [];
+  const confidenceNumber = Number(ex.ocrConfidence ?? b.receiptConfidence);
+  const confidence = Number.isFinite(confidenceNumber) ? `${Math.round(confidenceNumber * 100)}%` : '--';
+  const ageNumber = Number(ex.receiptAgeMinutes);
+  const age = Number.isFinite(ageNumber) ? `${Math.round(ageNumber)} min after booking` : '--';
+  const provider = String(ex.provider || b.paymentMethod || '').toUpperCase();
+  const approval = ex.autoApproval || {};
+  const reason = flags.length ? flags.map(flag => RECEIPT_FLAG_LABELS[flag] || flag).join(', ') : 'All strict checks passed';
+  const recipient = [ex.expectedRecipientName, ex.expectedRecipientNumber].filter(Boolean).join(' / ');
+  const rows = [
+    ['Provider', receiptDetailValue(provider)],
+    ['OCR Reference', receiptDetailValue(ex.ref || b.gcashRef)],
+    ['Amount Read', ex.amount != null ? fmt(ex.amount) : '--'],
+    ['Expected Amount', ex.expectedAmount != null ? fmt(ex.expectedAmount) : '--'],
+    ['Receipt Date', receiptDetailValue(ex.date)],
+    ['Receipt Time', receiptTimeValue(ex.time)],
+    ['Payment Timing', receiptDetailValue(age)],
+    ['Allowed Window', ex.allowedPaymentWindowMinutes != null ? `${esc(ex.allowedPaymentWindowMinutes)} min` : '--'],
+    ['Recipient', receiptDetailValue(recipient), true],
+    ['Number Check', receiptStatusLabel(ex.recipientNumberStatus)],
+    ['Name Check', receiptStatusLabel(ex.recipientNameStatus)],
+    ['OCR Engine', receiptDetailValue(ex.ocrProvider)],
+    ['OCR Confidence', receiptDetailValue(confidence)],
+    ...(approval.rule ? [['Approval Rule', receiptDetailValue(approval.rule), true]] : []),
+    ...(approval.approvedAt ? [['Auto-approved At', receiptTimeValue(approval.approvedAt), true]] : []),
+    ['Result', receiptDetailValue(reason), true],
+  ];
+  return rows.map(([label, value, full]) => `<div class="receipt-detail-item ${full ? 'receipt-detail-full' : ''}">
+    <div class="receipt-detail-label">${esc(label)}</div>
+    <div class="receipt-detail-value">${value}</div>
+  </div>`).join('');
 }
 function toast(msg,type='ok'){const icons={ok:'✅',err:'❌',inf:'ℹ️'};const el=document.createElement('div');el.className=`toast ${type}`;const icon=document.createElement('span');icon.textContent=icons[type]||icons.ok;const text=document.createElement('span');text.textContent=String(msg??'');el.append(icon,text);$('toasts').appendChild(el);setTimeout(()=>el.remove(),3800);}
 function closeModal(id){$(id).classList.remove('show');}
@@ -2385,7 +2460,7 @@ async function renderBookings(){
       </td>
       <td data-label="Status">${statusBdg(b.status)}</td>
       <td data-label="Actions"><div style="display:flex;gap:5px;flex-wrap:wrap">
-        ${(b.gcashRef || (b.receiptStatus && b.receiptStatus!=='none')) && b.status==='pending' && (b.paymentMethod==='gcash'||b.paymentMethod==='gotyme'||b.paymentMethod==='pnb')?`<button class="btn btn-sm" style="background:rgba(200,160,96,.15);color:var(--yellow);border:1px solid rgba(200,160,96,.35);font-weight:700" onclick="openVerifyModal(${jsArg(b.ref)})">🔍 Verify</button>`:''}
+        ${(b.gcashRef || (b.receiptStatus && b.receiptStatus!=='none')) && ['gcash','gotyme','pnb'].includes(String(b.paymentMethod||'').toLowerCase())?`<button class="btn btn-sm" style="background:rgba(200,160,96,.15);color:var(--yellow);border:1px solid rgba(200,160,96,.35);font-weight:700" onclick="openVerifyModal(${jsArg(b.ref)})">🔍 ${b.status==='pending'?'Verify':'Details'}</button>`:''}
         ${b.status!=='cancelled'?`<button class="btn btn-sm" style="background:rgba(74,154,220,.12);color:#5a9ad4;border:1px solid rgba(74,154,220,.3)" onclick="openRescheduleModal(${jsArg(b.ref)})">📅 Reschedule</button>`:''}
         ${b.status==='confirmed' && b.email?`<button class="btn btn-sm" style="background:rgba(74,154,74,.12);color:#4a9a4a;border:1px solid rgba(74,154,74,.3)" onclick="resendConfirmationEmail(${jsArg(b.ref)})">📧 Resend Email</button>`:''}
         <select class="fi" style="padding:4px 7px;font-size:.76rem;width:auto" onchange="updateStatus(${jsArg(b.ref)},this.value)">
@@ -2753,14 +2828,35 @@ async function updateStatus(ref, status) {
 async function openVerifyModal(ref) {
   const b = await DB.getBookingByRef(ref);
   if (!b) { toast('Booking not found.', 'err'); return; }
+  const paymentState = String(b.paymentStatus || 'unpaid').toLowerCase();
+  const bookingState = String(b.status || 'pending').toLowerCase();
+  const isSettled = ['paid','downpayment_paid'].includes(paymentState);
+  const isRejected = paymentState === 'rejected' || bookingState === 'cancelled' || b.receiptStatus === 'rejected';
+  const readOnly = isSettled || isRejected || bookingState === 'completed';
+  const payLabels = { paid:'Fully Paid', downpayment_paid:'Downpayment Paid', for_verification:'For Verification', pending:'Pending', rejected:'Rejected', unpaid:'Unpaid' };
   $('vmMethod').textContent = b.paymentMethod === 'gotyme' ? 'GoTyme' : b.paymentMethod === 'pnb' ? 'PNB' : 'GCash';
   $('vmGcashRef').textContent = b.gcashRef || '—';
   $('vmName').textContent = b.fullName;
   $('vmContact').textContent = b.contactNumber;
+  $('vmEmail').textContent = b.email || '—';
   $('vmRef').textContent = b.ref;
   $('vmCourt').textContent = b.courtName;
   $('vmDate').textContent = `${fmtD(b.date)} · ${b.startTime}–${b.endTime}`;
+  $('vmBookedOn').textContent = b.createdAt
+    ? new Date(b.createdAt).toLocaleString('en-PH', { month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit', hour12:true })
+    : '—';
   $('vmAmount').textContent = fmt(b.downpayment || b.total / 2);
+  $('vmPayState').textContent = payLabels[paymentState] || paymentState;
+  $('vmBookingStatus').textContent = bookingState.charAt(0).toUpperCase() + bookingState.slice(1);
+  $('vmTitle').textContent = readOnly ? '🔍 PAYMENT DETAILS' : '🔍 VERIFY PAYMENT';
+  $('vmRejectBtn').style.display = readOnly ? 'none' : '';
+  $('vmConfirmBtn').style.display = readOnly ? 'none' : '';
+  $('vmCloseBtn').style.display = readOnly ? '' : 'none';
+  $('vmActionNote').textContent = isRejected
+    ? 'This payment was rejected or cancelled. The receipt and verification result are shown above for reference.'
+    : isSettled
+    ? 'This payment is already settled. The complete receipt and automatic verification details are shown above.'
+    : 'Open your GCash inbox and match the reference above, then mark as received to confirm the booking and send an email to the customer.';
   await vmPopulateReceipt(b);
   $('verifyModal').dataset.ref = ref;
   $('verifyModal').classList.add('show');
@@ -2769,11 +2865,21 @@ async function openVerifyModal(ref) {
 async function vmPopulateReceipt(b){
   const wrap = $('vmReceiptWrap');
   const s = b.receiptStatus || 'none';
-  if (s === 'none' && !b.receiptImageUrl) { if (wrap) wrap.style.display = 'none'; return; }
+  const detailBox = $('vmReceiptDetails');
+  if (s === 'none' && !b.receiptImageUrl) {
+    if (wrap) wrap.style.display = 'none';
+    if (detailBox) detailBox.style.display = 'none';
+    return;
+  }
   if (wrap) wrap.style.display = '';
   const st = $('vmReceiptStatus');
+  const automaticallySettled = s === 'auto_approved' &&
+    ['paid','downpayment_paid'].includes(String(b.paymentStatus || '').toLowerCase()) &&
+    ['confirmed','completed'].includes(String(b.status || '').toLowerCase());
   const map = {
-    auto_approved: ['#b87e00','rgba(184,126,0,.12)','OCR screening passed - confirm funds in the provider app'],
+    auto_approved: automaticallySettled
+      ? ['#2a8a4a','rgba(74,154,74,.12)','✅ Auto-verified — all strict GCash checks passed']
+      : ['#b87e00','rgba(184,126,0,.12)','OCR screening passed - confirm funds in the provider app'],
     manual_approved: ['#2a8a4a','rgba(74,154,74,.12)','Owner confirmed funds received'],
     manual_review: ['#b87e00','rgba(184,126,0,.12)','🕓 Needs review — see flags below'],
     rejected:      ['#e53935','rgba(229,57,53,.1)','⚠️ Flagged — review carefully before confirming'],
@@ -2782,6 +2888,10 @@ async function vmPopulateReceipt(b){
   const [c,bg,lbl] = map[s] || map.none;
   if (st) { st.style.color = c; st.style.background = bg; st.textContent = lbl; }
   $('vmReceiptFlags').innerHTML = receiptFlagChips(b.receiptFlags);
+  if (detailBox) {
+    detailBox.innerHTML = receiptDetailsHtml(b);
+    detailBox.style.display = '';
+  }
   const link = $('vmReceiptLink'), img = $('vmReceiptImg'), noImg = $('vmReceiptNoImg');
   if (link) link.style.display = 'none';
   if (noImg) noImg.style.display = 'none';

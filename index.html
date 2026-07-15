@@ -2440,6 +2440,14 @@ function opSafeText(value) {
     .replace(/'/g, '&#039;');
 }
 
+function openPlayReference(registrationId) {
+  const raw = String(registrationId ?? '').trim();
+  if (!raw) return 'OP-PENDING';
+  return /^\d+$/.test(raw)
+    ? `OP-${raw.padStart(6, '0')}`
+    : raw.toUpperCase().startsWith('OP-') ? raw.toUpperCase() : `OP-${raw.toUpperCase()}`;
+}
+
 // Settings and court records are rendered on the public page. Only accept
 // image sources that cannot execute script; SVG/data:text and active schemes
 // are deliberately excluded. Attribute escaping is still required at render.
@@ -5067,18 +5075,25 @@ async function verifyOpReceipt(registrationId, method, receiptToken = '', receip
       contentType: receiptFile?.type || 'image/jpeg',
     });
     const status = res?.status || 'manual_review';
+    const paymentConfirmed = res?.paymentConfirmed === true;
     const serverMsg = res?.publicReason || res?.message || 'Receipt received.';
     const msg = status === 'auto_approved'
-      ? 'Receipt screening passed. The owner still needs to confirm the funds.'
+      ? paymentConfirmed
+        ? 'GCash payment verified automatically. Your Open Play registration is confirmed.'
+        : serverMsg
       : serverMsg;
     if (st) {
-      if (status === 'auto_approved') { st.style.background = 'rgba(184,126,0,.12)'; st.style.color = '#b87e00'; st.textContent = '🕓 ' + msg; }
+      if (status === 'auto_approved' && paymentConfirmed) { st.style.background = 'rgba(74,154,74,.12)'; st.style.color = '#2a8a4a'; st.textContent = '✅ ' + msg; }
+      else if (status === 'auto_approved') { st.style.background = 'rgba(184,126,0,.12)'; st.style.color = '#b87e00'; st.textContent = '🕓 ' + msg; }
       else if (status === 'rejected') { st.style.background = 'rgba(229,57,53,.1)'; st.style.color = '#e53935'; st.textContent = '⚠️ ' + msg; }
       else { st.style.background = 'rgba(184,126,0,.12)'; st.style.color = '#b87e00'; st.textContent = '🕓 ' + msg; }
     }
     return {
       status,
       message: msg,
+      paymentConfirmed,
+      requiresOwnerConfirmation: res?.requiresOwnerConfirmation === true,
+      paymentStatus: res?.paymentStatus || null,
       flags: res?.flags || [],
       extracted: res?.extracted || null,
       confidence: res?.confidence ?? null,
@@ -5248,27 +5263,35 @@ async function submitOpenPlay() {
     }
     const screeningPassed = receiptResult?.status === 'auto_approved';
     const paymentConfirmed = receiptResult?.paymentConfirmed === true;
+    const registrationRef = openPlayReference(registrationId);
 
     // Fire-and-forget Telegram notification
     fetch(`${SUPABASE_URL}/functions/v1/send-telegram-notification`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
-      body: JSON.stringify({ type: 'open_play', fullName: name, courtName: signup.courtName, date: signup.date, timeLabel, paymentType: payType, amount: amt }),
+      body: JSON.stringify({ type: 'open_play', registrationId, registrationRef, fullName: name, courtName: signup.courtName, date: signup.date, timeLabel, paymentType: payType, amount: amt }),
     }).catch(() => {});
 
     if (submitToken !== _opSignupRequestToken) return;
     $('opModalBody').innerHTML = `
       <div style="text-align:center;padding:28px 0">
         <div style="font-size:3rem;margin-bottom:12px">🏓</div>
-        <div style="font-size:1.2rem;font-weight:700;margin-bottom:8px">${receiptUploadPaused ? 'Price Updated — Receipt Paused' : verificationUncertain ? 'Spot Saved — Verification Pending' : 'Registration Received'}</div>
+        <div style="font-size:1.2rem;font-weight:700;margin-bottom:8px">${receiptUploadPaused ? 'Price Updated — Receipt Paused' : verificationUncertain ? 'Spot Saved — Verification Pending' : screeningPassed && paymentConfirmed ? 'Registration Confirmed' : 'Registration Received'}</div>
+        <div style="margin:16px auto;padding:13px 16px;max-width:340px;border:1px solid rgba(59,130,246,.45);border-radius:12px;background:rgba(59,130,246,.09)">
+          <div style="font-size:.64rem;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted);margin-bottom:4px">Open Play Reference</div>
+          <div style="font-family:monospace;font-size:1.35rem;font-weight:800;letter-spacing:1px;color:#3b82f6">${opSafeText(registrationRef)}</div>
+          <div style="font-size:.7rem;color:var(--muted);margin-top:4px">Save or screenshot this reference.</div>
+        </div>
         <div style="color:var(--muted);font-size:.88rem;line-height:1.65">
           Thanks, <strong>${opSafeText(name)}</strong>!<br/>
+          <strong>${opSafeText(signup.courtName)}</strong> · ${opSafeText(fmtD(signup.date))}<br/>
+          ${opSafeText(timeLabel)}<br/>
           ${receiptUploadPaused
-            ? `Registration <strong>${opSafeText(registrationId)}</strong> is saved at the current amount due of <strong>${fmt(amt)}</strong>, but your receipt was not uploaded. Keep your screenshot, contact the venue, and do not pay again.`
+            ? `Your registration is saved at the current amount due of <strong>${fmt(amt)}</strong>, but your receipt was not uploaded. Keep your screenshot, contact the venue, and do not pay again.`
             : signup.payMethod === 'cash'
             ? `Pay <strong>${fmt(amt)}</strong> at the front desk upon arrival.`
             : verificationUncertain
-              ? `Registration <strong>${opSafeText(registrationId)}</strong> is saved, but we could not confirm the receipt upload. Keep your screenshot and do not pay again; the owner can review your pending registration.`
+              ? `Your registration is saved, but we could not confirm the receipt upload. Keep your screenshot and do not pay again; the owner can review your pending registration.`
             : screeningPassed && paymentConfirmed
               ? `Your <strong>${fmt(amt)}</strong> GCash payment was verified automatically. Your Open Play registration is confirmed.`
             : screeningPassed

@@ -1762,7 +1762,7 @@ tr:hover td { background: var(--bg2); }
         <div style="font-size:.7rem;color:var(--muted);margin-top:5px">Verify this reference in your GCash / GoTyme / PNB app</div>
       </div>
       <div style="font-size:.82rem;color:var(--muted)">
-        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>Registration ID</span><code style="color:#38bdf8" id="ovRegId">—</code></div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>Reservation Reference</span><code style="color:#38bdf8" id="ovRegId">—</code></div>
         <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>Player</span><strong style="color:var(--text)" id="ovName">—</strong></div>
         <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>Court</span><span id="ovCourt">—</span></div>
         <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>Date & Time</span><span id="ovDate">—</span></div>
@@ -5022,6 +5022,20 @@ async function renderOpRegistrations() {
   }
   const fmt = n => '₱' + Number(n).toLocaleString('en-PH', { minimumFractionDigits: 2 });
   const methodLabel = m => ({ gcash: 'GCash', gotyme: 'GoTyme', pnb: 'PNB', cash: 'Cash' }[m] || (m || 'Cash'));
+  const registrationRef = id => {
+    const raw = String(id ?? '').trim();
+    if (!raw) return 'OP-PENDING';
+    return /^\d+$/.test(raw) ? `OP-${raw.padStart(6, '0')}` : (raw.toUpperCase().startsWith('OP-') ? raw.toUpperCase() : `OP-${raw.toUpperCase()}`);
+  };
+  const scheduleLabel = r => {
+    const start = Number(r.session_start ?? r.hour);
+    const end = Number(r.session_end);
+    const hour12 = h => `${h % 12 || 12}:00 ${h < 12 || h === 24 ? 'AM' : 'PM'}`;
+    const name = String(r.time_label || 'Open Play').split('·')[0].trim() || 'Open Play';
+    return Number.isInteger(start) && Number.isInteger(end) && start >= 0 && end <= 24 && end > start
+      ? `${name} · ${hour12(start)} – ${hour12(end)}`
+      : String(r.time_label || '—');
+  };
   const activeRegs = regs.filter(r => r.payment_status !== 'rejected');
   const paidRegs = regs.filter(r => r.payment_status === 'paid');
   el.innerHTML = `
@@ -5030,6 +5044,7 @@ async function renderOpRegistrations() {
         <thead>
           <tr style="border-bottom:1px solid var(--border);color:var(--muted)">
             <th style="text-align:left;padding:8px 10px;font-weight:600">Player</th>
+            <th style="text-align:left;padding:8px 10px;font-weight:600">Reference</th>
             <th style="text-align:left;padding:8px 10px;font-weight:600">Court</th>
             <th style="text-align:left;padding:8px 10px;font-weight:600">Date</th>
             <th style="text-align:left;padding:8px 10px;font-weight:600">Time</th>
@@ -5056,9 +5071,10 @@ async function renderOpRegistrations() {
             return `
             <tr style="border-bottom:1px solid var(--border)">
               <td style="padding:9px 10px;font-weight:600">${esc(r.full_name)}</td>
+              <td style="padding:9px 10px"><code style="color:#38bdf8;font-weight:700">${esc(registrationRef(r.id))}</code></td>
               <td style="padding:9px 10px;color:var(--muted)">${esc(r.court_name || '—')}</td>
               <td style="padding:9px 10px">${fmtD(r.date)}</td>
-              <td style="padding:9px 10px">${esc(r.time_label || '—')}</td>
+              <td style="padding:9px 10px">${esc(scheduleLabel(r))}</td>
               <td style="padding:9px 10px;color:var(--muted)">${esc(methodLabel(r.payment_method))}</td>
               <td style="padding:9px 10px"><span style="font-size:.75rem;font-weight:700;padding:2px 7px;border-radius:20px;background:${r.payment_type==='100%'?'rgba(74,154,74,.15)':'rgba(244,168,37,.15)'};color:${r.payment_type==='100%'?'var(--green)':'#f4a825'}">${esc(r.payment_type)}</span></td>
               <td style="padding:9px 10px;text-align:right;font-weight:700;color:var(--green)">${fmt(r.amount)}</td>
@@ -5091,13 +5107,24 @@ async function openOpVerifyModal(id) {
   const readOnly = isPaid || isRejected;
   const payLabels = { paid:'Paid', pending:'Pending', rejected:'Rejected' };
   const methodLabel = { gcash: 'GCash', gotyme: 'GoTyme', pnb: 'PNB', cash: 'Cash' };
+  const rawId = String(r.id ?? '').trim();
+  const registrationRef = /^\d+$/.test(rawId)
+    ? `OP-${rawId.padStart(6, '0')}`
+    : (rawId.toUpperCase().startsWith('OP-') ? rawId.toUpperCase() : `OP-${rawId.toUpperCase()}`);
+  const start = Number(r.session_start ?? r.hour);
+  const end = Number(r.session_end);
+  const hour12 = h => `${h % 12 || 12}:00 ${h < 12 || h === 24 ? 'AM' : 'PM'}`;
+  const sessionName = String(r.time_label || 'Open Play').split('·')[0].trim() || 'Open Play';
+  const scheduleLabel = Number.isInteger(start) && Number.isInteger(end) && start >= 0 && end <= 24 && end > start
+    ? `${sessionName} · ${hour12(start)} – ${hour12(end)}`
+    : String(r.time_label || '—');
   $('ovTitle').textContent = readOnly ? '🏓 OPEN PLAY PAYMENT DETAILS' : '🏓 VERIFY OPEN PLAY PAYMENT';
   $('ovMethod').textContent  = methodLabel[r.payment_method] || r.payment_method || 'GCash';
   $('ovGcashRef').textContent = r.gcash_ref || '—';
-  $('ovRegId').textContent   = String(r.id);
+  $('ovRegId').textContent   = registrationRef;
   $('ovName').textContent    = r.full_name;
   $('ovCourt').textContent   = r.court_name || '—';
-  $('ovDate').textContent    = `${fmtD(r.date)} · ${r.time_label || '—'}`;
+  $('ovDate').textContent    = `${fmtD(r.date)} · ${scheduleLabel}`;
   $('ovPayType').textContent = r.payment_type || '—';
   $('ovBookedOn').textContent = r.created_at
     ? new Date(r.created_at).toLocaleString('en-PH', { timeZone:'Asia/Manila', month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit', hour12:true })

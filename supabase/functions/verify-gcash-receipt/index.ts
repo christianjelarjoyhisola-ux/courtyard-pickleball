@@ -365,7 +365,7 @@ function publicMessage(
 ): string {
   if (result === "auto_approved") {
     if (paymentConfirmed) {
-      return "GCash receipt verified automatically. Your payment and booking are confirmed.";
+      return "GCash receipt verified automatically. Your payment and reservation are confirmed.";
     }
     return "Automated receipt screening passed. Payment remains pending until the owner confirms the funds.";
   }
@@ -1540,7 +1540,9 @@ Deno.serve(async (req) => {
         "\n" +
         `Flags: <code>${escapeHtml(flags.join(", ") || "none")}</code>\n` +
         (autoConfirmed
-          ? "The booking was confirmed automatically after every strict GCash check passed."
+          ? target.type === "booking"
+            ? "The booking was confirmed automatically after every strict GCash check passed."
+            : "The Open Play payment was confirmed automatically after every strict GCash check passed."
           : result === "auto_approved"
           ? "Action required: confirm the funds in the payment account before approving."
           : "Action required: review this receipt in the dashboard."),

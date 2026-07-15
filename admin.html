@@ -1747,9 +1747,9 @@ tr:hover td { background: var(--bg2); }
 
 <!-- OPEN PLAY VERIFY MODAL -->
 <div class="overlay" id="opVerifyModal">
-  <div class="modal" style="max-width:400px">
+  <div class="modal" style="max-width:520px">
     <div class="m-hd" style="background:linear-gradient(135deg,rgba(56,189,248,.1),transparent)">
-      <h2 style="color:#38bdf8">🏓 VERIFY OPEN PLAY PAYMENT</h2>
+      <h2 id="ovTitle" style="color:#38bdf8">🏓 VERIFY OPEN PLAY PAYMENT</h2>
       <button class="m-x" onclick="closeModal('opVerifyModal')">✕</button>
     </div>
     <div class="m-body">
@@ -1762,28 +1762,33 @@ tr:hover td { background: var(--bg2); }
         <div style="font-size:.7rem;color:var(--muted);margin-top:5px">Verify this reference in your GCash / GoTyme / PNB app</div>
       </div>
       <div style="font-size:.82rem;color:var(--muted)">
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>Registration ID</span><code style="color:#38bdf8" id="ovRegId">—</code></div>
         <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>Player</span><strong style="color:var(--text)" id="ovName">—</strong></div>
         <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>Court</span><span id="ovCourt">—</span></div>
         <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>Date & Time</span><span id="ovDate">—</span></div>
         <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>Payment Type</span><span id="ovPayType">—</span></div>
-        <div style="display:flex;justify-content:space-between;padding:6px 0"><span>Amount</span><strong style="color:#38bdf8" id="ovAmount">—</strong></div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>Registered On</span><span id="ovBookedOn">—</span></div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>Amount</span><strong style="color:#38bdf8" id="ovAmount">—</strong></div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0"><span>Payment Status</span><strong id="ovPayState">—</strong></div>
       </div>
       <div id="ovReceiptWrap" style="display:none;margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
         <div style="font-size:.66rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px">Auto-Verification</div>
         <div id="ovReceiptStatus" style="font-size:.82rem;font-weight:700;border-radius:8px;padding:8px 10px;margin-bottom:8px"></div>
         <div id="ovReceiptFlags" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px"></div>
+        <div id="ovReceiptDetails" class="receipt-detail-grid" style="display:none"></div>
         <a id="ovReceiptLink" href="#" target="_blank" rel="noopener" style="display:none">
           <img id="ovReceiptImg" alt="Receipt" style="width:100%;max-height:320px;object-fit:contain;border-radius:8px;border:1px solid var(--border);background:#fff"/>
         </a>
         <div id="ovReceiptNoImg" style="display:none;font-size:.76rem;color:var(--muted)">No receipt image was uploaded for this Open Play registration.</div>
       </div>
-      <p style="font-size:.78rem;color:var(--muted);text-align:center;margin-top:12px;line-height:1.6">
+      <p id="ovActionNote" style="font-size:.78rem;color:var(--muted);text-align:center;margin-top:12px;line-height:1.6">
         Check the reference number in your app, then mark as received to confirm this Open Play registration.
       </p>
     </div>
-    <div class="m-foot">
-      <button class="btn btn-d" onclick="rejectOpPayment()">❌ Not Received</button>
-      <button class="btn" style="background:rgba(56,189,248,.15);color:#38bdf8;border:1px solid rgba(56,189,248,.4);font-weight:700" onclick="confirmOpPayment()">✅ Received — Confirm</button>
+    <div class="m-foot" id="ovFooter">
+      <button class="btn btn-d" id="ovRejectBtn" onclick="rejectOpPayment()">❌ Not Received</button>
+      <button class="btn" id="ovConfirmBtn" style="background:rgba(56,189,248,.15);color:#38bdf8;border:1px solid rgba(56,189,248,.4);font-weight:700" onclick="confirmOpPayment()">✅ Received — Confirm</button>
+      <button class="btn btn-g" id="ovCloseBtn" style="display:none" onclick="closeModal('opVerifyModal')">Close</button>
     </div>
   </div>
 </div>
@@ -2092,13 +2097,14 @@ function receiptStatusLabel(value){
   return ({ match:'Matched', mismatch:'Mismatch', unreadable:'Unreadable', partial:'Partial match' })[v] || (value ? esc(value) : '--');
 }
 function receiptDetailsHtml(b){
-  const ex = b.receiptExtracted || {};
-  const flags = Array.isArray(b.receiptFlags) ? b.receiptFlags : [];
-  const confidenceNumber = Number(ex.ocrConfidence ?? b.receiptConfidence);
+  const ex = b.receiptExtracted || b.receipt_extracted || {};
+  const rawFlags = b.receiptFlags || b.receipt_flags;
+  const flags = Array.isArray(rawFlags) ? rawFlags : [];
+  const confidenceNumber = Number(ex.ocrConfidence ?? b.receiptConfidence ?? b.receipt_confidence);
   const confidence = Number.isFinite(confidenceNumber) ? `${Math.round(confidenceNumber * 100)}%` : '--';
   const ageNumber = Number(ex.receiptAgeMinutes);
   const age = Number.isFinite(ageNumber) ? `${Math.round(ageNumber)} min after booking` : '--';
-  const provider = String(ex.provider || b.paymentMethod || '').toUpperCase();
+  const provider = String(ex.provider || b.paymentMethod || b.payment_method || '').toUpperCase();
   const approval = ex.autoApproval || {};
   const reason = flags.length ? flags.map(flag => RECEIPT_FLAG_LABELS[flag] || flag).join(', ') : 'All strict checks passed';
   const recipient = [ex.expectedRecipientName, ex.expectedRecipientNumber].filter(Boolean).join(' / ');
@@ -2106,7 +2112,7 @@ function receiptDetailsHtml(b){
   const nameCheck = gcashNameMasked ? 'Masked by GCash — number matched' : receiptStatusLabel(ex.recipientNameStatus);
   const rows = [
     ['Provider', receiptDetailValue(provider)],
-    ['OCR Reference', receiptDetailValue(ex.ref || b.gcashRef)],
+    ['OCR Reference', receiptDetailValue(ex.ref || b.gcashRef || b.gcash_ref)],
     ['Amount Read', ex.amount != null ? fmt(ex.amount) : '--'],
     ['Expected Amount', ex.expectedAmount != null ? fmt(ex.expectedAmount) : '--'],
     ['Receipt Date', receiptDetailValue(ex.date)],
@@ -2554,8 +2560,9 @@ function paymentReviewAction(item) {
   if (item.type === 'booking') {
     return `<button class="btn btn-sm" style="background:rgba(200,160,96,.15);color:var(--yellow);border:1px solid rgba(200,160,96,.35);font-weight:700" onclick="openVerifyModal(${jsArg(item.id)})">Review</button>`;
   }
-  if (item.type === 'open_play' && item.status !== 'paid') {
-    return `<button class="btn btn-sm" style="background:rgba(56,189,248,.12);color:#38bdf8;border:1px solid rgba(56,189,248,.35);font-weight:700" onclick="openOpVerifyModal(${jsArg(item.id)})">Review</button>`;
+  if (item.type === 'open_play') {
+    const label = ['paid','rejected'].includes(item.status) ? 'Details' : 'Review';
+    return `<button class="btn btn-sm" style="background:rgba(56,189,248,.12);color:#38bdf8;border:1px solid rgba(56,189,248,.35);font-weight:700" onclick="openOpVerifyModal(${jsArg(item.id)})">${label}</button>`;
   }
   return '<span style="color:var(--muted);font-size:.78rem">No action</span>';
 }
@@ -5016,6 +5023,7 @@ async function renderOpRegistrations() {
   const fmt = n => '₱' + Number(n).toLocaleString('en-PH', { minimumFractionDigits: 2 });
   const methodLabel = m => ({ gcash: 'GCash', gotyme: 'GoTyme', pnb: 'PNB', cash: 'Cash' }[m] || (m || 'Cash'));
   const activeRegs = regs.filter(r => r.payment_status !== 'rejected');
+  const paidRegs = regs.filter(r => r.payment_status === 'paid');
   el.innerHTML = `
     <div style="overflow-x:auto">
       <table style="width:100%;border-collapse:collapse;font-size:.82rem">
@@ -5037,7 +5045,7 @@ async function renderOpRegistrations() {
             const isPaid     = r.payment_status === 'paid';
             const isRejected = r.payment_status === 'rejected';
             const isCash     = !r.payment_method || r.payment_method === 'cash';
-            const canVerify  = !isPaid && !isRejected && !isCash;
+            const canOpenReceipt = !isCash && Boolean(r.gcash_ref || r.receipt_image_url || (r.receipt_status && r.receipt_status !== 'none'));
             const statusBadge = isPaid
               ? `<span style="font-size:.72rem;font-weight:700;padding:2px 7px;border-radius:20px;background:rgba(74,154,74,.15);color:var(--green)">✅ Paid</span>`
               : isRejected
@@ -5056,7 +5064,7 @@ async function renderOpRegistrations() {
               <td style="padding:9px 10px;text-align:right;font-weight:700;color:var(--green)">${fmt(r.amount)}</td>
               <td style="padding:9px 10px">${statusBadge}</td>
               <td style="padding:9px 10px;text-align:right;white-space:nowrap;display:flex;gap:6px;justify-content:flex-end">
-                ${canVerify ? `<button class="btn btn-sm" style="background:rgba(56,189,248,.12);color:#38bdf8;border:1px solid rgba(56,189,248,.35);font-weight:700" onclick="openOpVerifyModal(${jsArg(r.id)})">🔍 Verify</button>` : ''}
+                ${canOpenReceipt ? `<button class="btn btn-sm" style="background:rgba(56,189,248,.12);color:#38bdf8;border:1px solid rgba(56,189,248,.35);font-weight:700" onclick="openOpVerifyModal(${jsArg(r.id)})">🔍 ${isPaid || isRejected ? 'Details' : 'Verify'}</button>` : ''}
                 <button class="btn btn-d btn-sm" onclick="deleteOpReg(${jsArg(r.id)})">Remove</button>
               </td>
             </tr>`;
@@ -5064,7 +5072,7 @@ async function renderOpRegistrations() {
         </tbody>
       </table>
     </div>
-    <div style="margin-top:10px;font-size:.78rem;color:var(--muted)">${activeRegs.length} active reservations shown · Capacity is tracked per court and session · Total collected: <strong style="color:var(--text)">${fmt(activeRegs.reduce((s, r) => s + Number(r.amount), 0))}</strong></div>`;
+    <div style="margin-top:10px;font-size:.78rem;color:var(--muted)">${activeRegs.length} active reservations shown · Capacity is tracked per court and session · Total collected: <strong style="color:var(--text)">${fmt(paidRegs.reduce((s, r) => s + Number(r.amount), 0))}</strong></div>`;
 }
 
 async function deleteOpReg(id) {
@@ -5077,14 +5085,33 @@ async function openOpVerifyModal(id) {
   const regs = await DB.getOpenPlayRegistrations();
   const r = regs.find(x => String(x.id) === String(id));
   if (!r) { toast('Registration not found.', 'err'); return; }
+  const paymentState = String(r.payment_status || 'pending').toLowerCase();
+  const isPaid = paymentState === 'paid';
+  const isRejected = paymentState === 'rejected' || r.receipt_status === 'rejected';
+  const readOnly = isPaid || isRejected;
+  const payLabels = { paid:'Paid', pending:'Pending', rejected:'Rejected' };
   const methodLabel = { gcash: 'GCash', gotyme: 'GoTyme', pnb: 'PNB', cash: 'Cash' };
+  $('ovTitle').textContent = readOnly ? '🏓 OPEN PLAY PAYMENT DETAILS' : '🏓 VERIFY OPEN PLAY PAYMENT';
   $('ovMethod').textContent  = methodLabel[r.payment_method] || r.payment_method || 'GCash';
   $('ovGcashRef').textContent = r.gcash_ref || '—';
+  $('ovRegId').textContent   = String(r.id);
   $('ovName').textContent    = r.full_name;
   $('ovCourt').textContent   = r.court_name || '—';
   $('ovDate').textContent    = `${fmtD(r.date)} · ${r.time_label || '—'}`;
   $('ovPayType').textContent = r.payment_type || '—';
+  $('ovBookedOn').textContent = r.created_at
+    ? new Date(r.created_at).toLocaleString('en-PH', { timeZone:'Asia/Manila', month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit', hour12:true })
+    : '—';
   $('ovAmount').textContent  = '₱' + Number(r.amount).toLocaleString('en-PH', { minimumFractionDigits: 2 });
+  $('ovPayState').textContent = payLabels[paymentState] || paymentState;
+  $('ovRejectBtn').style.display = readOnly ? 'none' : '';
+  $('ovConfirmBtn').style.display = readOnly ? 'none' : '';
+  $('ovCloseBtn').style.display = readOnly ? '' : 'none';
+  $('ovActionNote').textContent = isRejected
+    ? 'This Open Play payment was rejected. The receipt and verification result are shown above for reference.'
+    : isPaid
+    ? 'This Open Play payment is already settled. The complete receipt and automatic verification details are shown above.'
+    : 'Check the reference number in your app, then mark as received to confirm this Open Play registration.';
   await ovPopulateReceipt(r);
   $('opVerifyModal').dataset.regId = id;
   $('opVerifyModal').classList.add('show');
@@ -5093,11 +5120,19 @@ async function openOpVerifyModal(id) {
 async function ovPopulateReceipt(r) {
   const wrap = $('ovReceiptWrap');
   const s = r.receipt_status || 'none';
-  if (s === 'none' && !r.receipt_image_url) { if (wrap) wrap.style.display = 'none'; return; }
+  const detailBox = $('ovReceiptDetails');
+  if (s === 'none' && !r.receipt_image_url) {
+    if (wrap) wrap.style.display = 'none';
+    if (detailBox) detailBox.style.display = 'none';
+    return;
+  }
   if (wrap) wrap.style.display = '';
   const st = $('ovReceiptStatus');
+  const automaticallySettled = s === 'auto_approved' && r.payment_status === 'paid';
   const map = {
-    auto_approved: ['#b87e00','rgba(184,126,0,.12)','OCR screening passed - confirm funds in the provider app'],
+    auto_approved: automaticallySettled
+      ? ['#2a8a4a','rgba(74,154,74,.12)','✅ Auto-verified — all strict GCash checks passed']
+      : ['#b87e00','rgba(184,126,0,.12)','OCR screening passed - confirm funds in the provider app'],
     manual_approved: ['#2a8a4a','rgba(74,154,74,.12)','Owner confirmed funds received'],
     manual_review: ['#b87e00','rgba(184,126,0,.12)','Needs review - see flags below'],
     rejected:      ['#e53935','rgba(229,57,53,.1)','Flagged - review carefully before confirming'],
@@ -5106,6 +5141,10 @@ async function ovPopulateReceipt(r) {
   const [c,bg,lbl] = map[s] || map.none;
   if (st) { st.style.color = c; st.style.background = bg; st.textContent = lbl; }
   if ($('ovReceiptFlags')) $('ovReceiptFlags').innerHTML = receiptFlagChips(r.receipt_flags);
+  if (detailBox) {
+    detailBox.innerHTML = receiptDetailsHtml(r);
+    detailBox.style.display = '';
+  }
   const link = $('ovReceiptLink'), img = $('ovReceiptImg'), noImg = $('ovReceiptNoImg');
   if (link) link.style.display = 'none';
   if (noImg) noImg.style.display = 'none';

@@ -5079,7 +5079,7 @@ async function verifyOpReceipt(registrationId, method, receiptToken = '', receip
     const serverMsg = res?.publicReason || res?.message || 'Receipt received.';
     const msg = status === 'auto_approved'
       ? paymentConfirmed
-        ? 'GCash payment verified automatically. Your Open Play registration is confirmed.'
+        ? 'Registration confirmed. Save your Open Play reference.'
         : serverMsg
       : serverMsg;
     if (st) {
@@ -5280,7 +5280,7 @@ async function submitOpenPlay() {
         <div style="margin:16px auto;padding:13px 16px;max-width:340px;border:1px solid rgba(59,130,246,.45);border-radius:12px;background:rgba(59,130,246,.09)">
           <div style="font-size:.64rem;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted);margin-bottom:4px">Open Play Reference</div>
           <div style="font-family:monospace;font-size:1.35rem;font-weight:800;letter-spacing:1px;color:#3b82f6">${opSafeText(registrationRef)}</div>
-          <div style="font-size:.7rem;color:var(--muted);margin-top:4px">Save or screenshot this reference.</div>
+          <div style="font-size:.7rem;color:var(--muted);margin-top:4px">Show this reference to court staff upon arrival.</div>
         </div>
         <div style="color:var(--muted);font-size:.88rem;line-height:1.65">
           Thanks, <strong>${opSafeText(name)}</strong>!<br/>
@@ -5293,7 +5293,7 @@ async function submitOpenPlay() {
             : verificationUncertain
               ? `Your registration is saved, but we could not confirm the receipt upload. Keep your screenshot and do not pay again; the owner can review your pending registration.`
             : screeningPassed && paymentConfirmed
-              ? `Your <strong>${fmt(amt)}</strong> GCash payment was verified automatically. Your Open Play registration is confirmed.`
+              ? `Your Open Play registration is confirmed. Show the reference above to court staff upon arrival.`
             : screeningPassed
               ? `Receipt screening passed for the submitted <strong>${fmt(amt)}</strong> receipt. Your registration remains pending until the owner confirms the funds — please do not pay again.`
               : `We received your receipt for review. The current amount due is <strong>${fmt(amt)}</strong>; the owner will verify the receipt shortly.`

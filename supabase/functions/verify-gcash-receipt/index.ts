@@ -358,8 +358,15 @@ function maskNumber(value: string): string | null {
   return digits.length >= 4 ? `***${digits.slice(-4)}` : null;
 }
 
-function publicMessage(result: ReceiptDecision, flags: string[]): string {
+function publicMessage(
+  result: ReceiptDecision,
+  flags: string[],
+  paymentConfirmed = false,
+): string {
   if (result === "auto_approved") {
+    if (paymentConfirmed) {
+      return "GCash receipt verified automatically. Your payment and booking are confirmed.";
+    }
     return "Automated receipt screening passed. Payment remains pending until the owner confirms the funds.";
   }
   if (result === "manual_review") {
@@ -1330,7 +1337,7 @@ Deno.serve(async (req) => {
     // exclusively from the read-only trusted-ledger lookup and is the sole reject.
     let result = routeReceiptDecision(flags);
 
-    const confidence = result === "auto_approved"
+    let confidence = result === "auto_approved"
       ? Math.max(0.85, ocr.confidence)
       : result === "manual_review"
       ? 0.5
@@ -1386,9 +1393,9 @@ Deno.serve(async (req) => {
     }
 
     const verifiedAt = new Date().toISOString();
-    // `auto_approved` remains the legacy receipt-screening result name. It does
-    // not advance the target lifecycle; the owner must independently confirm
-    // the funds before setting confirmed/paid.
+    // Persist the screening result first. Strict, zero-flag GCash receipts are
+    // promoted in a second transaction-safe RPC that also claims the reference
+    // ledger; every other provider remains pending for owner review.
     const statusUpdate: Record<string, unknown> = target.type === "booking"
       ? result === "rejected"
         ? { status: "cancelled", payment_status: "rejected" }
@@ -1443,13 +1450,76 @@ Deno.serve(async (req) => {
       }, 503);
     }
 
+    let autoConfirmed = false;
+    let autoApproval: Record<string, unknown> | null = null;
+    if (result === "auto_approved" && provider === "gcash") {
+      const { data: approvalData, error: approvalError } = await db.rpc(
+        "auto_approve_gcash_receipt",
+        {
+          p_target_type: target.type,
+          p_target_key: target.key,
+          p_payment_reference: typedReference,
+          p_image_hash: imageHash,
+        },
+      );
+      if (!approvalError) {
+        autoApproval = Array.isArray(approvalData)
+          ? (approvalData[0] || null)
+          : approvalData;
+        autoConfirmed = !!autoApproval;
+      } else {
+        console.error("automatic GCash approval failed:", errMsg(approvalError));
+        const duplicateRace = errorCode(approvalError) === "23505";
+        result = duplicateRace ? "rejected" : "manual_review";
+        addFlag(
+          flags,
+          duplicateRace ? "DUPLICATE_REF" : "AUTO_APPROVAL_FAILED",
+        );
+        confidence = duplicateRace ? 0.1 : 0.5;
+        const fallbackStatus = target.type === "booking"
+          ? duplicateRace
+            ? { status: "cancelled", payment_status: "rejected" }
+            : { status: "pending", payment_status: "for_verification" }
+          : duplicateRace
+          ? { payment_status: "rejected" }
+          : { payment_status: "pending" };
+        const fallback = await finalizeTarget(db, target, imageHash, {
+          ...fallbackStatus,
+          receipt_status: result,
+          receipt_flags: flags,
+          receipt_confidence: confidence,
+          receipt_verified_at: new Date().toISOString(),
+        });
+        if (!fallback.updated) {
+          console.error(
+            "automatic approval fallback failed:",
+            fallback.error || "no matching active row",
+          );
+        }
+        await insertAudit(
+          db,
+          target,
+          result,
+          flags,
+          extracted,
+          confidence,
+          imageHash,
+          ocr.text,
+        );
+      }
+    }
+
     const heading = result === "rejected"
       ? "DUPLICATE PAYMENT REFERENCE REJECTED"
+      : autoConfirmed
+      ? "GCASH PAYMENT AUTO-APPROVED"
       : result === "auto_approved"
       ? "SCREENING PASSED — CONFIRM FUNDS"
       : "RECEIPT NEEDS REVIEW";
     const icon = result === "rejected"
       ? "❌"
+      : autoConfirmed
+      ? "✅"
       : result === "auto_approved"
       ? "🔎"
       : "⚠️";
@@ -1463,7 +1533,9 @@ Deno.serve(async (req) => {
         (amount.amount != null ? ` · Read: ₱${amount.amount.toFixed(2)}` : "") +
         "\n" +
         `Flags: <code>${escapeHtml(flags.join(", ") || "none")}</code>\n` +
-        (result === "auto_approved"
+        (autoConfirmed
+          ? "The booking was confirmed automatically after every strict GCash check passed."
+          : result === "auto_approved"
           ? "Action required: confirm the funds in the payment account before approving."
           : "Action required: review this receipt in the dashboard."),
     );
@@ -1490,16 +1562,22 @@ Deno.serve(async (req) => {
       ok: true,
       status: result,
       flags,
-      publicReason: publicMessage(result, flags),
+      publicReason: publicMessage(result, flags, autoConfirmed),
       extracted,
       confidence,
       receiptImageUrl: objectPath,
       receiptImageHash: imageHash,
       receiptPhash: null,
       receiptVerifiedAt: verifiedAt,
-      paymentConfirmed: false,
-      requiresOwnerConfirmation: result !== "rejected",
-      message: publicMessage(result, flags),
+      paymentConfirmed: autoConfirmed,
+      requiresOwnerConfirmation: result !== "rejected" && !autoConfirmed,
+      paymentStatus: autoApproval?.payment_status ||
+        (result === "rejected" ? "rejected" : "for_verification"),
+      bookingStatus: autoApproval?.booking_status ||
+        (target.type === "booking"
+          ? result === "rejected" ? "cancelled" : "pending"
+          : null),
+      message: publicMessage(result, flags, autoConfirmed),
     });
   } catch (error) {
     console.error("verify-gcash-receipt failed:", errMsg(error));

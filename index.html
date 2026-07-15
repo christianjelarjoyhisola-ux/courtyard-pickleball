@@ -4143,10 +4143,11 @@ async function submitBooking(e) {
         if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '🎾 Confirm Booking'; }
         return;
       } else if (ocrStatus === 'auto_approved') {
-        // OCR is only a document-screening result. It never confirms that
-        // funds settled, so the owner remains the payment authority.
-        booking.status = 'pending';
-        booking.paymentStatus = 'for_verification';
+        const paymentConfirmed = booking._receiptResult?.paymentConfirmed === true;
+        booking.status = paymentConfirmed ? 'confirmed' : 'pending';
+        booking.paymentStatus = paymentConfirmed
+          ? (booking._receiptResult?.paymentStatus || (booking.downpayment >= booking.total ? 'paid' : 'downpayment_paid'))
+          : 'for_verification';
       } else {
         // A definite manual-review response is persisted by the verifier.
         // An uncertain network result must not overwrite a server result that
@@ -4252,11 +4253,15 @@ async function verifyUploadedReceipt(bookingRef, method, receiptToken = '') {
     });
     const status = res?.status || 'manual_review';
     const serverMsg = res?.publicReason || res?.message || 'Receipt received.';
-    const msg = status === 'auto_approved'
+    const paymentConfirmed = res?.paymentConfirmed === true;
+    const msg = status === 'auto_approved' && paymentConfirmed
+      ? 'GCash payment verified automatically. Your booking is confirmed!'
+      : status === 'auto_approved'
       ? 'Receipt screening passed. The owner still needs to confirm the funds.'
       : serverMsg;
     if (st) {
-      if (status === 'auto_approved') { st.style.background = 'rgba(184,126,0,.12)'; st.style.color = '#b87e00'; st.textContent = '🕓 ' + msg; }
+      if (status === 'auto_approved' && paymentConfirmed) { st.style.background = 'rgba(74,154,74,.12)'; st.style.color = '#2d8a4e'; st.textContent = '✅ ' + msg; }
+      else if (status === 'auto_approved') { st.style.background = 'rgba(184,126,0,.12)'; st.style.color = '#b87e00'; st.textContent = '🕓 ' + msg; }
       else if (status === 'rejected') { st.style.background = 'rgba(229,57,53,.1)'; st.style.color = '#e53935'; st.textContent = '⚠️ ' + msg; }
       else { st.style.background = 'rgba(184,126,0,.12)'; st.style.color = '#b87e00'; st.textContent = '🕓 ' + msg; }
     }
@@ -4266,6 +4271,10 @@ async function verifyUploadedReceipt(bookingRef, method, receiptToken = '') {
       flags: res?.flags || [],
       extracted: res?.extracted || null,
       confidence: res?.confidence ?? null,
+      paymentConfirmed,
+      requiresOwnerConfirmation: res?.requiresOwnerConfirmation !== false,
+      paymentStatus: res?.paymentStatus || null,
+      bookingStatus: res?.bookingStatus || null,
       receiptImageUrl: res?.receiptImageUrl || null,
       receiptImageHash: res?.receiptImageHash || null,
       receiptPhash: res?.receiptPhash || null,
@@ -4370,6 +4379,8 @@ function showInvoice(b) {
   set('iDownLabel', isFullPay ? 'Full Amount' : '50% Downpayment');
   set('iDownNote', receiptNotUploaded
     ? b._receiptResult.message
+    : isConfirmed && receiptWasUploaded
+    ? `${payLabel} payment verified automatically — your booking is confirmed.`
     : receiptWasUploaded
     ? `${payLabel} receipt submitted — the owner still needs to confirm the funds.`
     : `Pay the ${isFullPay ? 'full amount' : 'downpayment'} at the front desk before your session.`);
@@ -4402,13 +4413,25 @@ function showInvoice(b) {
         noteEl.textContent = '❌ Your booking has been cancelled. Please make a new booking and upload a valid GCash receipt.' + flagText;
       }
     } else if (s === 'auto_approved') {
-      set('iTitle', 'Receipt Screening Passed');
-      set('iHeroSub', 'OCR checks passed. Your booking remains pending while the owner confirms the funds.');
-      if (statusEl) {
-        statusEl.textContent = '🕓 Pending Owner Confirmation';
-        statusEl.className = 'inv-status-bdg inv-status-review';
+      const automaticallyConfirmed = b._receiptResult?.paymentConfirmed === true;
+      if (automaticallyConfirmed) {
+        if (heroEl) heroEl.classList.add('inv-hero--approved');
+        set('iTitle', 'Booking Confirmed!');
+        set('iHeroSub', 'Your GCash payment passed every verification check.');
+        if (statusEl) {
+          statusEl.textContent = '✓ Confirmed';
+          statusEl.className = 'inv-status-bdg inv-status-confirmed';
+        }
+        if (noteEl) noteEl.textContent = '✅ GCash payment verified automatically. Your court is confirmed.';
+      } else {
+        set('iTitle', 'Receipt Screening Passed');
+        set('iHeroSub', 'OCR checks passed. Your booking remains pending while the owner confirms the funds.');
+        if (statusEl) {
+          statusEl.textContent = '🕓 Pending Owner Confirmation';
+          statusEl.className = 'inv-status-bdg inv-status-review';
+        }
+        if (noteEl) noteEl.textContent = '🕓 Receipt screening passed, but this is not payment confirmation. The owner will confirm the funds.';
       }
-      if (noteEl) noteEl.textContent = '🕓 Receipt screening passed, but this is not payment confirmation. The owner will confirm the funds.';
     } else {
       // manual_review
       if (statusEl) {
@@ -4430,6 +4453,10 @@ function showInvoice(b) {
       ['Keep your payment screenshot; do not send another payment.', '1'],
       [`Tell the venue your booking ref and the current amount due of <strong>${fmt(b.downpayment)}</strong>.`, '2'],
       ['The owner will advise how to submit or review the receipt.', '3'],
+    ] : isConfirmed && receiptWasUploaded ? [
+      ['Save this confirmed booking reference.', '1'],
+      [`Your ${payLabel} payment was verified automatically.`, '2'],
+      ['Show this reference at the venue on your booking date.', '3'],
     ] : receiptWasUploaded ? [
       ['Show this booking ref to the front desk.', '1'],
       [`Your ${payLabel} ref # has been submitted for verification.`, '2'],
@@ -5219,10 +5246,8 @@ async function submitOpenPlay() {
         return;
       }
     }
-    // OCR can screen the document, but only the owner confirms settled funds.
-    // The displayed registration therefore stays pending even when screening
-    // passes, and the browser never writes an approved payment state.
     const screeningPassed = receiptResult?.status === 'auto_approved';
+    const paymentConfirmed = receiptResult?.paymentConfirmed === true;
 
     // Fire-and-forget Telegram notification
     fetch(`${SUPABASE_URL}/functions/v1/send-telegram-notification`, {
@@ -5244,6 +5269,8 @@ async function submitOpenPlay() {
             ? `Pay <strong>${fmt(amt)}</strong> at the front desk upon arrival.`
             : verificationUncertain
               ? `Registration <strong>${opSafeText(registrationId)}</strong> is saved, but we could not confirm the receipt upload. Keep your screenshot and do not pay again; the owner can review your pending registration.`
+            : screeningPassed && paymentConfirmed
+              ? `Your <strong>${fmt(amt)}</strong> GCash payment was verified automatically. Your Open Play registration is confirmed.`
             : screeningPassed
               ? `Receipt screening passed for the submitted <strong>${fmt(amt)}</strong> receipt. Your registration remains pending until the owner confirms the funds — please do not pay again.`
               : `We received your receipt for review. The current amount due is <strong>${fmt(amt)}</strong>; the owner will verify the receipt shortly.`
